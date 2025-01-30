@@ -41,6 +41,7 @@ const { IMAGE_FIELD_PROFILE_PICTURE } = require("./utils/imageFields");
 const { uploadProfilePicture } = require("./multer");
 const { MulterError } = require("multer");
 const catchAsync = require("./utils/catchAsync");
+const AuditLog = require("./models/auditLog");
 
 module.exports.storeReturnTo = (req, res, next) => {
   if (req.session.returnTo) {
@@ -86,6 +87,35 @@ module.exports.checkPermission = (requiredPermission) => {
 
     next();
   });
+};
+
+module.exports.logAudit = async (
+  action,
+  collection,
+  document,
+  changes,
+  before = null,
+  after = null,
+  user
+) => {
+  try {
+    const audit = new AuditLog({
+      action,
+      collection,
+      document,
+      changes,
+      before,
+      after,
+      user,
+    });
+    await audit.save();
+
+    const audits = await AuditLog.find({});
+    const auditJSON = audits.map((a) => a.toJSON());
+    console.log(auditJSON);
+  } catch (error) {
+    console.error("Failed to log audit:", error);
+  }
 };
 
 module.exports.validatePermissionCode = (req, res, next) => {

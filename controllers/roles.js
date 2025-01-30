@@ -26,6 +26,13 @@ const {
   MESSAGE_DELETE_ROLE_ERROR,
   MESSAGE_ROLE_NOT_ALLOWED_DELETE_REFERENCE_EXIST,
 } = require("../utils/messages");
+const { logAudit } = require("../middleware");
+const {
+  auditActions,
+  auditChanges,
+  auditCollections,
+} = require("../utils/audit");
+const User = require("../models/user");
 
 module.exports.GetRoles = async (req, res, next) => {
   /* The below code snippet is used to query the database for 
@@ -216,6 +223,23 @@ module.exports.CreateRole = async (req, res, next) => {
     hiddenFieldsDefault
   ).populate("rolePermissions", hiddenFieldsDefault);
 
+  /* The below code snippet is using the current logged in 
+  user's `userCode` to query the database to find the `_id`
+  of that user.
+   */
+  const createdUser = await User.findOne({ userCode: req.user.userCode });
+
+  /* The below code snippet is creating a audit log. */
+  await logAudit(
+    auditActions?.CREATE,
+    auditCollections?.ROLES,
+    role?._id,
+    auditChanges?.CREATE_ROLE,
+    null,
+    createdRole,
+    createdUser?._id
+  );
+
   /* The below code snippet returns an success response with
   an `ExpressResponse` object. */
   res
@@ -287,10 +311,6 @@ module.exports.UpdateRole = async (req, res, next) => {
       rolePermissions: [...permissions],
     }
   );
-
-  /* The below code snippet is saving the updated `role`
-  object to the database. */
-  await role.save();
 
   /* The below code snippet is querying the database to find
   and retrieve an updated role document (excluding the

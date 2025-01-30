@@ -12,7 +12,7 @@ const allowedFormats = ["jpg", "jpeg", "png", "svg", "webp", "avif"];
 const storage = new CloudinaryStorage({
   cloudinary: cloudinary,
   params: {
-    folder: "backend-starter-mongo-express",
+    folder: process.env.CLOUDINARY_FOLDER,
     allowedFormats: allowedFormats,
   },
 });
