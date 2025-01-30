@@ -7,13 +7,12 @@ const {
   generatePermissionCode,
   generateRoleCode,
   generateUserCode,
-  hiddenFieldsDefault,
-  writeToFile,
 } = require("../utils/helpers");
 const { basePermissions } = require("./basePermissions");
 const { baseRoles } = require("./baseRoles");
 
-mongoose.connect("mongodb://127.0.0.1:27017/mongoexpress", {
+const DB_URL = process?.env?.DB_URL ?? "";
+mongoose.connect(DB_URL, {
   useNewUrlParser: true,
   // useCreateIndex: true,
   useUnifiedTopology: true,

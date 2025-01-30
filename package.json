@@ -1,13 +1,14 @@
 {
-  "name": "backend-starter-mongo-express",
+  "name": "ems",
   "version": "1.0.0",
   "description": "",
-  "main": "index.js",
+  "main": "app.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "seed:permissions-roles-users": "node ./seeds/seedPermissionsRolesAndUsers.js",
     "seed:countries-states-cities": "node ./seeds/seedCountriesStatesAndCities.js",
-    "seed:all": "npm run seed:permissions-roles-users && npm run seed:countries-states-cities",
+    "seed:genders": "node ./seeds/seedGenders.js",
+    "seed:all": "npm run seed:permissions-roles-users && npm run seed:countries-states-cities && npm run seed:genders",
     "dev": "nodemon app.js",
     "start": "node app.js"
   },
