@@ -4,6 +4,8 @@ const {
   IsObjectIdReferenced,
   generateGenderCode,
   hiddenFieldsDefault,
+  hiddenFieldsUser,
+  generateAuditCode,
 } = require("../utils/helpers");
 const { STATUS_SUCCESS, STATUS_ERROR } = require("../utils/status");
 const {
@@ -23,6 +25,13 @@ const {
   MESSAGE_GET_GENDER_SUCCESS,
   MESSAGE_GET_GENDERS_SUCCESS,
 } = require("../utils/messages");
+const User = require("../models/user");
+const {
+  auditActions,
+  auditCollections,
+  auditChanges,
+} = require("../utils/audit");
+const { logAudit } = require("../middleware");
 
 module.exports.GetGenders = async (req, res, next) => {
   /* The below code snippet is used to query the database for 
@@ -133,6 +142,34 @@ module.exports.CreateGender = async (req, res, next) => {
     hiddenFieldsDefault
   );
 
+  /* The below code snippet is using the current logged in 
+  user's `userCode` to query the database to find the `_id`
+  of that user.
+   */
+  const currentUser = await User.findOne(
+    { userCode: req.user.userCode },
+    hiddenFieldsUser
+  ).populate({
+    path: "role",
+    select: hiddenFieldsDefault,
+    populate: {
+      path: "rolePermissions",
+      select: hiddenFieldsDefault,
+    },
+  });
+
+  /* The below code snippet is creating a audit log. */
+  await logAudit(
+    generateAuditCode(),
+    auditActions?.CREATE,
+    auditCollections?.GENDERS,
+    createdGender?.genderCode,
+    auditChanges?.CREATE_GENDER,
+    null,
+    createdGender?.toObject(),
+    currentUser?.toObject()
+  );
+
   /* The below code snippet returns an success response with
   an `ExpressResponse` object. */
   res
@@ -173,6 +210,14 @@ module.exports.UpdateGender = async (req, res, next) => {
     );
   }
 
+  /* The below code snippet is querying the database to find
+  and retrieve the gender document (excluding the fields 
+  `__v` and `_id`). */
+  const genderBeforeUpdate = await Gender.findOne(
+    { genderCode },
+    hiddenFieldsDefault
+  );
+
   /* The below code snippet is updating the instance of the
   `Gender` model with the provided data. */
   const gender = await Gender.findOneAndUpdate(
@@ -192,6 +237,34 @@ module.exports.UpdateGender = async (req, res, next) => {
   const updatedGender = await Gender.findOne(
     { genderCode },
     hiddenFieldsDefault
+  );
+
+  /* The below code snippet is using the current logged in 
+  user's `userCode` to query the database to find the `_id`
+  of that user.
+   */
+  const currentUser = await User.findOne(
+    { userCode: req.user.userCode },
+    hiddenFieldsUser
+  ).populate({
+    path: "role",
+    select: hiddenFieldsDefault,
+    populate: {
+      path: "rolePermissions",
+      select: hiddenFieldsDefault,
+    },
+  });
+
+  /* The below code snippet is creating a audit log. */
+  await logAudit(
+    generateAuditCode(),
+    auditActions?.UPDATE,
+    auditCollections?.GENDERS,
+    genderBeforeUpdate?.genderCode,
+    auditChanges?.UPDATE_GENDER,
+    genderBeforeUpdate?.toObject(),
+    updatedGender?.toObject(),
+    currentUser?.toObject()
   );
 
   /* The below code snippet returns an success response with
@@ -251,6 +324,14 @@ module.exports.DeleteGender = async (req, res, next) => {
     );
   }
 
+  /* The below code snippet is querying the database to find
+  and retrieve the gender document (excluding the fields 
+  `__v` and `_id`). */
+  const genderBeforeDelete = await Gender.findOne(
+    { genderCode },
+    hiddenFieldsDefault
+  );
+
   /* The the below code snippet is querying the database to
   delete the document with the given `genderCode` in the
   genders collection (excluding the fields `__v` and 
@@ -271,6 +352,34 @@ module.exports.DeleteGender = async (req, res, next) => {
       )
     );
   }
+
+  /* The below code snippet is using the current logged in 
+  user's `userCode` to query the database to find the `_id`
+  of that user.
+   */
+  const currentUser = await User.findOne(
+    { userCode: req.user.userCode },
+    hiddenFieldsUser
+  ).populate({
+    path: "role",
+    select: hiddenFieldsDefault,
+    populate: {
+      path: "rolePermissions",
+      select: hiddenFieldsDefault,
+    },
+  });
+
+  /* The below code snippet is creating a audit log. */
+  await logAudit(
+    generateAuditCode(),
+    auditActions?.DELETE,
+    auditCollections?.GENDERS,
+    genderBeforeDelete?.genderCode,
+    auditChanges?.DELETE_GENDER,
+    genderBeforeDelete?.toObject(),
+    null,
+    currentUser?.toObject()
+  );
 
   /* The below code snippet returns an success response with
   an `ExpressResponse` object. */

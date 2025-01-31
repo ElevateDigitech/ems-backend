@@ -27,6 +27,9 @@ const auditChanges = {
   CHANGE_PASSWORD: "A Password Changed",
   UPDATE_USER: "A User Updated",
   DELETE_USER: "A User Deleted",
+  CREATE_GENDER: "A Gender Created",
+  UPDATE_GENDER: "A Gender Updated",
+  DELETE_GENDER: "A Gender Deleted",
 };
 
 module.exports = { auditActions, auditCollections, auditChanges };
