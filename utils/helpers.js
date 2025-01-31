@@ -12,6 +12,7 @@ const removeIdsForSubSchemas = { _id: 0, id: 0 };
 const trimAndTestRegex = (value, regex) =>
   value?.trim() && regex?.test(value.trim());
 
+const generateAuditCode = () => `AUDIT-${uuidv4()}`;
 const generatePermissionCode = () => `PRIV-${uuidv4()}`;
 const generateRoleCode = () => `ROLE-${uuidv4()}`;
 const generateUserCode = () => `USER-${uuidv4()}`;
@@ -90,6 +91,7 @@ module.exports = {
   hiddenFieldsUser,
   removeIdsForSubSchemas,
   trimAndTestRegex,
+  generateAuditCode,
   generatePermissionCode,
   generateRoleCode,
   generateUserCode,

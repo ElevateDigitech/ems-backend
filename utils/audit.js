@@ -3,6 +3,8 @@ const auditActions = {
   UPDATE: "UPDATE",
   CHANGE: "CHANGE",
   DELETE: "DELETE",
+  LOGIN: "LOGIN",
+  LOGOUT: "LOGOUT",
 };
 
 const auditCollections = {
@@ -17,6 +19,14 @@ const auditCollections = {
 
 const auditChanges = {
   CREATE_ROLE: "A Role Created",
+  UPDATE_ROLE: "A Role Updated",
+  DELETE_ROLE: "A Role Deleted",
+  LOGIN_USER: "A User Logged in",
+  LOGOUT_USER: "A User Logged out",
+  CREATE_USER: "A User Created",
+  CHANGE_PASSWORD: "A Password Changed",
+  UPDATE_USER: "A User Updated",
+  DELETE_USER: "A User Deleted",
 };
 
 module.exports = { auditActions, auditCollections, auditChanges };

@@ -16,7 +16,6 @@ const auditSchema = new mongoose.Schema(
       required: true,
       unique: true,
       trim: true,
-      default: () => `AUDIT_${timeNow}`,
     },
     action: {
       type: String,
@@ -29,9 +28,8 @@ const auditSchema = new mongoose.Schema(
       required: true,
     },
     document: {
-      type: mongoose.Schema.Types.ObjectId,
+      type: String,
       required: true,
-      refPath: "collection",
     },
     changes: {
       type: String,
@@ -44,8 +42,8 @@ const auditSchema = new mongoose.Schema(
       type: mongoose.Schema.Types.Mixed,
     },
     user: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "User",
+      type: mongoose.Schema.Types.Mixed,
+      required: true,
     },
     timeStamp: {
       type: Date,
@@ -57,9 +55,6 @@ const auditSchema = new mongoose.Schema(
 );
 
 auditSchema.virtual("timeStampIST").get(function () {
-  // return moment(this.timeStamp)
-  //   .tz("Asia/Kolkata")
-  //   .format("YYYY-MM-DD HH:mm:ss");
   return `${moment(this.timeStamp).valueOf()}`;
 });
 

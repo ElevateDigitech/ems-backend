@@ -90,6 +90,7 @@ module.exports.checkPermission = (requiredPermission) => {
 };
 
 module.exports.logAudit = async (
+  auditCode,
   action,
   collection,
   document,
@@ -100,6 +101,7 @@ module.exports.logAudit = async (
 ) => {
   try {
     const audit = new AuditLog({
+      auditCode,
       action,
       collection,
       document,
@@ -112,7 +114,6 @@ module.exports.logAudit = async (
 
     const audits = await AuditLog.find({});
     const auditJSON = audits.map((a) => a.toJSON());
-    console.log(auditJSON);
   } catch (error) {
     console.error("Failed to log audit:", error);
   }

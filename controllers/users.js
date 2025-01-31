@@ -10,6 +10,7 @@ const {
   generateUserCode,
   hiddenFieldsUser,
   hiddenFieldsDefault,
+  generateAuditCode,
 } = require("../utils/helpers");
 const {
   STATUS_CODE_BAD_REQUEST,
@@ -42,6 +43,12 @@ const {
   MESSAGE_ACCESS_DENIED_NO_PERMISSION,
 } = require("../utils/messages");
 const { STATUS_ERROR, STATUS_SUCCESS } = require("../utils/status");
+const {
+  auditActions,
+  auditCollections,
+  auditChanges,
+} = require("../utils/audit");
+const { logAudit } = require("../middleware");
 
 module.exports.register = async (req, res, next) => {
   /* The below code snippet is extracting the `email`,
@@ -188,33 +195,48 @@ module.exports.register = async (req, res, next) => {
     },
   });
 
-  /* The code snippet is trying to login the user */
-  req.login(registeredUser, (err) => {
-    /* The code snipppet will return an error response using
-    the `next` function with an `ExpressResponse` object. */
-    if (err) {
-      return next(
-        new ExpressResponse(
-          STATUS_ERROR,
-          STATUS_CODE_INTERNAL_SERVER_ERROR,
-          err?.message ?? MESSAGE_INTERNAL_SERVER_ERROR
-        )
-      );
-    }
-
-    /* The below code snippet returns an success response with
-    an `ExpressResponse` object. */
-    res
-      .status(STATUS_CODE_SUCCESS)
-      .send(
-        new ExpressResponse(
-          STATUS_SUCCESS,
-          STATUS_CODE_SUCCESS,
-          MESSAGE_USER_REGISTER_SUCCESS,
-          createdUser
-        )
-      );
+  /* The below code snippet is using the current logged in 
+  user's `userCode` to query the database to find the `_id`
+  of that user.
+   */
+  const currentUser = await User.findOne(
+    {
+      userCode: req.user.userCode,
+    },
+    hiddenFieldsUser
+  ).populate({
+    path: "role",
+    select: hiddenFieldsDefault,
+    populate: {
+      path: "rolePermissions",
+      select: hiddenFieldsDefault,
+    },
   });
+
+  /* The below code snippet is creating a audit log. */
+  await logAudit(
+    generateAuditCode(),
+    auditActions?.CREATE,
+    auditCollections?.USERS,
+    createdUser?.userCode,
+    auditChanges?.CREATE_USER,
+    null,
+    createdUser?.toObject(),
+    currentUser?.toObject()
+  );
+
+  /* The below code snippet returns an success response with
+  an `ExpressResponse` object. */
+  res
+    .status(STATUS_CODE_SUCCESS)
+    .send(
+      new ExpressResponse(
+        STATUS_SUCCESS,
+        STATUS_CODE_SUCCESS,
+        MESSAGE_USER_REGISTER_SUCCESS,
+        createdUser
+      )
+    );
 };
 
 module.exports.login = async (req, res, next) => {
@@ -222,7 +244,7 @@ module.exports.login = async (req, res, next) => {
     /* The below code snippet will use the `username' and
     `password` properties provided in the request body to
     authenticate the user. */
-    passport.authenticate("local", (err, user, info) => {
+    passport.authenticate("local", async (err, user, info) => {
       /* The below code snippet is handling an error 
       scenario during the authentication process. */
       if (err) {
@@ -248,8 +270,26 @@ module.exports.login = async (req, res, next) => {
         );
       }
 
+      /* The below code snippet is using the current logged in 
+      user's `userCode` to query the database to find the `_id`
+      of that user.
+       */
+      const currentUser = await User.findOne(
+        {
+          userCode: user.userCode,
+        },
+        hiddenFieldsUser
+      ).populate({
+        path: "role",
+        select: hiddenFieldsDefault,
+        populate: {
+          path: "rolePermissions",
+          select: hiddenFieldsDefault,
+        },
+      });
+
       /* The below code snippet is trying to login the user */
-      req.login(user, (err) => {
+      req.login(user, async (err) => {
         /* The code snipppet will return an error response using
         the `next` function with an `ExpressResponse` object. */
         if (err) {
@@ -261,19 +301,31 @@ module.exports.login = async (req, res, next) => {
             )
           );
         }
+
+        /* The below code snippet is creating a audit log. */
+        await logAudit(
+          generateAuditCode(),
+          auditActions?.LOGIN,
+          auditCollections?.USERS,
+          currentUser?.userCode,
+          auditChanges?.LOGIN_USER,
+          null,
+          null,
+          currentUser?.toObject()
+        );
+
         /* The below code snippet returns an success response with
         an `ExpressResponse` object. */
-        res.status(STATUS_CODE_SUCCESS).send(
-          new ExpressResponse(
-            STATUS_SUCCESS,
-            STATUS_CODE_SUCCESS,
-            MESSAGE_USER_LOGIN_SUCCESS,
-            {
-              email: user?.email || "",
-              username: user?.username || "",
-            }
-          )
-        );
+        res
+          .status(STATUS_CODE_SUCCESS)
+          .send(
+            new ExpressResponse(
+              STATUS_SUCCESS,
+              STATUS_CODE_SUCCESS,
+              MESSAGE_USER_LOGIN_SUCCESS,
+              currentUser
+            )
+          );
       });
     })(req, res, next);
   } catch (e) {
@@ -292,9 +344,10 @@ module.exports.login = async (req, res, next) => {
 };
 
 module.exports.logout = (req, res, next) => {
+  const currentUserCode = req?.user?.userCode;
   try {
     /* The below code snippet is trying to logout the user */
-    req.logout(function (err) {
+    req.logout(async function (err) {
       /* The code snipppet will return an error response using
       the `next` function with an `ExpressResponse` object. */
       if (err) {
@@ -306,6 +359,39 @@ module.exports.logout = (req, res, next) => {
           )
         );
       }
+
+      /* The below code snippet is using the current logged in 
+      user's `userCode` to query the database to find the `_id`
+      of that user.
+       */
+      const currentUser = await User.findOne(
+        {
+          userCode: currentUserCode,
+        },
+        hiddenFieldsUser
+      ).populate({
+        path: "role",
+        select: hiddenFieldsDefault,
+        populate: {
+          path: "rolePermissions",
+          select: hiddenFieldsDefault,
+        },
+      });
+
+      console.log(currentUser);
+
+      /* The below code snippet is creating a audit log. */
+      await logAudit(
+        generateAuditCode(),
+        auditActions?.LOGOUT,
+        auditCollections?.USERS,
+        currentUser?.userCode,
+        auditChanges?.LOGOUT_USER,
+        null,
+        null,
+        currentUser?.toObject()
+      );
+
       /* The below code snippet returns an success response with
       an `ExpressResponse` object. */
       res
@@ -410,6 +496,36 @@ module.exports.changePassword = async (req, res, next) => {
     /* The bwlow code snippet saving the changes in 
     `existingUser` object to the database. */
     await existingUser.save();
+
+    /* The below code snippet is using the current logged in 
+      user's `userCode` to query the database to find the `_id`
+      of that user.
+       */
+    const currentUser = await User.findOne(
+      {
+        userCode: req.user.userCode,
+      },
+      hiddenFieldsUser
+    ).populate({
+      path: "role",
+      select: hiddenFieldsDefault,
+      populate: {
+        path: "rolePermissions",
+        select: hiddenFieldsDefault,
+      },
+    });
+
+    /* The below code snippet is creating a audit log. */
+    await logAudit(
+      generateAuditCode(),
+      auditActions?.CHANGE,
+      auditCollections?.USERS,
+      currentUser?.userCode,
+      auditChanges?.CHANGE_PASSWORD,
+      null,
+      null,
+      currentUser?.toObject()
+    );
 
     /* The below code snippet returns an success response with
     an `ExpressResponse` object. */
@@ -528,6 +644,36 @@ module.exports.changeOwnPassword = async (req, res, next) => {
     /* The bwlow code snippet saving the changes in 
     `existingUser` object to the database. */
     await existingUser.save();
+
+    /* The below code snippet is using the current logged in 
+      user's `userCode` to query the database to find the `_id`
+      of that user.
+       */
+    const currentUser = await User.findOne(
+      {
+        userCode: req.user.userCode,
+      },
+      hiddenFieldsUser
+    ).populate({
+      path: "role",
+      select: hiddenFieldsDefault,
+      populate: {
+        path: "rolePermissions",
+        select: hiddenFieldsDefault,
+      },
+    });
+
+    /* The below code snippet is creating a audit log. */
+    await logAudit(
+      generateAuditCode(),
+      auditActions?.CHANGE,
+      auditCollections?.USERS,
+      currentUser?.userCode,
+      auditChanges?.CHANGE_PASSWORD,
+      null,
+      null,
+      currentUser?.toObject()
+    );
 
     /* The below code snippet returns an success response with
     an `ExpressResponse` object. */
@@ -753,6 +899,45 @@ module.exports.UpdateUser = async (req, res, next) => {
       );
     }
 
+    /* The below code snippet is querying the database to
+    find document without the `userCode` from the request
+    body and with either `email` (or) `username` from the
+    request body.  */
+    const otherUsers = await User.find({
+      userCode: { $ne: userCode },
+      $or: [{ email: email?.trim()?.toLowerCase() }, { username }],
+    });
+
+    /* The below code snippet is checking if there is a
+    document in the users collection with the given 
+    `username` (or) `email` other than the document with 
+    the given `userCode`. If so, then it returns an error
+    response using the `next` function with an 
+    `ExpressResponse` object. */
+    if (otherUsers?.length > 0) {
+      return next(
+        new ExpressResponse(
+          STATUS_ERROR,
+          STATUS_CODE_CONFLICT,
+          MESSAGE_EMAIL_USERNAME_EXIST
+        )
+      );
+    }
+
+    /* The below code snippet is finding the instance of the 
+    `Role` model with the provided data. */
+    const userBeforeUpdate = await User.findOne(
+      { userCode },
+      hiddenFieldsUser
+    ).populate({
+      path: "role",
+      select: hiddenFieldsDefault,
+      populate: {
+        path: "rolePermissions",
+        select: hiddenFieldsDefault,
+      },
+    });
+
     /* The below code snippet is finding and updating the instance
     of the `User` model with the provided data. */
     const user = await User.findOneAndUpdate(
@@ -767,6 +952,57 @@ module.exports.UpdateUser = async (req, res, next) => {
     object to the database. */
     await user.save();
 
+    /* The below code snippet is querying the database to find
+    the updated user document using the `userCode` (excluding the 
+    fields `__v`, `_id`, `salt`, and `hash`) with populating the 
+    linked documents from the `roles` collection (excluding the 
+    fields `__v` and `_id`) and populating the linked documents 
+    from the `permissions` collection (excluding the fields `__v` 
+    and `_id`) in the role. */
+    const updatedUser = await User.findOne(
+      {
+        userCode,
+      },
+      hiddenFieldsUser
+    ).populate({
+      path: "role",
+      select: hiddenFieldsDefault,
+      populate: {
+        path: "rolePermissions",
+        select: hiddenFieldsDefault,
+      },
+    });
+
+    /* The below code snippet is using the current logged in 
+    user's `userCode` to query the database to find the `_id`
+    of that user.
+   */
+    const currentUser = await User.findOne(
+      {
+        userCode: req.user.userCode,
+      },
+      hiddenFieldsUser
+    ).populate({
+      path: "role",
+      select: hiddenFieldsDefault,
+      populate: {
+        path: "rolePermissions",
+        select: hiddenFieldsDefault,
+      },
+    });
+
+    /* The below code snippet is creating a audit log. */
+    await logAudit(
+      generateAuditCode(),
+      auditActions?.UPDATE,
+      auditCollections?.USERS,
+      updatedUser?.userCode,
+      auditChanges?.UPDATE_USER,
+      userBeforeUpdate?.toObject(),
+      updatedUser?.toObject(),
+      currentUser?.toObject()
+    );
+
     /* The below code snippet returns an success response with
     an `ExpressResponse` object. */
     res
@@ -775,7 +1011,8 @@ module.exports.UpdateUser = async (req, res, next) => {
         new ExpressResponse(
           STATUS_SUCCESS,
           STATUS_CODE_SUCCESS,
-          MESSAGE_UPDATE_USER_SUCCESS
+          MESSAGE_UPDATE_USER_SUCCESS,
+          updatedUser
         )
       );
   } catch (error) {
@@ -864,6 +1101,20 @@ module.exports.DeleteUser = async (req, res, next) => {
       );
     }
 
+    /* The below code snippet is finding the instance of the 
+    `Role` model with the provided data. */
+    const userBeforeUpdate = await User.findOne(
+      { userCode },
+      hiddenFieldsUser
+    ).populate({
+      path: "role",
+      select: hiddenFieldsDefault,
+      populate: {
+        path: "rolePermissions",
+        select: hiddenFieldsDefault,
+      },
+    });
+
     /* The the below code snippet is querying the database
     to delete the document with the given `userCode` in the 
     `users` collection. */
@@ -883,6 +1134,36 @@ module.exports.DeleteUser = async (req, res, next) => {
         )
       );
     }
+
+    /* The below code snippet is using the current logged in 
+    user's `userCode` to query the database to find the `_id`
+    of that user.
+   */
+    const currentUser = await User.findOne(
+      {
+        userCode: req.user.userCode,
+      },
+      hiddenFieldsUser
+    ).populate({
+      path: "role",
+      select: hiddenFieldsDefault,
+      populate: {
+        path: "rolePermissions",
+        select: hiddenFieldsDefault,
+      },
+    });
+
+    /* The below code snippet is creating a audit log. */
+    await logAudit(
+      generateAuditCode(),
+      auditActions?.DELETE,
+      auditCollections?.USERS,
+      userCode,
+      auditChanges?.DELETE_USER,
+      userBeforeUpdate?.toObject(),
+      null,
+      currentUser?.toObject()
+    );
 
     /* The below code snippet returns an success response with
     an `ExpressResponse` object. */

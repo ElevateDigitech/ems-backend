@@ -6,6 +6,8 @@ const {
   getInvalidPermissions,
   IsObjectIdReferenced,
   hiddenFieldsDefault,
+  generateAuditCode,
+  hiddenFieldsUser,
 } = require("../utils/helpers");
 const { STATUS_SUCCESS, STATUS_ERROR } = require("../utils/status");
 const {
@@ -227,17 +229,28 @@ module.exports.CreateRole = async (req, res, next) => {
   user's `userCode` to query the database to find the `_id`
   of that user.
    */
-  const createdUser = await User.findOne({ userCode: req.user.userCode });
+  const currentUser = await User.findOne(
+    { userCode: req.user.userCode },
+    hiddenFieldsUser
+  ).populate({
+    path: "role",
+    select: hiddenFieldsDefault,
+    populate: {
+      path: "rolePermissions",
+      select: hiddenFieldsDefault,
+    },
+  });
 
   /* The below code snippet is creating a audit log. */
   await logAudit(
+    generateAuditCode(),
     auditActions?.CREATE,
     auditCollections?.ROLES,
-    role?._id,
+    createdRole?.roleCode,
     auditChanges?.CREATE_ROLE,
     null,
-    createdRole,
-    createdUser?._id
+    createdRole?.toObject(),
+    currentUser?.toObject()
   );
 
   /* The below code snippet returns an success response with
@@ -301,6 +314,14 @@ module.exports.UpdateRole = async (req, res, next) => {
   ids from the given `permissionCodes` */
   const permissions = await getPermissionIds(rolePermissions);
 
+  /* The below code snippet is finding the instance of the 
+  `Role` model with the provided data. */
+  const roleBeforeUpdate = await Role.findOne(
+    { roleCode },
+    hiddenFieldsDefault
+  ).populate("rolePermissions", hiddenFieldsDefault);
+
+  // console.log(roleBeforeUpdate);
   /* The below code snippet is finding and updating the instance
   of the `Role` model with the provided data. */
   const role = await Role.findOneAndUpdate(
@@ -317,10 +338,38 @@ module.exports.UpdateRole = async (req, res, next) => {
   fields `__v` and `_id`) with populating the linked documents
   from the `permissions` collection (excluding the fields
   `__v` and `_id`).. */
-  const updateRole = await Role.findOne(
+  const updatedRole = await Role.findOne(
     { roleCode },
     hiddenFieldsDefault
   ).populate("rolePermissions", hiddenFieldsDefault);
+
+  /* The below code snippet is using the current logged in 
+  user's `userCode` to query the database to find the `_id`
+  of that user.
+   */
+  const currentUser = await User.findOne(
+    { userCode: req.user.userCode },
+    hiddenFieldsUser
+  ).populate({
+    path: "role",
+    select: hiddenFieldsDefault,
+    populate: {
+      path: "rolePermissions",
+      select: hiddenFieldsDefault,
+    },
+  });
+
+  /* The below code snippet is creating a audit log. */
+  await logAudit(
+    generateAuditCode(),
+    auditActions?.UPDATE,
+    auditCollections?.ROLES,
+    updatedRole?.roleCode,
+    auditChanges?.UPDATE_ROLE,
+    roleBeforeUpdate?.toObject(),
+    updatedRole?.toObject(),
+    currentUser?.toObject()
+  );
 
   /* The below code snippet returns an success response with
   an `ExpressResponse` object. */
@@ -331,7 +380,7 @@ module.exports.UpdateRole = async (req, res, next) => {
         STATUS_SUCCESS,
         STATUS_CODE_SUCCESS,
         MESSAGE_UPDATE_ROLE_SUCCESS,
-        updateRole
+        updatedRole
       )
     );
 };
@@ -391,6 +440,13 @@ module.exports.DeleteRole = async (req, res, next) => {
     );
   }
 
+  /* The below code snippet is finding the instance of the 
+  `Role` model with the provided data. */
+  const roleBeforeDelete = await Role.findOne(
+    { roleCode },
+    hiddenFieldsDefault
+  ).populate("rolePermissions", hiddenFieldsDefault);
+
   /* The the below code snippet is querying the database
   to delete the document with the given `rolecode` in the
   `roles` collection. */
@@ -410,6 +466,34 @@ module.exports.DeleteRole = async (req, res, next) => {
       )
     );
   }
+
+  /* The below code snippet is using the current logged in 
+  user's `userCode` to query the database to find the `_id`
+  of that user.
+   */
+  const currentUser = await User.findOne(
+    { userCode: req.user.userCode },
+    hiddenFieldsUser
+  ).populate({
+    path: "role",
+    select: hiddenFieldsDefault,
+    populate: {
+      path: "rolePermissions",
+      select: hiddenFieldsDefault,
+    },
+  });
+
+  /* The below code snippet is creating a audit log. */
+  await logAudit(
+    generateAuditCode(),
+    auditActions?.DELETE,
+    auditCollections?.ROLES,
+    existingRole?.roleCode,
+    auditChanges?.DELETE_ROLE,
+    roleBeforeDelete?.toObject(),
+    null,
+    currentUser?.toObject()
+  );
 
   /* The below code snippet returns an success response with
   an `ExpressResponse` object. */

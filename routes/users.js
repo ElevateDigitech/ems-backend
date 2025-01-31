@@ -14,19 +14,19 @@ router
 
 router.route("/login").post(storeReturnTo, users.login);
 
-router.get("/logout", users.logout);
+router.get("/logout", isLoggedIn, users.logout);
 
 router.post(
   "/changePassword",
-  checkPermission(allPermissions?.CHANGE_PASSWORDS),
   isLoggedIn,
+  checkPermission(allPermissions?.CHANGE_PASSWORDS),
   users.changePassword
 );
 
 router.post(
   "/changeOwnPassword",
-  checkPermission(allPermissions?.CHANGE_OWN_PASSWORD),
   isLoggedIn,
+  checkPermission(allPermissions?.CHANGE_OWN_PASSWORD),
   users.changeOwnPassword
 );
 
@@ -49,6 +49,13 @@ router.get(
   isLoggedIn,
   checkPermission(allPermissions?.VIEW_USER),
   users.GetUserById
+);
+
+router.post(
+  "/UpdateUser",
+  isLoggedIn,
+  checkPermission(allPermissions?.UPDATE_USER),
+  users.UpdateUser
 );
 
 router.post(
