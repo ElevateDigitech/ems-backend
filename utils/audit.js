@@ -30,6 +30,9 @@ const auditChanges = {
   CREATE_GENDER: "A Gender Created",
   UPDATE_GENDER: "A Gender Updated",
   DELETE_GENDER: "A Gender Deleted",
+  CREATE_COUNTRY: "A Country Created",
+  UPDATE_COUNTRY: "A Country Updated",
+  DELETE_COUNTRY: "A Country Deleted",
 };
 
 module.exports = { auditActions, auditCollections, auditChanges };

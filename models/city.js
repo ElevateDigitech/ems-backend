@@ -6,11 +6,13 @@ const citySchema = new Schema({
     type: String,
     required: true,
     unique: true,
+    trim: true,
   },
   name: {
     type: String,
     required: true,
     unique: true,
+    trim: true,
   },
   state: {
     type: Schema.Types.ObjectId,
@@ -20,6 +22,11 @@ const citySchema = new Schema({
     type: Schema.Types.ObjectId,
     ref: "Country",
   },
+});
+
+citySchema.pre(/^find/, function (next) {
+  this.sort({ _id: -1 });
+  next();
 });
 
 const City = mongoose.model("City", citySchema);

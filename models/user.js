@@ -7,11 +7,13 @@ const userSchema = new Schema({
     type: String,
     required: true,
     unique: true,
+    trim: true,
   },
   email: {
     type: String,
     required: true,
     unique: true,
+    trim: true,
   },
   userAllowDeletion: {
     type: Boolean,
@@ -24,6 +26,11 @@ const userSchema = new Schema({
 });
 
 userSchema.plugin(passportLocalMongoose);
+
+userSchema.pre(/^find/, function (next) {
+  this.sort({ _id: -1 });
+  next();
+});
 
 const User = mongoose.model("User", userSchema);
 

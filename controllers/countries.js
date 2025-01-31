@@ -1,10 +1,19 @@
+const { logAudit } = require("../middleware");
 const Country = require("../models/country");
+const User = require("../models/user");
+const {
+  auditActions,
+  auditCollections,
+  auditChanges,
+} = require("../utils/audit");
 const ExpressResponse = require("../utils/ExpressResponse");
 const {
   toCapitalize,
   generateCountryCode,
   IsObjectIdReferenced,
   hiddenFieldsDefault,
+  generateAuditCode,
+  hiddenFieldsUser,
 } = require("../utils/helpers");
 const {
   MESSAGE_COUNTRY_EXIST,
@@ -141,6 +150,34 @@ module.exports.CreateCountry = async (req, res, next) => {
     hiddenFieldsDefault
   );
 
+  /* The below code snippet is using the current logged in 
+  user's `userCode` to query the database to find the `_id`
+  of that user.
+   */
+  const currentUser = await User.findOne(
+    { userCode: req.user.userCode },
+    hiddenFieldsUser
+  ).populate({
+    path: "role",
+    select: hiddenFieldsDefault,
+    populate: {
+      path: "rolePermissions",
+      select: hiddenFieldsDefault,
+    },
+  });
+
+  /* The below code snippet is creating a audit log. */
+  await logAudit(
+    generateAuditCode(),
+    auditActions?.CREATE,
+    auditCollections?.COUNTRIES,
+    createdCountry?.countryCode,
+    auditChanges?.CREATE_COUNTRY,
+    null,
+    createdCountry?.toObject(),
+    currentUser?.toObject()
+  );
+
   /* The below code snippet returns an success response with
   an `ExpressResponse` object. */
   res
@@ -182,6 +219,14 @@ module.exports.UpdateCountry = async (req, res, next) => {
     );
   }
 
+  /* The below code snippet is querying the database to find
+  and retrieve the gender document (excluding the fields 
+  `__v` and `_id`). */
+  const countryBeforeUpdate = await Country.findOne(
+    { countryCode },
+    hiddenFieldsDefault
+  );
+
   /* The below code snippet is updating the instance of the
   `Country` model with the provided data. */
   const country = await Country.findOneAndUpdate(
@@ -204,6 +249,34 @@ module.exports.UpdateCountry = async (req, res, next) => {
   const updatedCountry = await Country.findOne(
     { countryCode },
     hiddenFieldsDefault
+  );
+
+  /* The below code snippet is using the current logged in 
+  user's `userCode` to query the database to find the `_id`
+  of that user.
+   */
+  const currentUser = await User.findOne(
+    { userCode: req.user.userCode },
+    hiddenFieldsUser
+  ).populate({
+    path: "role",
+    select: hiddenFieldsDefault,
+    populate: {
+      path: "rolePermissions",
+      select: hiddenFieldsDefault,
+    },
+  });
+
+  /* The below code snippet is creating a audit log. */
+  await logAudit(
+    generateAuditCode(),
+    auditActions?.UPDATE,
+    auditCollections?.COUNTRIES,
+    updatedCountry?.countryCode,
+    auditChanges?.UPDATE_COUNTRY,
+    countryBeforeUpdate?.toObject(),
+    updatedCountry?.toObject(),
+    currentUser?.toObject()
   );
 
   /* The below code snippet returns an success response with

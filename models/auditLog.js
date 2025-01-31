@@ -7,8 +7,6 @@ const opts = {
   id: 0,
 };
 
-const timeNow = moment().valueOf();
-
 const auditSchema = new mongoose.Schema(
   {
     auditCode: {
@@ -30,10 +28,12 @@ const auditSchema = new mongoose.Schema(
     document: {
       type: String,
       required: true,
+      trim: true,
     },
     changes: {
       type: String,
       required: true,
+      trim: true,
     },
     before: {
       type: mongoose.Schema.Types.Mixed,
@@ -42,12 +42,12 @@ const auditSchema = new mongoose.Schema(
       type: mongoose.Schema.Types.Mixed,
     },
     user: {
-      type: mongoose.Schema.Types.Mixed,
+      type: Object,
       required: true,
     },
     timeStamp: {
       type: Date,
-      default: () => timeNow,
+      default: () => moment().valueOf(),
       immutable: true,
     },
   },
@@ -56,6 +56,11 @@ const auditSchema = new mongoose.Schema(
 
 auditSchema.virtual("timeStampIST").get(function () {
   return `${moment(this.timeStamp).valueOf()}`;
+});
+
+auditSchema.pre(/^find/, function (next) {
+  this.sort({ _id: -1 });
+  next();
 });
 
 const AuditLog = mongoose.model("AuditLog", auditSchema);

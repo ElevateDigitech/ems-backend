@@ -9,8 +9,18 @@ const opts = {
 
 const ImageSchema = new Schema(
   {
-    url: String,
-    filename: String,
+    url: {
+      type: String,
+      required: true,
+      unique: true,
+      trim: true,
+    },
+    filename: {
+      type: String,
+      required: true,
+      unique: true,
+      trim: true,
+    },
   },
   { ...removeIdsForSubSchemas, ...opts }
 );
@@ -24,10 +34,12 @@ const AddressSchema = new Schema(
     addressLineOne: {
       type: String,
       required: false,
+      trim: true,
     },
     addressLineTwo: {
       type: String,
       required: false,
+      trim: true,
     },
     city: {
       type: Schema.Types.ObjectId,
@@ -46,6 +58,7 @@ const AddressSchema = new Schema(
     },
     postalCode: {
       type: String,
+      trim: true,
       required: true,
     },
   },
@@ -63,26 +76,31 @@ const SocialSchema = new Schema(
     linkedin: {
       type: String,
       required: false,
+      trim: true,
       default: "",
     },
     twitter: {
       type: String,
       required: false,
+      trim: true,
       default: "",
     },
     facebook: {
       type: String,
       required: false,
+      trim: true,
       default: "",
     },
     instagram: {
       type: String,
       required: false,
+      trim: true,
       default: "",
     },
     websiteProtfolioUrl: {
       type: String,
       required: false,
+      trim: true,
       default: "",
     },
   },
@@ -115,14 +133,17 @@ const profileSchema = new Schema({
     type: String,
     required: true,
     unique: true,
+    trim: true,
   },
   firstName: {
     type: String,
     required: true,
+    trim: true,
   },
   lastName: {
     type: String,
     required: false,
+    trim: true,
   },
   profilePicture: {
     type: ImageSchema,
@@ -144,6 +165,8 @@ const profileSchema = new Schema({
   phoneNumber: {
     type: String,
     required: false,
+    unique: true,
+    trim: true,
   },
   address: { type: AddressSchema },
   social: { type: SocialSchema },
@@ -153,6 +176,11 @@ const profileSchema = new Schema({
     ref: "User",
     unique: true,
   },
+});
+
+profileSchema.pre(/^find/, function (next) {
+  this.sort({ _id: -1 });
+  next();
 });
 
 const Profile = mongoose.model("Profile", profileSchema);
