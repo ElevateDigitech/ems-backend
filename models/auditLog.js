@@ -14,38 +14,46 @@ const auditSchema = new mongoose.Schema(
       required: true,
       unique: true,
       trim: true,
+      immutable: true,
     },
     action: {
       type: String,
       enum: Object.values(auditActions),
       required: true,
+      immutable: true,
     },
     collection: {
       type: String,
       enum: Object.values(auditCollections),
       required: true,
+      immutable: true,
     },
     document: {
       type: String,
       required: true,
       trim: true,
+      immutable: true,
     },
     changes: {
       type: String,
       required: true,
       trim: true,
+      immutable: true,
     },
     before: {
       type: mongoose.Schema.Types.Mixed,
+      immutable: true,
     },
     after: {
       type: mongoose.Schema.Types.Mixed,
+      immutable: true,
     },
     user: {
       type: Object,
       required: true,
+      immutable: true,
     },
-    timeStamp: {
+    createdAt: {
       type: Date,
       default: () => moment().valueOf(),
       immutable: true,
@@ -54,8 +62,8 @@ const auditSchema = new mongoose.Schema(
   opts
 );
 
-auditSchema.virtual("timeStampIST").get(function () {
-  return `${moment(this.timeStamp).valueOf()}`;
+auditSchema.virtual("createdAtIST").get(function () {
+  return `${moment(this.createdAt).valueOf()}`;
 });
 
 auditSchema.pre(/^find/, function (next) {

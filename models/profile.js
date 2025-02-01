@@ -2,6 +2,8 @@ const mongoose = require("mongoose");
 const { removeIdsForSubSchemas } = require("../utils/helpers");
 const Schema = mongoose.Schema;
 
+const timeNow = moment().valueOf();
+
 const opts = {
   toJSON: { virtuals: true },
   id: 0,
@@ -176,8 +178,28 @@ const profileSchema = new Schema({
     ref: "User",
     unique: true,
   },
+  createdAt: {
+    type: Date,
+    default: timeNow,
+    immutable: true,
+  },
+  updatedAt: {
+    type: Date,
+    default: timeNow,
+  },
 });
 
+// Virtual for formatted "createdAt"
+profileSchema.virtual("createdAtIST").get(function () {
+  return `${moment(this.createdAt).valueOf()}`;
+});
+
+// Virtual for formatted "updatedAt"
+profileSchema.virtual("updatedAtIST").get(function () {
+  return `${moment(this.updatedAt).valueOf()}`;
+});
+
+// Pre-find middleware to sort results by _id descending
 profileSchema.pre(/^find/, function (next) {
   this.sort({ _id: -1 });
   next();

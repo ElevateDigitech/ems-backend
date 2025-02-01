@@ -10,6 +10,7 @@ const genderSchema = new Schema({
     required: true,
     unique: true,
     trim: true,
+    immutable: true,
   },
   genderName: {
     type: String,
