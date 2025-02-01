@@ -1,0 +1,53 @@
+const express = require("express");
+const router = express.Router({ mergeParams: true });
+const genders = require("../controllers/genders");
+const catchAsync = require("../utils/catchAsync");
+const {
+  isLoggedIn,
+  validateGenderCode,
+  validateGender,
+  validateUpdateGender,
+  checkPermission,
+} = require("../middleware");
+const { allPermissions } = require("../seeds/basePermissions");
+
+router.get(
+  "/GetGenders",
+  isLoggedIn,
+  checkPermission(allPermissions?.VIEW_GENDER),
+  catchAsync(genders.GetGenders)
+);
+
+router.get(
+  "/GetGenderByCode",
+  isLoggedIn,
+  checkPermission(allPermissions?.VIEW_GENDER),
+  validateGenderCode,
+  catchAsync(genders.GetGenderByCode)
+);
+
+router.post(
+  "/CreateGender",
+  isLoggedIn,
+  checkPermission(allPermissions?.CREATE_GENDER),
+  validateGender,
+  catchAsync(genders.CreateGender)
+);
+
+router.post(
+  "/UpdateGender",
+  isLoggedIn,
+  checkPermission(allPermissions?.UPDATE_GENDER),
+  validateUpdateGender,
+  catchAsync(genders.UpdateGender)
+);
+
+router.post(
+  "/DeleteGender",
+  isLoggedIn,
+  checkPermission(allPermissions?.DELETE_GENDER),
+  validateGenderCode,
+  catchAsync(genders.DeleteGender)
+);
+
+module.exports.genderRoutes = router;
