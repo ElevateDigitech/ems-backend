@@ -1,32 +1,40 @@
 const mongoose = require("mongoose");
 const moment = require("moment");
-const passportLocalMongoose = require("passport-local-mongoose");
 
 const Schema = mongoose.Schema;
 const timeNow = moment().valueOf();
-const UserSchema = new Schema(
+const defaultOptions = {
+  toJSON: { virtuals: true },
+  id: false,
+};
+
+const MarkSchema = new Schema(
   {
-    userCode: {
+    markCode: {
       type: String,
       required: true,
       unique: true,
       trim: true,
       immutable: true,
     },
-    email: {
+    markEarned: {
       type: String,
       required: true,
-      unique: true,
       trim: true,
     },
-    userAllowDeletion: {
-      type: Boolean,
+    markTotal: {
+      type: String,
       required: true,
-      immutable: true,
+      trim: true,
     },
-    role: {
+    student: {
       type: Schema.Types.ObjectId,
-      ref: "Role",
+      ref: "Student",
+      required: true,
+    },
+    subject: {
+      type: Schema.Types.ObjectId,
+      ref: "Subject",
       required: true,
     },
     createdAt: {
@@ -39,26 +47,23 @@ const UserSchema = new Schema(
       default: timeNow,
     },
   },
-  { toJSON: { virtuals: true }, id: false }
+  defaultOptions
 );
 
-// Virtuals for formatted timestamps
-UserSchema.virtual("createdAtIST").get(function () {
+// Virtuals for timestamps
+MarkSchema.virtual("createdAtIST").get(function () {
   return moment(this.createdAt).valueOf();
 });
 
-UserSchema.virtual("updatedAtIST").get(function () {
+MarkSchema.virtual("updatedAtIST").get(function () {
   return moment(this.updatedAt).valueOf();
 });
 
-// Middleware for sorting by latest entries
-UserSchema.pre(/^find/, function (next) {
+// Pre-find middleware to sort results by _id descending
+MarkSchema.pre(/^find/, function (next) {
   this.sort({ _id: -1 });
   next();
 });
 
-// Plugin for authentication
-UserSchema.plugin(passportLocalMongoose);
-
-const User = mongoose.model("User", UserSchema);
-module.exports = User;
+const Mark = mongoose.model("Mark", MarkSchema);
+module.exports = Mark;

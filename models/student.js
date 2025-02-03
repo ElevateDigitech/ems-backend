@@ -8,30 +8,23 @@ const defaultOptions = {
   id: false,
 };
 
-const StateSchema = new Schema(
+const StudentSchema = new Schema(
   {
-    stateCode: {
+    studentCode: {
       type: String,
       required: true,
       unique: true,
       trim: true,
       immutable: true,
     },
-    name: {
+    studentName: {
       type: String,
       required: true,
-      unique: true,
       trim: true,
     },
-    iso: {
-      type: String,
-      required: true,
-      unique: true,
-      trim: true,
-    },
-    country: {
+    section: {
       type: Schema.Types.ObjectId,
-      ref: "Country",
+      ref: "Section",
       required: true,
     },
     createdAt: {
@@ -47,20 +40,20 @@ const StateSchema = new Schema(
   defaultOptions
 );
 
-// Virtuals for formatted timestamps
-StateSchema.virtual("createdAtIST").get(function () {
+// Virtuals for timestamps
+StudentSchema.virtual("createdAtIST").get(function () {
   return moment(this.createdAt).valueOf();
 });
 
-StateSchema.virtual("updatedAtIST").get(function () {
+StudentSchema.virtual("updatedAtIST").get(function () {
   return moment(this.updatedAt).valueOf();
 });
 
 // Pre-find middleware to sort results by _id descending
-StateSchema.pre(/^find/, function (next) {
+StudentSchema.pre(/^find/, function (next) {
   this.sort({ _id: -1 });
   next();
 });
 
-const State = mongoose.model("State", StateSchema);
-module.exports = State;
+const Student = mongoose.model("Student", StudentSchema);
+module.exports = Student;

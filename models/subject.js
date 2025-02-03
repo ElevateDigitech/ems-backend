@@ -8,31 +8,20 @@ const defaultOptions = {
   id: false,
 };
 
-const StateSchema = new Schema(
+const SubjectSchema = new Schema(
   {
-    stateCode: {
+    subjectCode: {
       type: String,
       required: true,
       unique: true,
       trim: true,
       immutable: true,
     },
-    name: {
+    subjectName: {
       type: String,
       required: true,
       unique: true,
       trim: true,
-    },
-    iso: {
-      type: String,
-      required: true,
-      unique: true,
-      trim: true,
-    },
-    country: {
-      type: Schema.Types.ObjectId,
-      ref: "Country",
-      required: true,
     },
     createdAt: {
       type: Date,
@@ -47,20 +36,20 @@ const StateSchema = new Schema(
   defaultOptions
 );
 
-// Virtuals for formatted timestamps
-StateSchema.virtual("createdAtIST").get(function () {
+// Virtuals for timestamps
+SubjectSchema.virtual("createdAtIST").get(function () {
   return moment(this.createdAt).valueOf();
 });
 
-StateSchema.virtual("updatedAtIST").get(function () {
+SubjectSchema.virtual("updatedAtIST").get(function () {
   return moment(this.updatedAt).valueOf();
 });
 
 // Pre-find middleware to sort results by _id descending
-StateSchema.pre(/^find/, function (next) {
+SubjectSchema.pre(/^find/, function (next) {
   this.sort({ _id: -1 });
   next();
 });
 
-const State = mongoose.model("State", StateSchema);
-module.exports = State;
+const Subject = mongoose.model("Subject", SubjectSchema);
+module.exports = Subject;
