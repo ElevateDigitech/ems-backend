@@ -1,49 +1,55 @@
 const mongoose = require("mongoose");
+const moment = require("moment");
+
 const Schema = mongoose.Schema;
-
 const timeNow = moment().valueOf();
+const defaultOptions = {
+  toJSON: { virtuals: true },
+  id: false,
+};
 
-const classSchema = new Schema({
-  classCode: {
-    type: String,
-    required: true,
-    unique: true,
-    trim: true,
-    immutable: true,
+const ClassSchema = new Schema(
+  {
+    classCode: {
+      type: String,
+      required: true,
+      unique: true,
+      trim: true,
+      immutable: true,
+    },
+    className: {
+      type: String,
+      required: true,
+      unique: true,
+      trim: true,
+    },
+    createdAt: {
+      type: Date,
+      default: timeNow,
+      immutable: true,
+    },
+    updatedAt: {
+      type: Date,
+      default: timeNow,
+    },
   },
-  className: {
-    type: String,
-    required: true,
-    unique: true,
-    trim: true,
-  },
-  createdAt: {
-    type: Date,
-    default: timeNow,
-    immutable: true,
-  },
-  updatedAt: {
-    type: Date,
-    default: timeNow,
-  },
+  defaultOptions
+);
+
+// Virtuals for timestamps
+ClassSchema.virtual("createdAtIST").get(function () {
+  return moment(this.createdAt).valueOf();
 });
 
-// Virtual for formatted "createdAt"
-classSchema.virtual("createdAtIST").get(function () {
-  return `${moment(this.createdAt).valueOf()}`;
-});
-
-// Virtual for formatted "updatedAt"
-classSchema.virtual("updatedAtIST").get(function () {
-  return `${moment(this.updatedAt).valueOf()}`;
+ClassSchema.virtual("updatedAtIST").get(function () {
+  return moment(this.updatedAt).valueOf();
 });
 
 // Pre-find middleware to sort results by _id descending
-classSchema.pre(/^find/, function (next) {
+ClassSchema.pre(/^find/, function (next) {
   this.sort({ _id: -1 });
   next();
 });
 
-const Class = mongoose.model("Class", classSchema);
-
+const Class = mongoose.model("Class", ClassSchema);
 module.exports = Class;

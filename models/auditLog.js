@@ -2,12 +2,13 @@ const mongoose = require("mongoose");
 const moment = require("moment-timezone");
 const { auditActions, auditCollections } = require("../utils/audit");
 
-const opts = {
+const Schema = mongoose.Schema;
+const defaultOptions = {
   toJSON: { virtuals: true },
-  id: 0,
+  id: false,
 };
 
-const auditSchema = new mongoose.Schema(
+const AuditSchema = new Schema(
   {
     auditCode: {
       type: String,
@@ -59,17 +60,17 @@ const auditSchema = new mongoose.Schema(
       immutable: true,
     },
   },
-  opts
+  defaultOptions
 );
 
-auditSchema.virtual("createdAtIST").get(function () {
-  return `${moment(this.createdAt).valueOf()}`;
+AuditSchema.virtual("createdAtIST").get(function () {
+  return moment(this.createdAt).valueOf();
 });
 
-auditSchema.pre(/^find/, function (next) {
+AuditSchema.pre(/^find/, function (next) {
   this.sort({ _id: -1 });
   next();
 });
 
-const AuditLog = mongoose.model("AuditLog", auditSchema);
+const AuditLog = mongoose.model("AuditLog", AuditSchema);
 module.exports = AuditLog;

@@ -1,65 +1,71 @@
 const mongoose = require("mongoose");
+const moment = require("moment");
+
 const Schema = mongoose.Schema;
-
 const timeNow = moment().valueOf();
+const defaultOptions = {
+  toJSON: { virtuals: true },
+  id: false,
+};
 
-const roleSchema = new Schema({
-  roleCode: {
-    type: String,
-    required: true,
-    unique: true,
-    trim: true,
-    immutable: true,
-  },
-  roleName: {
-    type: String,
-    required: true,
-    unique: true,
-    trim: true,
-  },
-  roleDescription: {
-    type: String,
-    required: false,
-    trim: true,
-  },
-  roleAllowDeletion: {
-    type: Boolean,
-    required: true,
-    immutable: true,
-  },
-  rolePermissions: [
-    {
-      type: Schema.Types.ObjectId,
-      ref: "Permission",
+/** Role Schema */
+const RoleSchema = new Schema(
+  {
+    roleCode: {
+      type: String,
+      required: true,
+      unique: true,
+      trim: true,
+      immutable: true,
     },
-  ],
-  createdAt: {
-    type: Date,
-    default: timeNow,
-    immutable: true,
+    roleName: {
+      type: String,
+      required: true,
+      unique: true,
+      trim: true,
+    },
+    roleDescription: {
+      type: String,
+      trim: true,
+    },
+    roleAllowDeletion: {
+      type: Boolean,
+      required: true,
+      immutable: true,
+    },
+    rolePermissions: [
+      {
+        type: Schema.Types.ObjectId,
+        ref: "Permission",
+      },
+    ],
+    createdAt: {
+      type: Date,
+      default: timeNow,
+      immutable: true,
+    },
+    updatedAt: {
+      type: Date,
+      default: timeNow,
+    },
   },
-  updatedAt: {
-    type: Date,
-    default: timeNow,
-  },
+  defaultOptions
+);
+
+/** Virtuals for Formatted Dates */
+RoleSchema.virtual("createdAtIST").get(function () {
+  return moment(this.createdAt).valueOf();
 });
 
-// Virtual for formatted "createdAt"
-roleSchema.virtual("createdAtIST").get(function () {
-  return `${moment(this.createdAt).valueOf()}`;
+RoleSchema.virtual("updatedAtIST").get(function () {
+  return moment(this.updatedAt).valueOf();
 });
 
-// Virtual for formatted "updatedAt"
-roleSchema.virtual("updatedAtIST").get(function () {
-  return `${moment(this.updatedAt).valueOf()}`;
-});
-
-// Pre-find middleware to sort results by _id descending
-roleSchema.pre(/^find/, function (next) {
+/** Pre-find Middleware to Sort by Latest */
+RoleSchema.pre(/^find/, function (next) {
   this.sort({ _id: -1 });
   next();
 });
 
-const Role = mongoose.model("Role", roleSchema);
-
+const Role = mongoose.model("Role", RoleSchema);
 module.exports = Role;

@@ -1,61 +1,63 @@
 const mongoose = require("mongoose");
-const Schema = mongoose.Schema;
+const moment = require("moment");
 const passportLocalMongoose = require("passport-local-mongoose");
 
+const Schema = mongoose.Schema;
 const timeNow = moment().valueOf();
+const UserSchema = new Schema(
+  {
+    userCode: {
+      type: String,
+      required: true,
+      unique: true,
+      trim: true,
+      immutable: true,
+    },
+    email: {
+      type: String,
+      required: true,
+      unique: true,
+      trim: true,
+    },
+    userAllowDeletion: {
+      type: Boolean,
+      required: true,
+      immutable: true,
+    },
+    role: {
+      type: Schema.Types.ObjectId,
+      ref: "Role",
+    },
+    createdAt: {
+      type: Date,
+      default: timeNow,
+      immutable: true,
+    },
+    updatedAt: {
+      type: Date,
+      default: timeNow,
+    },
+  },
+  { toJSON: { virtuals: true }, id: false }
+);
 
-const userSchema = new Schema({
-  userCode: {
-    type: String,
-    required: true,
-    unique: true,
-    trim: true,
-    immutable: true,
-  },
-  email: {
-    type: String,
-    required: true,
-    unique: true,
-    trim: true,
-  },
-  userAllowDeletion: {
-    type: Boolean,
-    required: true,
-    immutable: true,
-  },
-  role: {
-    type: Schema.Types.ObjectId,
-    ref: "Role",
-  },
-  createdAt: {
-    type: Date,
-    default: timeNow,
-    immutable: true,
-  },
-  updatedAt: {
-    type: Date,
-    default: timeNow,
-  },
+// Virtuals for formatted timestamps
+UserSchema.virtual("createdAtIST").get(function () {
+  return moment(this.createdAt).valueOf();
 });
 
-// Virtual for formatted "createdAt"
-userSchema.virtual("createdAtIST").get(function () {
-  return `${moment(this.createdAt).valueOf()}`;
+UserSchema.virtual("updatedAtIST").get(function () {
+  return moment(this.updatedAt).valueOf();
 });
 
-// Virtual for formatted "updatedAt"
-userSchema.virtual("updatedAtIST").get(function () {
-  return `${moment(this.updatedAt).valueOf()}`;
-});
-
-// Pre-find middleware to sort results by _id descending
-userSchema.plugin(passportLocalMongoose);
-
-userSchema.pre(/^find/, function (next) {
+// Middleware for sorting by latest entries
+UserSchema.pre(/^find/, function (next) {
   this.sort({ _id: -1 });
   next();
 });
 
-const User = mongoose.model("User", userSchema);
+// Plugin for authentication
+UserSchema.plugin(passportLocalMongoose);
 
+const User = mongoose.model("User", UserSchema);
 module.exports = User;

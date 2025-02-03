@@ -1,46 +1,47 @@
 const mongoose = require("mongoose");
+const moment = require("moment");
 const { removeIdsForSubSchemas } = require("../utils/helpers");
+
 const Schema = mongoose.Schema;
-
 const timeNow = moment().valueOf();
-
-const opts = {
+const defaultOptions = {
   toJSON: { virtuals: true },
-  id: 0,
+  id: false,
 };
 
+/** Image Schema */
 const ImageSchema = new Schema(
   {
     url: {
       type: String,
       required: true,
-      unique: true,
       trim: true,
     },
     filename: {
       type: String,
       required: true,
-      unique: true,
       trim: true,
     },
   },
-  { ...removeIdsForSubSchemas, ...opts }
+  {
+    ...removeIdsForSubSchemas,
+    ...defaultOptions,
+  }
 );
 
 ImageSchema.virtual("thumbnail").get(function () {
   return this.url.replace("/upload", "/upload/w_200");
 });
 
+/** Address Schema */
 const AddressSchema = new Schema(
   {
     addressLineOne: {
       type: String,
-      required: false,
       trim: true,
     },
     addressLineTwo: {
       type: String,
-      required: false,
       trim: true,
     },
     city: {
@@ -64,44 +65,50 @@ const AddressSchema = new Schema(
       required: true,
     },
   },
-  { ...removeIdsForSubSchemas, ...opts }
+  {
+    ...removeIdsForSubSchemas,
+    ...defaultOptions,
+  }
 );
 
 AddressSchema.virtual("fullAddress").get(function () {
-  return `${
-    this.addressLineOne
-  }\n${this.addressLineTwo || ""}\n${this.city.name}, ${this.state.name ? this.state.name + "- " : ""}${this.postalCode}\n${this.country.name}`;
+  return [
+    this.addressLineOne,
+    this.addressLineTwo,
+    `${this.city?.name}, ${this.state?.name ? this.state.name + "- " : ""}${
+      this.postalCode
+    }`,
+    this.country?.name,
+  ]
+    .filter(Boolean)
+    .join("\n");
 });
 
+/** Social Schema */
 const SocialSchema = new Schema(
   {
     linkedin: {
       type: String,
-      required: false,
       trim: true,
       default: "",
     },
     twitter: {
       type: String,
-      required: false,
       trim: true,
       default: "",
     },
     facebook: {
       type: String,
-      required: false,
       trim: true,
       default: "",
     },
     instagram: {
       type: String,
-      required: false,
       trim: true,
       default: "",
     },
     websiteProtfolioUrl: {
       type: String,
-      required: false,
       trim: true,
       default: "",
     },
@@ -109,6 +116,7 @@ const SocialSchema = new Schema(
   removeIdsForSubSchemas
 );
 
+/** Notifications Schema */
 const NotificationsSchema = new Schema(
   {
     email: {
@@ -130,81 +138,88 @@ const NotificationsSchema = new Schema(
   removeIdsForSubSchemas
 );
 
-const profileSchema = new Schema({
-  profileCode: {
-    type: String,
-    required: true,
-    unique: true,
-    trim: true,
-  },
-  firstName: {
-    type: String,
-    required: true,
-    trim: true,
-  },
-  lastName: {
-    type: String,
-    required: false,
-    trim: true,
-  },
-  profilePicture: {
-    type: ImageSchema,
-    required: true,
-  },
-  dob: {
-    type: Date,
-    validate: {
-      validator: function (value) {
-        return value <= Date.now();
+/** Profile Schema */
+const ProfileSchema = new Schema(
+  {
+    profileCode: {
+      type: String,
+      required: true,
+      unique: true,
+      trim: true,
+    },
+    firstName: {
+      type: String,
+      required: true,
+      trim: true,
+    },
+    lastName: {
+      type: String,
+      trim: true,
+    },
+    profilePicture: {
+      type: ImageSchema,
+    },
+    dob: {
+      type: Date,
+      validate: {
+        validator: (value) => value <= Date.now(),
+        message: "Date of Birth cannot be a future date",
       },
-      message: "Date of Birth cannot be a future Date",
+      required: true,
+    },
+    gender: {
+      type: Schema.Types.ObjectId,
+      ref: "Gender",
+      required: true,
+    },
+    phoneNumber: {
+      type: String,
+      unique: true,
+      trim: true,
+      required: true,
+    },
+    address: {
+      type: AddressSchema,
+    },
+    social: {
+      type: SocialSchema,
+    },
+    notification: {
+      type: NotificationsSchema,
+    },
+    user: {
+      type: Schema.Types.ObjectId,
+      ref: "User",
+      unique: true,
+      required: true,
+    },
+    createdAt: {
+      type: Date,
+      default: timeNow,
+      immutable: true,
+    },
+    updatedAt: {
+      type: Date,
+      default: timeNow,
     },
   },
-  gender: {
-    type: Schema.Types.ObjectId,
-    ref: "Gender",
-  },
-  phoneNumber: {
-    type: String,
-    required: false,
-    unique: true,
-    trim: true,
-  },
-  address: { type: AddressSchema },
-  social: { type: SocialSchema },
-  notification: { type: NotificationsSchema },
-  user: {
-    type: Schema.Types.ObjectId,
-    ref: "User",
-    unique: true,
-  },
-  createdAt: {
-    type: Date,
-    default: timeNow,
-    immutable: true,
-  },
-  updatedAt: {
-    type: Date,
-    default: timeNow,
-  },
+  defaultOptions
+);
+
+/** Virtuals for Formatted Dates */
+ProfileSchema.virtual("createdAtIST").get(function () {
+  return moment(this.createdAt).valueOf();
 });
 
-// Virtual for formatted "createdAt"
-profileSchema.virtual("createdAtIST").get(function () {
-  return `${moment(this.createdAt).valueOf()}`;
+ProfileSchema.virtual("updatedAtIST").get(function () {
+  return moment(this.updatedAt).valueOf();
 });
 
-// Virtual for formatted "updatedAt"
-profileSchema.virtual("updatedAtIST").get(function () {
-  return `${moment(this.updatedAt).valueOf()}`;
-});
-
-// Pre-find middleware to sort results by _id descending
-profileSchema.pre(/^find/, function (next) {
+/** Pre-find Middleware to Sort by Latest */
+ProfileSchema.pre(/^find/, function (next) {
   this.sort({ _id: -1 });
   next();
 });
 
-const Profile = mongoose.model("Profile", profileSchema);
-
+const Profile = mongoose.model("Profile", ProfileSchema);
 module.exports = Profile;
