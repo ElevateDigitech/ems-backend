@@ -34,6 +34,7 @@ const {
   updateCitySchema,
   profileCodeSchema,
   updateProfileSchema,
+  auditCodeSchema,
 } = require("./schemas");
 const Role = require("./models/role");
 const { cloudinary } = require("./cloudinary");
@@ -121,26 +122,6 @@ module.exports.logAudit = async (
 
 module.exports.validatePermissionCode = (req, res, next) => {
   const { error } = permissionCodeSchema.validate(req.body);
-  if (error) {
-    const msg = error.details.map((d) => d.message).join(", ");
-    throw new ExpressResponse(STATUS_ERROR, STATUS_CODE_BAD_REQUEST, msg);
-  } else {
-    next();
-  }
-};
-
-module.exports.validatePermission = (req, res, next) => {
-  const { error } = permissionSchema.validate(req.body);
-  if (error) {
-    const msg = error.details.map((d) => d.message).join(", ");
-    throw new ExpressResponse(STATUS_ERROR, STATUS_CODE_BAD_REQUEST, msg);
-  } else {
-    next();
-  }
-};
-
-module.exports.validateUpdatePermission = (req, res, next) => {
-  const { error } = updatePermissionSchema.validate(req.body);
   if (error) {
     const msg = error.details.map((d) => d.message).join(", ");
     throw new ExpressResponse(STATUS_ERROR, STATUS_CODE_BAD_REQUEST, msg);
@@ -371,6 +352,16 @@ module.exports.validateUpdateProfile = async (req, res, next) => {
     if (file?.filename && file?.filename?.trim()?.length) {
       await cloudinary.uploader.destroy(file.filename);
     }
+    const msg = error.details.map((d) => d.message).join(", ");
+    throw new ExpressResponse(STATUS_ERROR, STATUS_CODE_BAD_REQUEST, msg);
+  } else {
+    next();
+  }
+};
+
+module.exports.validateAuditCode = (req, res, next) => {
+  const { error } = auditCodeSchema.validate(req.body);
+  if (error) {
     const msg = error.details.map((d) => d.message).join(", ");
     throw new ExpressResponse(STATUS_ERROR, STATUS_CODE_BAD_REQUEST, msg);
   } else {

@@ -909,7 +909,7 @@ module.exports.UpdateUser = async (req, res, next) => {
     });
 
     /* The below code snippet is checking if there is a
-    document in the users collection with the given 
+    document in the `users` collection with the given 
     `username` (or) `email` other than the document with 
     the given `userCode`. If so, then it returns an error
     response using the `next` function with an 

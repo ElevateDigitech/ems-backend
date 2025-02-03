@@ -1,3 +1,4 @@
+const moment = require("moment-timezone");
 const Role = require("../models/role");
 const ExpressResponse = require("../utils/ExpressResponse");
 const {
@@ -27,6 +28,7 @@ const {
   MESSAGE_DELETE_ROLE_SUCCESS,
   MESSAGE_DELETE_ROLE_ERROR,
   MESSAGE_ROLE_NOT_ALLOWED_DELETE_REFERENCE_EXIST,
+  MESSAGE_ROLE_TAKEN,
 } = require("../utils/messages");
 const { logAudit } = require("../middleware");
 const {
@@ -292,6 +294,30 @@ module.exports.UpdateRole = async (req, res, next) => {
     );
   }
 
+  /* The below code snippet is querying the database to
+  find document without the `roleCode` from the request
+  body and with `roleName` from the request body. */
+  const otherRoles = await Role.find({
+    roleCode: { $ne: roleCode },
+    roleName: roleName?.trim()?.toUpperCase(),
+  });
+
+  /* The below code snippet is checking if there is a
+  document in the `roles` collection with the given 
+  `roleName` other than the document with the given 
+  `roleCode`. If so, then it returns an error response 
+  using the `next` function with an `ExpressResponse` 
+  object. */
+  if (otherRoles?.length > 0) {
+    return next(
+      new ExpressResponse(
+        STATUS_ERROR,
+        STATUS_CODE_CONFLICT,
+        MESSAGE_ROLE_TAKEN
+      )
+    );
+  }
+
   /* The below code snippet is checking if there is any invalid
   `permissionCode` exist in the given `rolePermission` array. */
   const invalidPermissions = await getInvalidPermissions(rolePermissions);
@@ -330,6 +356,7 @@ module.exports.UpdateRole = async (req, res, next) => {
       roleName: roleName?.trim()?.toUpperCase(),
       roleDescription,
       rolePermissions: [...permissions],
+      updatedAt: moment().valueOf(),
     }
   );
 

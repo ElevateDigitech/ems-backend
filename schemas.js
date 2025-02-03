@@ -29,18 +29,6 @@ module.exports.permissionCodeSchema = Joi.object({
   permissionCode: Joi.string().required(),
 });
 
-module.exports.permissionSchema = Joi.object({
-  permissionName: Joi.string().required(),
-  permissionDescription: Joi.string(),
-  permissionAllowDeletion: Joi.boolean(),
-});
-
-module.exports.updatePermissionSchema = Joi.object({
-  permissionCode: Joi.string().required(),
-  permissionName: Joi.string().required(),
-  permissionDescription: Joi.string(),
-});
-
 module.exports.roleCodeSchema = Joi.object({
   roleCode: Joi.string().required(),
 });
@@ -192,4 +180,8 @@ module.exports.updateProfileSchema = Joi.object({
     push: Joi.boolean().required(),
   }).required(),
   user: Joi.string().required(),
+});
+
+module.exports.auditCodeSchema = Joi.object({
+  auditCode: Joi.string().required(),
 });

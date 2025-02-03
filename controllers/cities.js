@@ -1,3 +1,4 @@
+const moment = require("moment-timezone");
 const City = require("../models/city");
 const State = require("../models/state");
 const Country = require("../models/country");
@@ -21,6 +22,7 @@ const {
   MESSAGE_CITIES_NOT_FOUND,
   MESSAGE_STATE_NOT_FOUND,
   MESSAGE_COUNTRY_NOT_FOUND,
+  MESSAGE_CITY_TAKEN,
 } = require("../utils/messages");
 const { STATUS_ERROR, STATUS_SUCCESS } = require("../utils/status");
 const {
@@ -391,6 +393,30 @@ module.exports.UpdateCity = async (req, res, next) => {
     );
   }
 
+  /* The below code snippet is querying the database to
+  find document without the `cityCode` from the request
+  body and with `name` from the request body. */
+  const otherCities = await City.find({
+    cityCode: { $ne: cityCode },
+    name: toCapitalize(name),
+  });
+
+  /* The below code snippet is checking if there is a
+  document in the `states` collection with the given 
+  `name` other than the document with the given 
+  `cityCode`. If so, then it returns an error response
+  using the `next` function with an `ExpressResponse` 
+  object. */
+  if (otherCities?.length > 0) {
+    return next(
+      new ExpressResponse(
+        STATUS_ERROR,
+        STATUS_CODE_CONFLICT,
+        MESSAGE_CITY_TAKEN
+      )
+    );
+  }
+
   /* The below code snippet is updating the instance of the `City` 
   model with the provided data. */
   const city = await City.findOneAndUpdate(
@@ -399,6 +425,7 @@ module.exports.UpdateCity = async (req, res, next) => {
       name: toCapitalize(name),
       state: existingState?._id,
       country: existingCountry?._id,
+      updatedAt: moment().valueOf(),
     }
   );
 

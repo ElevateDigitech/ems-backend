@@ -23,6 +23,7 @@ const { countryRoutes } = require("./routes/countries");
 const { stateRoutes } = require("./routes/states");
 const { cityRoutes } = require("./routes/cities");
 const { profileRoutes } = require("./routes/profiles");
+const { auditLogRoutes } = require("./routes/auditLogs");
 
 const { STATUS_ERROR } = require("./utils/status");
 const { MESSAGE_PAGE_NOT_FOUND } = require("./utils/messages");
@@ -139,6 +140,7 @@ app.use("/", countryRoutes);
 app.use("/", stateRoutes);
 app.use("/", cityRoutes);
 app.use("/", profileRoutes);
+app.use("/", auditLogRoutes);
 
 app.all("*", (req, res, next) => {
   next(

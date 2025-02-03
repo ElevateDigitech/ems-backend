@@ -1,3 +1,4 @@
+const moment = require("moment-timezone");
 const Gender = require("../models/gender");
 const ExpressResponse = require("../utils/ExpressResponse");
 const {
@@ -24,6 +25,7 @@ const {
   MESSAGE_DELETE_GENDERS_SUCCESS,
   MESSAGE_GET_GENDER_SUCCESS,
   MESSAGE_GET_GENDERS_SUCCESS,
+  MESSAGE_GENDER_TAKEN,
 } = require("../utils/messages");
 const User = require("../models/user");
 const {
@@ -210,6 +212,30 @@ module.exports.UpdateGender = async (req, res, next) => {
     );
   }
 
+  /* The below code snippet is querying the database to
+  find document without the `genderCode` from the request
+  body and with `genderName` from the request body. */
+  const otherGenders = await Gender.find({
+    genderCode: { $ne: genderCode },
+    genderName: genderName?.trim()?.toUpperCase(),
+  });
+
+  /* The below code snippet is checking if there is a
+  document in the `genders` collection with the given 
+  `genderName` other than the document with the given 
+  `genderCode`. If so, then it returns an error response 
+  using the `next` function with an `ExpressResponse` 
+  object. */
+  if (otherGenders?.length > 0) {
+    return next(
+      new ExpressResponse(
+        STATUS_ERROR,
+        STATUS_CODE_CONFLICT,
+        MESSAGE_GENDER_TAKEN
+      )
+    );
+  }
+
   /* The below code snippet is querying the database to find
   and retrieve the gender document (excluding the fields 
   `__v` and `_id`). */
@@ -224,6 +250,7 @@ module.exports.UpdateGender = async (req, res, next) => {
     { genderCode },
     {
       genderName: genderName?.trim()?.toUpperCase(),
+      updatedAt: moment().valueOf(),
     }
   );
 

@@ -33,6 +33,7 @@ const allPermissions = {
   CREATE_CITY: "CREATE CITY",
   UPDATE_CITY: "UPDATE CITY",
   DELETE_CITY: "DELETE CITY",
+  VIEW_AUDIT: "VIEW AUDIT",
 };
 
 const basePermissions = [
@@ -171,6 +172,10 @@ const basePermissions = [
   {
     permissionName: allPermissions?.DELETE_CITY,
     permissionDescription: "can delete city",
+  },
+  {
+    permissionName: allPermissions?.VIEW_AUDIT,
+    permissionDescription: "can view log entries",
   },
 ];
 

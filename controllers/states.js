@@ -1,3 +1,4 @@
+const moment = require("moment-timezone");
 const Country = require("../models/country");
 const State = require("../models/state");
 const ExpressResponse = require("../utils/ExpressResponse");
@@ -19,6 +20,7 @@ const {
   MESSAGE_DELETE_STATE_ERROR,
   MESSAGE_STATES_NOT_FOUND,
   MESSAGE_COUNTRY_NOT_FOUND,
+  MESSAGE_STATE_TAKEN,
 } = require("../utils/messages");
 const { STATUS_ERROR, STATUS_SUCCESS } = require("../utils/status");
 const {
@@ -302,6 +304,31 @@ module.exports.UpdateState = async (req, res, next) => {
     );
   }
 
+  /* The below code snippet is querying the database to
+  find document without the `stateCode` from the request
+  body and with either `name` (or) `iso` from the 
+  request body.  */
+  const otherStates = await State.find({
+    stateCode: { $ne: stateCode },
+    $or: [{ name: toCapitalize(name) }, { iso: iso.toUpperCase() }],
+  });
+
+  /* The below code snippet is checking if there is a
+  document in the `states` collection with the given 
+  `name` (or) `iso` other than the document with the 
+  given `stateCode`. If so, then it returns an error 
+  response using the `next` function with an 
+  `ExpressResponse` object. */
+  if (otherStates?.length > 0) {
+    return next(
+      new ExpressResponse(
+        STATUS_ERROR,
+        STATUS_CODE_CONFLICT,
+        MESSAGE_STATE_TAKEN
+      )
+    );
+  }
+
   /* The below code snippet is updating the instance of the
   `State` model with the provided data. */
   const state = await State.findOneAndUpdate(
@@ -310,6 +337,7 @@ module.exports.UpdateState = async (req, res, next) => {
       name: toCapitalize(name),
       iso: iso.toUpperCase(),
       country: existingCountry?._id,
+      updatedAt: moment().valueOf(),
     }
   );
 

@@ -4,9 +4,7 @@ const permissions = require("../controllers/permissions");
 const catchAsync = require("../utils/catchAsync");
 const {
   isLoggedIn,
-  // validatePermission,
   validatePermissionCode,
-  // validateUpdatePermission,
   checkPermission,
 } = require("../middleware");
 const { allPermissions } = require("../seeds/basePermissions");
@@ -25,26 +23,5 @@ router.get(
   validatePermissionCode,
   catchAsync(permissions.GetPermissionByCode)
 );
-
-// router.post(
-//   "/CreatePermission",
-//   isLoggedIn,
-//   validatePermission,
-//   permissions.CreatePermission
-// );
-
-// router.post(
-//   "/UpdatePermission",
-//   isLoggedIn,
-//   validateUpdatePermission,
-//   permissions.UpdatePermission
-// );
-
-// router.post(
-//   "/DeletePermission",
-//   isLoggedIn,
-//   validatePermissionCode,
-//   permissions.DeletePermission
-// );
 
 module.exports.permissionsRoutes = router;

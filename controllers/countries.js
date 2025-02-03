@@ -1,3 +1,4 @@
+const moment = require("moment-timezone");
 const { logAudit } = require("../middleware");
 const Country = require("../models/country");
 const User = require("../models/user");
@@ -25,6 +26,7 @@ const {
   MESSAGE_COUNTRY_NOT_ALLOWED_DELETE_REFERENCE_EXIST,
   MESSAGE_DELETE_COUNTRY_SUCCESS,
   MESSAGE_DELETE_COUNTRY_ERROR,
+  MESSAGE_COUNTRY_TAKEN,
 } = require("../utils/messages");
 const { STATUS_ERROR, STATUS_SUCCESS } = require("../utils/status");
 const {
@@ -219,6 +221,35 @@ module.exports.UpdateCountry = async (req, res, next) => {
     );
   }
 
+  /* The below code snippet is querying the database to
+  find document without the `countryCode` from the request
+  body and with either `name` (or) `iso2` (or) `iso3` from 
+  the request body.  */
+  const otherCountries = await Country.find({
+    countryCode: { $ne: countryCode },
+    $or: [
+      { name: toCapitalize(name) },
+      { iso2: iso2.toUpperCase() },
+      { iso3: iso3.toUpperCase() },
+    ],
+  });
+
+  /* The below code snippet is checking if there is a
+  document in the `countries` collection with the given 
+  `name` (or) `iso2` (or) `iso3` other than the document 
+  with the given `countryCode`. If so, then it returns 
+  an error response using the `next` function with an 
+  `ExpressResponse` object. */
+  if (otherCountries?.length > 0) {
+    return next(
+      new ExpressResponse(
+        STATUS_ERROR,
+        STATUS_CODE_CONFLICT,
+        MESSAGE_COUNTRY_TAKEN
+      )
+    );
+  }
+
   /* The below code snippet is querying the database to find
   and retrieve the gender document (excluding the fields 
   `__v` and `_id`). */
@@ -233,9 +264,9 @@ module.exports.UpdateCountry = async (req, res, next) => {
     { countryCode },
     {
       name: toCapitalize(name),
-      countryCode,
       iso2: iso2.toUpperCase(),
       iso3: iso3.toUpperCase(),
+      updatedAt: moment().valueOf(),
     }
   );
 

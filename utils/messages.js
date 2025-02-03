@@ -32,16 +32,6 @@ const MESSAGE_GET_PERMISSIONS_SUCCESS = "Permissions retrieved successfully";
 const MESSAGE_GET_PERMISSION_SUCCESS = "Permission retrieved successfully";
 const MESSAGE_PERMISSION_NOT_FOUND =
   "The selected permission could not be found";
-const MESSAGE_PERMISSION_EXIST =
-  "Permission already exist. Please try a different one";
-const MESSAGE_CREATE_PERMISSIONS_SUCCESS = "Permission created successfully";
-const MESSAGE_UPDATE_PERMISSIONS_SUCCESS = "Permission updated successfully";
-const MESSAGE_DELETE_PERMISSIONS_SUCCESS = "Permission deleted successfully";
-const MESSAGE_DELETE_PERMISSIONS_ERROR = "Couldn't delete the permission";
-const MESSAGE_PERMISSION_NOT_ALLOWED_DELETE =
-  "The selected permission is not allowed to be deleted";
-const MESSAGE_PERMISSION_NOT_ALLOWED_DELETE_REFERENCE_EXIST =
-  "The selected permission is in use and not allowed to be deleted.";
 const MESSAGE_GET_ROLES_SUCCESS = "Roles retrieved successfully";
 const MESSAGE_ROLE_NOT_FOUND = "The selected role could not be found";
 const MESSAGE_GET_ROLE_SUCCESS = "Role retrieved successfully";
@@ -116,6 +106,19 @@ const MESSAGE_PROFILE_NOT_FOUND_UNDER_USER =
 const MESSAGE_UPDATE_PROFILE_SUCCESS = "Profile Updated Successfully";
 const MESSAGE_DELETE_PROFILE_SUCCESS = "Profile deleted successfully";
 const MESSAGE_DELETE_PROFILE_ERROR = "Couldn't delete the profile";
+const MESSAGE_GET_AUDITS_SUCCESS = "Countries retrieved successfully";
+const MESSAGE_GET_AUDIT_SUCCESS = "Country retrieved successfully";
+const MESSAGE_AUDIT_NOT_FOUND = "The log entry could not be found";
+const MESSAGE_ROLE_TAKEN =
+  "Role name already taken. Please try a different one.";
+const MESSAGE_GENDER_TAKEN =
+  "Gander name already taken. Please try a different one.";
+const MESSAGE_COUNTRY_TAKEN =
+  "Country name (or) iso2 (or) iso3 already taken. Please try a different one.";
+const MESSAGE_STATE_TAKEN =
+  "State name (or) iso already taken. Please try a different one.";
+const MESSAGE_CITY_TAKEN =
+  "City name already taken. Please try a different one.";
 
 module.exports = {
   MESSAGE_MISSING_REQUIRED_FIELDS,
@@ -144,13 +147,6 @@ module.exports = {
   MESSAGE_GET_PERMISSIONS_SUCCESS,
   MESSAGE_GET_PERMISSION_SUCCESS,
   MESSAGE_PERMISSION_NOT_FOUND,
-  MESSAGE_PERMISSION_EXIST,
-  MESSAGE_CREATE_PERMISSIONS_SUCCESS,
-  MESSAGE_UPDATE_PERMISSIONS_SUCCESS,
-  MESSAGE_DELETE_PERMISSIONS_SUCCESS,
-  MESSAGE_DELETE_PERMISSIONS_ERROR,
-  MESSAGE_PERMISSION_NOT_ALLOWED_DELETE,
-  MESSAGE_PERMISSION_NOT_ALLOWED_DELETE_REFERENCE_EXIST,
   MESSAGE_GET_ROLES_SUCCESS,
   MESSAGE_ROLE_NOT_FOUND,
   MESSAGE_GET_ROLE_SUCCESS,
@@ -214,4 +210,12 @@ module.exports = {
   MESSAGE_DELETE_PROFILE_ERROR,
   MESSAGE_ACCESS_DENIED_NO_ROLES,
   MESSAGE_ACCESS_DENIED_NO_PERMISSION,
+  MESSAGE_GET_AUDITS_SUCCESS,
+  MESSAGE_GET_AUDIT_SUCCESS,
+  MESSAGE_AUDIT_NOT_FOUND,
+  MESSAGE_ROLE_TAKEN,
+  MESSAGE_GENDER_TAKEN,
+  MESSAGE_COUNTRY_TAKEN,
+  MESSAGE_STATE_TAKEN,
+  MESSAGE_CITY_TAKEN,
 };
