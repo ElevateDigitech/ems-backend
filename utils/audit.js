@@ -15,6 +15,7 @@ const auditCollections = {
   CITIES: "CITIES",
   STATES: "STATES",
   COUNTRIES: "COUNTRIES",
+  CLASS: "CLASS",
 };
 
 const auditChanges = {
@@ -33,6 +34,9 @@ const auditChanges = {
   CREATE_COUNTRY: "A Country Created",
   UPDATE_COUNTRY: "A Country Updated",
   DELETE_COUNTRY: "A Country Deleted",
+  CREATE_CLASS: "A Class Created",
+  UPDATE_CLASS: "A Class Updated",
+  DELETE_CLASS: "A Class Deleted",
 };
 
 module.exports = { auditActions, auditCollections, auditChanges };

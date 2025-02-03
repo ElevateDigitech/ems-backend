@@ -34,6 +34,10 @@ const allPermissions = {
   UPDATE_CITY: "UPDATE CITY",
   DELETE_CITY: "DELETE CITY",
   VIEW_AUDIT: "VIEW AUDIT",
+  VIEW_CLASS: "VIEW CLASS",
+  CREATE_CLASS: "CREATE CLASS",
+  UPDATE_CLASS: "UPDATE CLASS",
+  DELETE_CLASS: "DELETE CLASS",
 };
 
 const basePermissions = [
@@ -176,6 +180,22 @@ const basePermissions = [
   {
     permissionName: allPermissions?.VIEW_AUDIT,
     permissionDescription: "can view log entries",
+  },
+  {
+    permissionName: allPermissions?.VIEW_CLASS,
+    permissionDescription: "can view classes",
+  },
+  {
+    permissionName: allPermissions?.CREATE_CLASS,
+    permissionDescription: "can create class",
+  },
+  {
+    permissionName: allPermissions?.UPDATE_CLASS,
+    permissionDescription: "can update class",
+  },
+  {
+    permissionName: allPermissions?.DELETE_CLASS,
+    permissionDescription: "can delete class",
   },
 ];
 

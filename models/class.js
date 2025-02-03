@@ -17,7 +17,7 @@ const ClassSchema = new Schema(
       trim: true,
       immutable: true,
     },
-    className: {
+    name: {
       type: String,
       required: true,
       unique: true,

@@ -35,6 +35,9 @@ const {
   profileCodeSchema,
   updateProfileSchema,
   auditCodeSchema,
+  classCodeSchema,
+  classSchema,
+  updateClassSchema,
 } = require("./schemas");
 const Role = require("./models/role");
 const { cloudinary } = require("./cloudinary");
@@ -361,6 +364,36 @@ module.exports.validateUpdateProfile = async (req, res, next) => {
 
 module.exports.validateAuditCode = (req, res, next) => {
   const { error } = auditCodeSchema.validate(req.body);
+  if (error) {
+    const msg = error.details.map((d) => d.message).join(", ");
+    throw new ExpressResponse(STATUS_ERROR, STATUS_CODE_BAD_REQUEST, msg);
+  } else {
+    next();
+  }
+};
+
+module.exports.validateClassCode = (req, res, next) => {
+  const { error } = classCodeSchema.validate(req.body);
+  if (error) {
+    const msg = error.details.map((d) => d.message).join(", ");
+    throw new ExpressResponse(STATUS_ERROR, STATUS_CODE_BAD_REQUEST, msg);
+  } else {
+    next();
+  }
+};
+
+module.exports.validateClass = (req, res, next) => {
+  const { error } = classSchema.validate(req.body);
+  if (error) {
+    const msg = error.details.map((d) => d.message).join(", ");
+    throw new ExpressResponse(STATUS_ERROR, STATUS_CODE_BAD_REQUEST, msg);
+  } else {
+    next();
+  }
+};
+
+module.exports.validateUpdateClass = (req, res, next) => {
+  const { error } = updateClassSchema.validate(req.body);
   if (error) {
     const msg = error.details.map((d) => d.message).join(", ");
     throw new ExpressResponse(STATUS_ERROR, STATUS_CODE_BAD_REQUEST, msg);

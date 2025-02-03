@@ -119,6 +119,18 @@ const MESSAGE_STATE_TAKEN =
   "State name (or) iso already taken. Please try a different one.";
 const MESSAGE_CITY_TAKEN =
   "City name already taken. Please try a different one.";
+const MESSAGE_GET_CLASSES_SUCCESS = "Classes retrieved successfully";
+const MESSAGE_GET_CLASS_SUCCESS = "Class retrieved successfully";
+const MESSAGE_CLASS_NOT_FOUND = "The selected class could not be found";
+const MESSAGE_CLASS_EXIST = "Class already exist. Please try a different one";
+const MESSAGE_CREATE_CLASSS_SUCCESS = "Class created successfully";
+const MESSAGE_UPDATE_CLASSS_SUCCESS = "Class updated successfully";
+const MESSAGE_DELETE_CLASSS_SUCCESS = "Class deleted successfully";
+const MESSAGE_DELETE_CLASSS_ERROR = "Couldn't delete the Class";
+const MESSAGE_CLASS_NOT_ALLOWED_DELETE_REFERENCE_EXIST =
+  "The selected class is in use and not allowed to be deleted.";
+const MESSAGE_CLASS_TAKEN =
+  "Class name already taken. Please try a different one.";
 
 module.exports = {
   MESSAGE_MISSING_REQUIRED_FIELDS,
@@ -218,4 +230,14 @@ module.exports = {
   MESSAGE_COUNTRY_TAKEN,
   MESSAGE_STATE_TAKEN,
   MESSAGE_CITY_TAKEN,
+  MESSAGE_GET_CLASSES_SUCCESS,
+  MESSAGE_GET_CLASS_SUCCESS,
+  MESSAGE_CLASS_NOT_FOUND,
+  MESSAGE_CLASS_EXIST,
+  MESSAGE_CREATE_CLASSS_SUCCESS,
+  MESSAGE_UPDATE_CLASSS_SUCCESS,
+  MESSAGE_DELETE_CLASSS_SUCCESS,
+  MESSAGE_DELETE_CLASSS_ERROR,
+  MESSAGE_CLASS_NOT_ALLOWED_DELETE_REFERENCE_EXIST,
+  MESSAGE_CLASS_TAKEN,
 };

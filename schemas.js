@@ -185,3 +185,16 @@ module.exports.updateProfileSchema = Joi.object({
 module.exports.auditCodeSchema = Joi.object({
   auditCode: Joi.string().required(),
 });
+
+module.exports.classCodeSchema = Joi.object({
+  classCode: Joi.string().required(),
+});
+
+module.exports.classSchema = Joi.object({
+  name: Joi.string().required(),
+});
+
+module.exports.updateClassSchema = Joi.object({
+  classCode: Joi.string().required(),
+  name: Joi.string().required(),
+});
