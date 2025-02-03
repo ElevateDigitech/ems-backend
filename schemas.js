@@ -198,3 +198,18 @@ module.exports.updateClassSchema = Joi.object({
   classCode: Joi.string().required(),
   name: Joi.string().required(),
 });
+
+module.exports.sectionCodeSchema = Joi.object({
+  sectionCode: Joi.string().required(),
+});
+
+module.exports.sectionSchema = Joi.object({
+  name: Joi.string().required(),
+  classCode: Joi.string().required(),
+});
+
+module.exports.updateSectionSchema = Joi.object({
+  sectionCode: Joi.string().required(),
+  name: Joi.string().required(),
+  classCode: Joi.string().required(),
+});

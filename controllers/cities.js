@@ -8,6 +8,8 @@ const {
   IsObjectIdReferenced,
   generateCityCode,
   hiddenFieldsDefault,
+  hiddenFieldsUser,
+  generateAuditCode,
 } = require("../utils/helpers");
 const {
   MESSAGE_CITY_EXIST,
@@ -31,6 +33,13 @@ const {
   STATUS_CODE_BAD_REQUEST,
   STATUS_CODE_INTERNAL_SERVER_ERROR,
 } = require("../utils/statusCodes");
+const User = require("../models/user");
+const { logAudit } = require("../middleware");
+const {
+  auditActions,
+  auditCollections,
+  auditChanges,
+} = require("../utils/audit");
 
 module.exports.GetCities = async (req, res, next) => {
   /* The below code snippet is used to query the database for 
@@ -311,9 +320,42 @@ module.exports.CreateCity = async (req, res, next) => {
   (excluding the fields `__v` and `_id`) with populating the linked 
   documents from the `state` and `countries` collections (excluding 
   the fields `__v` and `_id`). */
-  const createdCity = await City.findOne({ cityCode }, hiddenFieldsDefault)
+  const createdCity = await City.findOne(
+    {
+      cityCode,
+    },
+    hiddenFieldsDefault
+  )
     .populate("state", hiddenFieldsDefault)
     .populate("country", hiddenFieldsDefault);
+
+  /* The below code snippet is using the current logged in 
+    user's `userCode` to query the database to find the `_id`
+    of that user.
+     */
+  const currentUser = await User.findOne(
+    { userCode: req.user.userCode },
+    hiddenFieldsUser
+  ).populate({
+    path: "role",
+    select: hiddenFieldsDefault,
+    populate: {
+      path: "rolePermissions",
+      select: hiddenFieldsDefault,
+    },
+  });
+
+  /* The below code snippet is creating a audit log. */
+  await logAudit(
+    generateAuditCode(),
+    auditActions?.CREATE,
+    auditCollections?.CITIES,
+    createdCity?.cityCode,
+    auditChanges?.CREATE_CITY,
+    null,
+    createdCity?.toObject(),
+    currentUser?.toObject()
+  );
 
   /* The below code snippet returns an success response with an 
   `ExpressResponse` object. */
@@ -417,6 +459,14 @@ module.exports.UpdateCity = async (req, res, next) => {
     );
   }
 
+  /* The below code snippet is querying the database to find
+  and retrieve the city document (excluding the fields 
+  `__v` and `_id`). */
+  const cityBeforeUpdate = await City.findOne(
+    { cityCode },
+    hiddenFieldsDefault
+  );
+
   /* The below code snippet is updating the instance of the `City` 
   model with the provided data. */
   const city = await City.findOneAndUpdate(
@@ -441,6 +491,34 @@ module.exports.UpdateCity = async (req, res, next) => {
   const updatedCity = await City.findOne({ cityCode }, hiddenFieldsDefault)
     .populate("state", hiddenFieldsDefault)
     .populate("country", hiddenFieldsDefault);
+
+  /* The below code snippet is using the current logged in 
+    user's `userCode` to query the database to find the `_id`
+    of that user.
+     */
+  const currentUser = await User.findOne(
+    { userCode: req.user.userCode },
+    hiddenFieldsUser
+  ).populate({
+    path: "role",
+    select: hiddenFieldsDefault,
+    populate: {
+      path: "rolePermissions",
+      select: hiddenFieldsDefault,
+    },
+  });
+
+  /* The below code snippet is creating a audit log. */
+  await logAudit(
+    generateAuditCode(),
+    auditActions?.UPDATE,
+    auditCollections?.CITIES,
+    updatedCity?.cityCode,
+    auditChanges?.UPDATE_CITY,
+    cityBeforeUpdate?.toObject(),
+    updatedCity?.toObject(),
+    currentUser?.toObject()
+  );
 
   /* The below code snippet returns an success response with
     an `ExpressResponse` object. */
@@ -499,6 +577,14 @@ module.exports.DeleteCity = async (req, res, next) => {
     );
   }
 
+  /* The below code snippet is querying the database to find
+  and retrieve the city document (excluding the fields 
+  `__v` and `_id`). */
+  const cityBeforeDelete = await City.findOne(
+    { cityCode },
+    hiddenFieldsDefault
+  );
+
   /* The the below code snippet is querying the database to
   delete the document with the given `cityCode` in the `states`
   collection (excluding the fields `__v` and `_id`). */
@@ -518,6 +604,34 @@ module.exports.DeleteCity = async (req, res, next) => {
       )
     );
   }
+
+  /* The below code snippet is using the current logged in 
+  user's `userCode` to query the database to find the `_id`
+  of that user.
+   */
+  const currentUser = await User.findOne(
+    { userCode: req.user.userCode },
+    hiddenFieldsUser
+  ).populate({
+    path: "role",
+    select: hiddenFieldsDefault,
+    populate: {
+      path: "rolePermissions",
+      select: hiddenFieldsDefault,
+    },
+  });
+
+  /* The below code snippet is creating a audit log. */
+  await logAudit(
+    generateAuditCode(),
+    auditActions?.DELETE,
+    auditCollections?.CITIES,
+    cityBeforeDelete?.cityCode,
+    auditChanges?.DELETE_CITY,
+    cityBeforeDelete?.toObject(),
+    null,
+    currentUser?.toObject()
+  );
 
   /* The below code snippet returns an success response with an 
   `ExpressResponse` object. */

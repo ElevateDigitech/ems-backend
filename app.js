@@ -25,6 +25,7 @@ const { cityRoutes } = require("./routes/cities");
 const { profileRoutes } = require("./routes/profiles");
 const { auditLogRoutes } = require("./routes/auditLogs");
 const { classRoutes } = require("./routes/classes");
+const { sectionRoutes } = require("./routes/sections");
 
 const { STATUS_ERROR } = require("./utils/status");
 const { MESSAGE_PAGE_NOT_FOUND } = require("./utils/messages");
@@ -143,6 +144,7 @@ app.use("/", cityRoutes);
 app.use("/", profileRoutes);
 app.use("/", auditLogRoutes);
 app.use("/", classRoutes);
+app.use("/", sectionRoutes);
 
 app.all("*", (req, res, next) => {
   next(

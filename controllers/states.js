@@ -7,6 +7,8 @@ const {
   IsObjectIdReferenced,
   generateStateCode,
   hiddenFieldsDefault,
+  generateAuditCode,
+  hiddenFieldsUser,
 } = require("../utils/helpers");
 const {
   MESSAGE_STATE_EXIST,
@@ -29,6 +31,13 @@ const {
   STATUS_CODE_BAD_REQUEST,
   STATUS_CODE_INTERNAL_SERVER_ERROR,
 } = require("../utils/statusCodes");
+const User = require("../models/user");
+const { logAudit } = require("../middleware");
+const {
+  auditActions,
+  auditCollections,
+  auditChanges,
+} = require("../utils/audit");
 
 module.exports.GetStates = async (req, res, next) => {
   /* The below code snippet is used to query the database for 
@@ -242,6 +251,34 @@ module.exports.CreateState = async (req, res, next) => {
     hiddenFieldsDefault
   ).populate("country", hiddenFieldsDefault);
 
+  /* The below code snippet is using the current logged in 
+  user's `userCode` to query the database to find the `_id`
+  of that user.
+   */
+  const currentUser = await User.findOne(
+    { userCode: req.user.userCode },
+    hiddenFieldsUser
+  ).populate({
+    path: "role",
+    select: hiddenFieldsDefault,
+    populate: {
+      path: "rolePermissions",
+      select: hiddenFieldsDefault,
+    },
+  });
+
+  /* The below code snippet is creating a audit log. */
+  await logAudit(
+    generateAuditCode(),
+    auditActions?.CREATE,
+    auditCollections?.STATES,
+    createdState?.stateCode,
+    auditChanges?.CREATE_STATE,
+    null,
+    createdState?.toObject(),
+    currentUser?.toObject()
+  );
+
   /* The below code snippet returns an success response with
   an `ExpressResponse` object. */
   res
@@ -329,6 +366,14 @@ module.exports.UpdateState = async (req, res, next) => {
     );
   }
 
+  /* The below code snippet is querying the database to find
+  and retrieve the state document (excluding the fields 
+  `__v` and `_id`). */
+  const stateBeforeUpdate = await State.findOne(
+    { stateCode },
+    hiddenFieldsDefault
+  );
+
   /* The below code snippet is updating the instance of the
   `State` model with the provided data. */
   const state = await State.findOneAndUpdate(
@@ -354,6 +399,34 @@ module.exports.UpdateState = async (req, res, next) => {
     { stateCode },
     hiddenFieldsDefault
   ).populate("country", hiddenFieldsDefault);
+
+  /* The below code snippet is using the current logged in 
+  user's `userCode` to query the database to find the `_id`
+  of that user.
+   */
+  const currentUser = await User.findOne(
+    { userCode: req.user.userCode },
+    hiddenFieldsUser
+  ).populate({
+    path: "role",
+    select: hiddenFieldsDefault,
+    populate: {
+      path: "rolePermissions",
+      select: hiddenFieldsDefault,
+    },
+  });
+
+  /* The below code snippet is creating a audit log. */
+  await logAudit(
+    generateAuditCode(),
+    auditActions?.UPDATE,
+    auditCollections?.STATES,
+    updatedState?.stateCode,
+    auditChanges?.UPDATE_STATE,
+    stateBeforeUpdate?.toObject(),
+    updatedState?.toObject(),
+    currentUser?.toObject()
+  );
 
   /* The below code snippet returns an success response with
     an `ExpressResponse` object. */
@@ -412,6 +485,14 @@ module.exports.DeleteState = async (req, res, next) => {
     );
   }
 
+  /* The below code snippet is querying the database to find
+  and retrieve the state document (excluding the fields 
+  `__v` and `_id`). */
+  const stateBeforeDelete = await State.findOne(
+    { stateCode },
+    hiddenFieldsDefault
+  );
+
   /* The the below code snippet is querying the database to
   delete the document with the given `stateCode` in the
   `states` collection (excluding the fields `__v` and
@@ -432,6 +513,34 @@ module.exports.DeleteState = async (req, res, next) => {
       )
     );
   }
+
+  /* The below code snippet is using the current logged in 
+  user's `userCode` to query the database to find the `_id`
+  of that user.
+   */
+  const currentUser = await User.findOne(
+    { userCode: req.user.userCode },
+    hiddenFieldsUser
+  ).populate({
+    path: "role",
+    select: hiddenFieldsDefault,
+    populate: {
+      path: "rolePermissions",
+      select: hiddenFieldsDefault,
+    },
+  });
+
+  /* The below code snippet is creating a audit log. */
+  await logAudit(
+    generateAuditCode(),
+    auditActions?.DELETE,
+    auditCollections?.STATES,
+    stateBeforeDelete?.stateCode,
+    auditChanges?.DELETE_STATE,
+    stateBeforeDelete?.toObject(),
+    null,
+    currentUser?.toObject()
+  );
 
   /* The below code snippet returns an success response with
   an `ExpressResponse` object. */

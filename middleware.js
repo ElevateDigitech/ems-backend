@@ -1,11 +1,9 @@
 const {
   STATUS_CODE_BAD_REQUEST,
-  STATUS_CODE_INTERNAL_SERVER_ERROR,
   STATES_CODE_UNAUTHORIZED,
 } = require("./utils/statusCodes");
 const {
   MESSAGE_NOT_LOGGED_IN_YET,
-  MESSAGE_NOT_AUTHORIZED,
   MESSAGE_INTERNAL_SERVER_ERROR,
   MESSAGE_ACCESS_DENIED_NO_ROLES,
   MESSAGE_ACCESS_DENIED_NO_PERMISSION,
@@ -13,9 +11,7 @@ const {
 const { STATUS_ERROR } = require("./utils/status");
 const ExpressResponse = require("./utils/ExpressResponse");
 const {
-  permissionSchema,
   permissionCodeSchema,
-  updatePermissionSchema,
   roleCodeSchema,
   roleSchema,
   updateRoleSchema,
@@ -38,8 +34,10 @@ const {
   classCodeSchema,
   classSchema,
   updateClassSchema,
+  sectionCodeSchema,
+  sectionSchema,
+  updateSectionSchema,
 } = require("./schemas");
-const Role = require("./models/role");
 const { cloudinary } = require("./cloudinary");
 const { IMAGE_FIELD_PROFILE_PICTURE } = require("./utils/imageFields");
 const { uploadProfilePicture } = require("./multer");
@@ -394,6 +392,36 @@ module.exports.validateClass = (req, res, next) => {
 
 module.exports.validateUpdateClass = (req, res, next) => {
   const { error } = updateClassSchema.validate(req.body);
+  if (error) {
+    const msg = error.details.map((d) => d.message).join(", ");
+    throw new ExpressResponse(STATUS_ERROR, STATUS_CODE_BAD_REQUEST, msg);
+  } else {
+    next();
+  }
+};
+
+module.exports.validateSectionCode = (req, res, next) => {
+  const { error } = sectionCodeSchema.validate(req.body);
+  if (error) {
+    const msg = error.details.map((d) => d.message).join(", ");
+    throw new ExpressResponse(STATUS_ERROR, STATUS_CODE_BAD_REQUEST, msg);
+  } else {
+    next();
+  }
+};
+
+module.exports.validateSection = (req, res, next) => {
+  const { error } = sectionSchema.validate(req.body);
+  if (error) {
+    const msg = error.details.map((d) => d.message).join(", ");
+    throw new ExpressResponse(STATUS_ERROR, STATUS_CODE_BAD_REQUEST, msg);
+  } else {
+    next();
+  }
+};
+
+module.exports.validateUpdateSection = (req, res, next) => {
+  const { error } = updateSectionSchema.validate(req.body);
   if (error) {
     const msg = error.details.map((d) => d.message).join(", ");
     throw new ExpressResponse(STATUS_ERROR, STATUS_CODE_BAD_REQUEST, msg);

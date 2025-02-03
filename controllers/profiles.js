@@ -3,6 +3,8 @@ const ExpressResponse = require("../utils/ExpressResponse");
 const {
   hiddenFieldsDefault,
   generateProfileCode,
+  hiddenFieldsUser,
+  generateAuditCode,
 } = require("../utils/helpers");
 const { STATUS_SUCCESS, STATUS_ERROR } = require("../utils/status");
 const {
@@ -34,6 +36,12 @@ const Country = require("../models/country");
 const State = require("../models/state");
 const City = require("../models/city");
 const User = require("../models/user");
+const { logAudit } = require("../middleware");
+const {
+  auditActions,
+  auditCollections,
+  auditChanges,
+} = require("../utils/audit");
 
 module.exports.getProfiles = async (req, res, next) => {
   /* The below code snippet is used to query the database for 
@@ -640,6 +648,34 @@ module.exports.CreateProfile = async (req, res, next) => {
   /* The below code snippet is running toJSON function on 
   found document in `profiles` */
   const createdProfileData = createdProfile.toJSON();
+
+  /* The below code snippet is using the current logged in 
+  user's `userCode` to query the database to find the `_id`
+  of that user.
+   */
+  const currentUser = await User.findOne(
+    { userCode: req.user.userCode },
+    hiddenFieldsUser
+  ).populate({
+    path: "role",
+    select: hiddenFieldsDefault,
+    populate: {
+      path: "rolePermissions",
+      select: hiddenFieldsDefault,
+    },
+  });
+
+  /* The below code snippet is creating a audit log. */
+  await logAudit(
+    generateAuditCode(),
+    auditActions?.CREATE,
+    auditCollections?.PROFILES,
+    createdProfileData?.profileCode,
+    auditChanges?.CREATE_PROFILE,
+    null,
+    createdProfileData?.toObject(),
+    currentUser?.toObject()
+  );
 
   /* The below code snippet returns an success response with
   an `ExpressResponse` object. */

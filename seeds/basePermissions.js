@@ -38,6 +38,10 @@ const allPermissions = {
   CREATE_CLASS: "CREATE CLASS",
   UPDATE_CLASS: "UPDATE CLASS",
   DELETE_CLASS: "DELETE CLASS",
+  VIEW_SECTION: "VIEW SECTION",
+  CREATE_SECTION: "CREATE SECTION",
+  UPDATE_SECTION: "UPDATE SECTION",
+  DELETE_SECTION: "DELETE SECTION",
 };
 
 const basePermissions = [
@@ -196,6 +200,22 @@ const basePermissions = [
   {
     permissionName: allPermissions?.DELETE_CLASS,
     permissionDescription: "can delete class",
+  },
+  {
+    permissionName: allPermissions?.VIEW_SECTION,
+    permissionDescription: "can view sections",
+  },
+  {
+    permissionName: allPermissions?.CREATE_SECTION,
+    permissionDescription: "can create section",
+  },
+  {
+    permissionName: allPermissions?.UPDATE_SECTION,
+    permissionDescription: "can update section",
+  },
+  {
+    permissionName: allPermissions?.DELETE_SECTION,
+    permissionDescription: "can delete section",
   },
 ];
 

@@ -22,6 +22,7 @@ const generateStateCode = () => `STATE-${uuidv4()}`;
 const generateCityCode = () => `CITY-${uuidv4()}`;
 const generateProfileCode = () => `PROFILE-${uuidv4()}`;
 const generateClassCode = () => `CLASS-${uuidv4()}`;
+const generateSectionCode = () => `SECTION-${uuidv4()}`;
 
 const getInvalidPermissions = async (permissions) => {
   return await Promise.all(
@@ -102,6 +103,7 @@ module.exports = {
   generateCityCode,
   generateProfileCode,
   generateClassCode,
+  generateSectionCode,
   getInvalidPermissions,
   getPermissionIds,
   IsObjectIdReferenced,

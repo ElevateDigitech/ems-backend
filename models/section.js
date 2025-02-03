@@ -17,7 +17,7 @@ const SectionSchema = new Schema(
       trim: true,
       immutable: true,
     },
-    sectionName: {
+    name: {
       type: String,
       required: true,
       unique: true,

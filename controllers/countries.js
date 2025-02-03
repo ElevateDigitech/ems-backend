@@ -367,6 +367,14 @@ module.exports.DeleteCountry = async (req, res, next) => {
     );
   }
 
+  /* The below code snippet is querying the database to find
+  and retrieve the country document (excluding the fields 
+  `__v` and `_id`). */
+  const countryBeforeDelete = await Country.findOne(
+    { countryCode },
+    hiddenFieldsDefault
+  );
+
   /* The the below code snippet is querying the database to
   delete the document with the given `countryCode` in the
   `countries` collection (excluding the fields `__v` and
@@ -387,6 +395,34 @@ module.exports.DeleteCountry = async (req, res, next) => {
       )
     );
   }
+
+  /* The below code snippet is using the current logged in 
+  user's `userCode` to query the database to find the `_id`
+  of that user.
+   */
+  const currentUser = await User.findOne(
+    { userCode: req.user.userCode },
+    hiddenFieldsUser
+  ).populate({
+    path: "role",
+    select: hiddenFieldsDefault,
+    populate: {
+      path: "rolePermissions",
+      select: hiddenFieldsDefault,
+    },
+  });
+
+  /* The below code snippet is creating a audit log. */
+  await logAudit(
+    generateAuditCode(),
+    auditActions?.DELETE,
+    auditCollections?.COUNTRIES,
+    countryBeforeDelete?.countryCode,
+    auditChanges?.DELETE_COUNTRY,
+    countryBeforeDelete?.toObject(),
+    null,
+    currentUser?.toObject()
+  );
 
   /* The below code snippet returns an success response with
   an `ExpressResponse` object. */
