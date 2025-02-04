@@ -107,7 +107,7 @@ const SocialSchema = new Schema(
       trim: true,
       default: "",
     },
-    websiteProtfolioUrl: {
+    websitePortfolioUrl: {
       type: String,
       trim: true,
       default: "",
