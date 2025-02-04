@@ -1,11 +1,18 @@
 const moment = require("moment-timezone");
 const Gender = require("../models/gender");
+const User = require("../models/user");
 const ExpressResponse = require("../utils/ExpressResponse");
+const { logAudit } = require("../middleware");
 const {
-  IsObjectIdReferenced,
-  generateGenderCode,
+  auditActions,
+  auditCollections,
+  auditChanges,
+} = require("../utils/audit");
+const {
   hiddenFieldsDefault,
   hiddenFieldsUser,
+  IsObjectIdReferenced,
+  generateGenderCode,
   generateAuditCode,
 } = require("../utils/helpers");
 const { STATUS_SUCCESS, STATUS_ERROR } = require("../utils/status");
@@ -27,22 +34,12 @@ const {
   MESSAGE_GET_GENDERS_SUCCESS,
   MESSAGE_GENDER_TAKEN,
 } = require("../utils/messages");
-const User = require("../models/user");
-const {
-  auditActions,
-  auditCollections,
-  auditChanges,
-} = require("../utils/audit");
-const { logAudit } = require("../middleware");
 
 module.exports.GetGenders = async (req, res, next) => {
-  /* The below code snippet is used to query the database for 
-  all the documents in the `genders` collection (excluding
-  the fields `__v` and `_id`). */
+  /// Query the database to retrieve all documents from the `genders` collection (excluding `__v` and `_id`).
   const genders = await Gender.find({}, hiddenFieldsDefault);
 
-  /* The below code snippet returns an success response with
-  an `ExpressResponse` object. */
+  // Return a success response with the retrieved genders data.
   res
     .status(STATUS_CODE_SUCCESS)
     .send(
@@ -56,20 +53,17 @@ module.exports.GetGenders = async (req, res, next) => {
 };
 
 module.exports.GetGenderByCode = async (req, res, next) => {
-  /* The below code snippet is extracting the `genderCode`
-  property from the request body. It then uses this `genderCode`
-  to query the database for a single document in the `genders`
-  collection (excluding the fields `__v` and `_id`). */
+  // Extract the `genderCode` from the request body and query the database for a matching document in the `genders` collection (excluding `__v` and `_id`).
   const { genderCode } = req.body;
-  const genders = await Gender.findOne({ genderCode }, hiddenFieldsDefault);
+  const gender = await Gender.findOne(
+    {
+      genderCode,
+    },
+    hiddenFieldsDefault
+  );
 
-  /* The below code snippet is checking if the `genders` variable
-  is falsy, which means that no document was found in the database
-  that matches the specified `genderCode` provided in the request
-  parameters. If no document is found (`genders` is falsy), it
-  returns an error response using the `next` function with an
-  `ExpressResponse` object. */
-  if (!genders) {
+  // Check if no gender document was found. If so, return an error response.
+  if (!gender) {
     return next(
       new ExpressResponse(
         STATUS_ERROR,
@@ -79,8 +73,7 @@ module.exports.GetGenderByCode = async (req, res, next) => {
     );
   }
 
-  /* The below code snippet returns an success response with
-  an `ExpressResponse` object. */
+  // Return a success response with the found gender data.
   res
     .status(STATUS_CODE_SUCCESS)
     .send(
@@ -88,28 +81,21 @@ module.exports.GetGenderByCode = async (req, res, next) => {
         STATUS_SUCCESS,
         STATUS_CODE_SUCCESS,
         MESSAGE_GET_GENDER_SUCCESS,
-        genders
+        gender
       )
     );
 };
 
 module.exports.CreateGender = async (req, res, next) => {
-  /* The below code snippet is extracting the `genderName`
-  property from the request body. */
+  // Extract the `genderName` from the request body.
   const { genderName } = req.body;
 
-  /* The below code snippet remove extra spaces and capitalize
-  the `genderName` and the use it to query the database for
-  a single document in the `genders` collection. */
+  // Clean up and capitalize the `genderName`, then query the database for an existing gender with the same name.
   const existingGender = await Gender.findOne({
     genderName: genderName?.trim()?.toUpperCase(),
   });
 
-  /* The below code snippet is checking if there is an existing
-  gender with the same `genderName` in the database. If
-  `existingGender` is truthy (meaning a gender with the same 
-  name already exists), it returns an error response using the 
-  `next` function with an `ExpressResponse` object. */
+  // If a gender with the same name already exists, return an error response.
   if (existingGender) {
     return next(
       new ExpressResponse(
@@ -120,34 +106,25 @@ module.exports.CreateGender = async (req, res, next) => {
     );
   }
 
-  /* The below code snippet is generating a unique `genderCode`
-  for a new gender being created. */
+  // Generate a unique `genderCode` for the new gender.
   const genderCode = generateGenderCode();
 
-  /* The below code snippet is creating a new instance of the
-  `Gender` model with the provided data. */
+  // Create a new instance of the `Gender` model with the provided data.
   const gender = new Gender({
     genderCode,
     genderName: genderName?.trim()?.toUpperCase(),
   });
 
-  /* The below code snippet is saving the newly created
-  `gender` object to the database. */
+  // Save the newly created gender document to the database.
   await gender.save();
 
-  /* The below code snippet is querying the database to find
-  the newly created gender document using the above
-  generated `genderCode` (excluding the fields `__v` and
-  `_id`). */
+  // Retrieve the newly created gender document using the generated `genderCode`, excluding `__v` and `_id` fields.
   const createdGender = await Gender.findOne(
     { genderCode },
     hiddenFieldsDefault
   );
 
-  /* The below code snippet is using the current logged in 
-  user's `userCode` to query the database to find the `_id`
-  of that user.
-   */
+  // Use the currently logged-in user's `userCode` to find their `_id` and associated role.
   const currentUser = await User.findOne(
     { userCode: req.user.userCode },
     hiddenFieldsUser
@@ -160,7 +137,7 @@ module.exports.CreateGender = async (req, res, next) => {
     },
   });
 
-  /* The below code snippet is creating a audit log. */
+  // Create an audit log entry for the gender creation action.
   await logAudit(
     generateAuditCode(),
     auditActions?.CREATE,
@@ -172,8 +149,7 @@ module.exports.CreateGender = async (req, res, next) => {
     currentUser?.toObject()
   );
 
-  /* The below code snippet returns an success response with
-  an `ExpressResponse` object. */
+  // Return a success response with the created gender document.
   res
     .status(STATUS_CODE_SUCCESS)
     .send(
@@ -187,21 +163,15 @@ module.exports.CreateGender = async (req, res, next) => {
 };
 
 module.exports.UpdateGender = async (req, res, next) => {
-  /* The below code snippet is extracting the `genderCode`,
-  `genderName` properties from the request body. */
+  // Extract the `genderCode` and `genderName` properties from the request body.
   const { genderCode, genderName } = req.body;
 
-  /* The below code snippet is using the `genderCode`
-  to query the database for a single document in the
-  `genders` collection. */
+  // Use the `genderCode` to query the database for the corresponding gender document.
   const existingGender = await Gender.findOne({
     genderCode,
   });
 
-  /* The below code snippet is checking if no document is
-  found with the given `genderCode`. If so, it returns
-  an error response using the `next` function with an
-  `ExpressResponse` object. */
+  // If no document is found with the given `genderCode`, return an error response.
   if (!existingGender) {
     return next(
       new ExpressResponse(
@@ -212,20 +182,15 @@ module.exports.UpdateGender = async (req, res, next) => {
     );
   }
 
-  /* The below code snippet is querying the database to
-  find document without the `genderCode` from the request
-  body and with `genderName` from the request body. */
+  // Query the database to find other gender documents (excluding the current `genderCode`)
+  // with the provided `genderName`.
   const otherGenders = await Gender.find({
     genderCode: { $ne: genderCode },
     genderName: genderName?.trim()?.toUpperCase(),
   });
 
-  /* The below code snippet is checking if there is a
-  document in the `genders` collection with the given 
-  `genderName` other than the document with the given 
-  `genderCode`. If so, then it returns an error response 
-  using the `next` function with an `ExpressResponse` 
-  object. */
+  // If a document with the same `genderName` (other than the current one) exists,
+  // return an error response.
   if (otherGenders?.length > 0) {
     return next(
       new ExpressResponse(
@@ -236,16 +201,13 @@ module.exports.UpdateGender = async (req, res, next) => {
     );
   }
 
-  /* The below code snippet is querying the database to find
-  and retrieve the gender document (excluding the fields 
-  `__v` and `_id`). */
+  // Retrieve the gender document before updating it, excluding `__v` and `_id` fields.
   const genderBeforeUpdate = await Gender.findOne(
     { genderCode },
     hiddenFieldsDefault
   );
 
-  /* The below code snippet is updating the instance of the
-  `Gender` model with the provided data. */
+  // Update the gender document with the new `genderName` and set the updated timestamp.
   const gender = await Gender.findOneAndUpdate(
     { genderCode },
     {
@@ -254,22 +216,16 @@ module.exports.UpdateGender = async (req, res, next) => {
     }
   );
 
-  /* The below code snippet is saving the updated `gender`
-  object to the database. */
+  // Save the updated gender document to the database.
   await gender.save();
 
-  /* The below code snippet is querying the database to find
-  and retrieve an updated gender document (excluding the
-  fields `__v` and `_id`). */
+  // Retrieve the updated gender document, excluding `__v` and `_id` fields.
   const updatedGender = await Gender.findOne(
     { genderCode },
     hiddenFieldsDefault
   );
 
-  /* The below code snippet is using the current logged in 
-  user's `userCode` to query the database to find the `_id`
-  of that user.
-   */
+  // Use the logged-in user's `userCode` to find the user details and their role.
   const currentUser = await User.findOne(
     { userCode: req.user.userCode },
     hiddenFieldsUser
@@ -282,7 +238,7 @@ module.exports.UpdateGender = async (req, res, next) => {
     },
   });
 
-  /* The below code snippet is creating a audit log. */
+  // Create an audit log entry for the gender update action.
   await logAudit(
     generateAuditCode(),
     auditActions?.UPDATE,
@@ -294,8 +250,7 @@ module.exports.UpdateGender = async (req, res, next) => {
     currentUser?.toObject()
   );
 
-  /* The below code snippet returns an success response with
-  an `ExpressResponse` object. */
+  // Return a success response with the updated gender data.
   res
     .status(STATUS_CODE_SUCCESS)
     .send(
@@ -309,21 +264,15 @@ module.exports.UpdateGender = async (req, res, next) => {
 };
 
 module.exports.DeleteGender = async (req, res, next) => {
-  /* The below code snippet is extracting the `genderCode`
-  property from the request body. */
+  // Extract the `genderCode` property from the request body.
   const { genderCode } = req.body;
 
-  /* The below code snippet is using the `genderCode`
-  to query the database for a single document in the
-  `genders` collection. */
+  // Use the `genderCode` to find the corresponding gender document in the database.
   const existingGender = await Gender.findOne({
     genderCode,
   });
 
-  /* The below code snippet is checking if no document is
-  found with the given `genderCode`. It returns an error
-  response using the `next` function with an `ExpressResponse`
-  object. */
+  // If no document is found with the given `genderCode`, return an error response.
   if (!existingGender) {
     return next(
       new ExpressResponse(
@@ -334,13 +283,10 @@ module.exports.DeleteGender = async (req, res, next) => {
     );
   }
 
-  /* The below code snippet is checking if the gender is
-  being used anywhere in the database. */
+  // Check if the gender is currently referenced anywhere in the database.
   const { isReferenced } = await IsObjectIdReferenced(existingGender._id);
 
-  /* The below code snippet returns an error response using 
-  the `next` function with an `ExpressResponse` object, when
-  the found document is in use. */
+  // If the gender is in use, return an error response.
   if (isReferenced) {
     return next(
       new ExpressResponse(
@@ -351,25 +297,18 @@ module.exports.DeleteGender = async (req, res, next) => {
     );
   }
 
-  /* The below code snippet is querying the database to find
-  and retrieve the gender document (excluding the fields 
-  `__v` and `_id`). */
+  // Retrieve the gender document before deletion, excluding the `__v` and `_id` fields.
   const genderBeforeDelete = await Gender.findOne(
     { genderCode },
     hiddenFieldsDefault
   );
 
-  /* The the below code snippet is querying the database to
-  delete the document with the given `genderCode` in the
-  genders collection (excluding the fields `__v` and 
-  `_id`). */
-  const gender = await Gender.deleteOne({ genderCode });
+  // Delete the gender document from the database using the provided `genderCode`.
+  const gender = await Gender.deleteOne({
+    genderCode,
+  });
 
-  /* The the below code snippet is using `deletedCount` in the
-  `deleteOne` mongoose function response to confirm the document
-  deletion. If it is `0` then the document is not deleted, then
-  it return an error response using the `next` function with
-  an `ExpressResponse` object. */
+  // If no document was deleted (i.e., `deletedCount` is 0), return an error response.
   if (gender?.deletedCount === 0) {
     return next(
       new ExpressResponse(
@@ -380,10 +319,7 @@ module.exports.DeleteGender = async (req, res, next) => {
     );
   }
 
-  /* The below code snippet is using the current logged in 
-  user's `userCode` to query the database to find the `_id`
-  of that user.
-   */
+  // Use the current logged-in user's `userCode` to find their details and role.
   const currentUser = await User.findOne(
     { userCode: req.user.userCode },
     hiddenFieldsUser
@@ -396,7 +332,7 @@ module.exports.DeleteGender = async (req, res, next) => {
     },
   });
 
-  /* The below code snippet is creating a audit log. */
+  // Create an audit log for the gender deletion action.
   await logAudit(
     generateAuditCode(),
     auditActions?.DELETE,
@@ -408,8 +344,7 @@ module.exports.DeleteGender = async (req, res, next) => {
     currentUser?.toObject()
   );
 
-  /* The below code snippet returns an success response with
-  an `ExpressResponse` object. */
+  // Return a success response after the gender has been deleted.
   res
     .status(STATUS_CODE_SUCCESS)
     .send(

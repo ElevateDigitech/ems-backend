@@ -1,11 +1,18 @@
 const moment = require("moment-timezone");
-const Gender = require("../models/gender");
+const Class = require("../models/class");
+const User = require("../models/user");
 const ExpressResponse = require("../utils/ExpressResponse");
+const { logAudit } = require("../middleware");
 const {
-  IsObjectIdReferenced,
-  generateClassCode,
+  auditActions,
+  auditCollections,
+  auditChanges,
+} = require("../utils/audit");
+const {
   hiddenFieldsDefault,
   hiddenFieldsUser,
+  IsObjectIdReferenced,
+  generateClassCode,
   generateAuditCode,
 } = require("../utils/helpers");
 const { STATUS_SUCCESS, STATUS_ERROR } = require("../utils/status");
@@ -16,16 +23,6 @@ const {
   STATUS_CODE_INTERNAL_SERVER_ERROR,
 } = require("../utils/statusCodes");
 const {
-  MESSAGE_GENDER_EXIST,
-  MESSAGE_CREATE_GENDERS_SUCCESS,
-  MESSAGE_GENDER_NOT_FOUND,
-  MESSAGE_UPDATE_GENDERS_SUCCESS,
-  MESSAGE_GENDER_NOT_ALLOWED_DELETE_REFERENCE_EXIST,
-  MESSAGE_DELETE_GENDERS_ERROR,
-  MESSAGE_DELETE_GENDERS_SUCCESS,
-  MESSAGE_GET_GENDER_SUCCESS,
-  MESSAGE_GET_GENDERS_SUCCESS,
-  MESSAGE_GENDER_TAKEN,
   MESSAGE_GET_CLASSES_SUCCESS,
   MESSAGE_CLASS_NOT_FOUND,
   MESSAGE_GET_CLASS_SUCCESS,
@@ -37,23 +34,12 @@ const {
   MESSAGE_DELETE_CLASSS_ERROR,
   MESSAGE_DELETE_CLASSS_SUCCESS,
 } = require("../utils/messages");
-const User = require("../models/user");
-const {
-  auditActions,
-  auditCollections,
-  auditChanges,
-} = require("../utils/audit");
-const { logAudit } = require("../middleware");
-const Class = require("../models/class");
 
 module.exports.GetClasses = async (req, res, next) => {
-  /* The below code snippet is used to query the database for 
-  all the documents in the `classes` collection (excluding
-  the fields `__v` and `_id`). */
+  // Query the database to retrieve all documents from the `classes` collection (excluding `__v` and `_id` fields).
   const classes = await Class.find({}, hiddenFieldsDefault);
 
-  /* The below code snippet returns an success response with
-  an `ExpressResponse` object. */
+  // Return a success response with the retrieved classes.
   res
     .status(STATUS_CODE_SUCCESS)
     .send(
@@ -67,20 +53,17 @@ module.exports.GetClasses = async (req, res, next) => {
 };
 
 module.exports.GetClassByCode = async (req, res, next) => {
-  /* The below code snippet is extracting the `classCode`
-  property from the request body. It then uses this `classCode`
-  to query the database for a single document in the `classes`
-  collection (excluding the fields `__v` and `_id`). */
+  // Extract `classCode` from the request body and query the `classes` collection to find a document.
   const { classCode } = req.body;
-  const classes = await Class.findOne({ classCode }, hiddenFieldsDefault);
+  const classDetails = await Class.findOne(
+    {
+      classCode,
+    },
+    hiddenFieldsDefault
+  );
 
-  /* The below code snippet is checking if the `classes` variable
-  is falsy, which means that no document was found in the database
-  that matches the specified `classCode` provided in the request
-  body. If no document is found (`classes` is falsy), it
-  returns an error response using the `next` function with an
-  `ExpressResponse` object. */
-  if (!classes) {
+  // Check if a document with the specified `classCode` is found; return an error if not.
+  if (!classDetails) {
     return next(
       new ExpressResponse(
         STATUS_ERROR,
@@ -90,8 +73,7 @@ module.exports.GetClassByCode = async (req, res, next) => {
     );
   }
 
-  /* The below code snippet returns an success response with
-  an `ExpressResponse` object. */
+  // Return a success response with the found class details.
   res
     .status(STATUS_CODE_SUCCESS)
     .send(
@@ -99,28 +81,21 @@ module.exports.GetClassByCode = async (req, res, next) => {
         STATUS_SUCCESS,
         STATUS_CODE_SUCCESS,
         MESSAGE_GET_CLASS_SUCCESS,
-        classes
+        classDetails
       )
     );
 };
 
 module.exports.CreateClass = async (req, res, next) => {
-  /* The below code snippet is extracting the `name` property 
-  from the request body. */
+  // Extract `name` from the request body.
   const { name } = req.body;
 
-  /* The below code snippet remove extra spaces and capitalize
-  the `name` and the use it to query the database for
-  a single document in the `classes` collection. */
+  // Trim extra spaces and capitalize the `name` before querying the database to find a matching class.
   const existingClass = await Class.findOne({
     name: name?.trim()?.toUpperCase(),
   });
 
-  /* The below code snippet is checking if there is an existing
-  class with the same `name` in the database. If `existingClass` 
-  is truthy (meaning a class with the same name already exists), 
-  it returns an error response using the `next` function with 
-  an `ExpressResponse` object. */
+  // Check if a class with the same `name` already exists in the database. If it does, return an error.
   if (existingClass) {
     return next(
       new ExpressResponse(
@@ -131,30 +106,27 @@ module.exports.CreateClass = async (req, res, next) => {
     );
   }
 
-  /* The below code snippet is generating a unique `classCode`
-  for a new class being created. */
+  // Generate a unique `classCode` for the new class.
   const classCode = generateClassCode();
 
-  /* The below code snippet is creating a new instance of the
-  `Class` model with the provided data. */
+  // Create a new `Class` instance with the provided data.
   const newClass = new Class({
     classCode,
     name: name?.trim()?.toUpperCase(),
   });
 
-  /* The below code snippet is saving the newly created
-  `newClass` object to the database. */
+  // Save the new class to the database.
   await newClass.save();
 
-  /* The below code snippet is querying the database to find
-  the newly created class document using the above generated 
-  `classCode` (excluding the fields `__v` and `_id`). */
-  const createdClass = await Class.findOne({ classCode }, hiddenFieldsDefault);
+  // Retrieve the newly created class document using the generated `classCode` (excluding `__v` and `_id`).
+  const createdClass = await Class.findOne(
+    {
+      classCode,
+    },
+    hiddenFieldsDefault
+  );
 
-  /* The below code snippet is using the current logged in 
-  user's `userCode` to query the database to find the `_id`
-  of that user.
-   */
+  // Query the current logged-in user's details using their `userCode`.
   const currentUser = await User.findOne(
     { userCode: req.user.userCode },
     hiddenFieldsUser
@@ -167,7 +139,7 @@ module.exports.CreateClass = async (req, res, next) => {
     },
   });
 
-  /* The below code snippet is creating a audit log. */
+  // Create an audit log for the class creation action.
   await logAudit(
     generateAuditCode(),
     auditActions?.CREATE,
@@ -179,8 +151,7 @@ module.exports.CreateClass = async (req, res, next) => {
     currentUser?.toObject()
   );
 
-  /* The below code snippet returns an success response with
-  an `ExpressResponse` object. */
+  // Return a success response with the created class details.
   res
     .status(STATUS_CODE_SUCCESS)
     .send(
@@ -194,21 +165,15 @@ module.exports.CreateClass = async (req, res, next) => {
 };
 
 module.exports.UpdateClass = async (req, res, next) => {
-  /* The below code snippet is extracting the `classCode`,
-  `name` properties from the request body. */
+  // Extract the `classCode` and `name` properties from the request body.
   const { classCode, name } = req.body;
 
-  /* The below code snippet is using the `classCode`
-  to query the database for a single document in the
-  `classes` collection. */
+  // Query the database to check if the class with the given `classCode` exists.
   const existingClass = await Class.findOne({
     classCode,
   });
 
-  /* The below code snippet is checking if no document is
-  found with the given `classCode`. If so, it returns
-  an error response using the `next` function with an
-  `ExpressResponse` object. */
+  // If no class with the provided `classCode` is found, return an error response.
   if (!existingClass) {
     return next(
       new ExpressResponse(
@@ -219,20 +184,13 @@ module.exports.UpdateClass = async (req, res, next) => {
     );
   }
 
-  /* The below code snippet is querying the database to
-  find document without the `classCode` from the request
-  body and with `name` from the request body. */
+  // Check if another class exists with the same `name` but a different `classCode`.
   const otherClasses = await Class.find({
     classCode: { $ne: classCode },
     name: name?.trim()?.toUpperCase(),
   });
 
-  /* The below code snippet is checking if there is a
-  document in the `classes` collection with the given 
-  `name` other than the document with the given 
-  `classCode`. If so, then it returns an error response 
-  using the `next` function with an `ExpressResponse` 
-  object. */
+  // If a class with the same name is found, return a conflict error.
   if (otherClasses?.length > 0) {
     return next(
       new ExpressResponse(
@@ -243,16 +201,13 @@ module.exports.UpdateClass = async (req, res, next) => {
     );
   }
 
-  /* The below code snippet is querying the database to find
-  and retrieve the gender document (excluding the fields 
-  `__v` and `_id`). */
+  // Retrieve the current class data before updating (excluding `__v` and `_id`).
   const classBeforeUpdate = await Class.findOne(
     { classCode },
     hiddenFieldsDefault
   );
 
-  /* The below code snippet is updating the instance of the
-  `Class` model with the provided data. */
+  // Update the class with the new name and the current timestamp for `updatedAt`.
   const classUpdate = await Class.findOneAndUpdate(
     { classCode },
     {
@@ -261,19 +216,18 @@ module.exports.UpdateClass = async (req, res, next) => {
     }
   );
 
-  /* The below code snippet is saving the updated `class`
-  object to the database. */
+  // Save the updated class object in the database.
   await classUpdate.save();
 
-  /* The below code snippet is querying the database to find
-  and retrieve an updated class document (excluding the
-  fields `__v` and `_id`). */
-  const updatedClass = await Class.findOne({ classCode }, hiddenFieldsDefault);
+  // Fetch the updated class data (excluding `__v` and `_id`).
+  const updatedClass = await Class.findOne(
+    {
+      classCode,
+    },
+    hiddenFieldsDefault
+  );
 
-  /* The below code snippet is using the current logged in 
-  user's `userCode` to query the database to find the `_id`
-  of that user.
-   */
+  // Get the current logged-in user's details using their `userCode`.
   const currentUser = await User.findOne(
     { userCode: req.user.userCode },
     hiddenFieldsUser
@@ -286,7 +240,7 @@ module.exports.UpdateClass = async (req, res, next) => {
     },
   });
 
-  /* The below code snippet is creating a audit log. */
+  // Create an audit log for the class update.
   await logAudit(
     generateAuditCode(),
     auditActions?.UPDATE,
@@ -298,8 +252,7 @@ module.exports.UpdateClass = async (req, res, next) => {
     currentUser?.toObject()
   );
 
-  /* The below code snippet returns an success response with
-  an `ExpressResponse` object. */
+  // Return a success response with the updated class data.
   res
     .status(STATUS_CODE_SUCCESS)
     .send(
@@ -313,21 +266,15 @@ module.exports.UpdateClass = async (req, res, next) => {
 };
 
 module.exports.DeleteClass = async (req, res, next) => {
-  /* The below code snippet is extracting the `classCode`
-  property from the request body. */
+  // Extract the `classCode` property from the request body.
   const { classCode } = req.body;
 
-  /* The below code snippet is using the `classCode`
-  to query the database for a single document in the
-  `classes` collection. */
+  // Query the database to find a class document with the provided `classCode`.
   const existingClass = await Class.findOne({
     classCode,
   });
 
-  /* The below code snippet is checking if no document is
-  found with the given `classCode`. It returns an error
-  response using the `next` function with an `ExpressResponse`
-  object. */
+  // If no class with the given `classCode` is found, return an error response.
   if (!existingClass) {
     return next(
       new ExpressResponse(
@@ -338,13 +285,10 @@ module.exports.DeleteClass = async (req, res, next) => {
     );
   }
 
-  /* The below code snippet is checking if the class is
-  being used anywhere in the database. */
+  // Check if the class is referenced anywhere in the database.
   const { isReferenced } = await IsObjectIdReferenced(existingClass._id);
 
-  /* The below code snippet returns an error response using 
-  the `next` function with an `ExpressResponse` object, when
-  the found document is in use. */
+  // If the class is referenced, return an error response indicating it cannot be deleted.
   if (isReferenced) {
     return next(
       new ExpressResponse(
@@ -355,25 +299,18 @@ module.exports.DeleteClass = async (req, res, next) => {
     );
   }
 
-  /* The below code snippet is querying the database to find
-  and retrieve the class document (excluding the fields 
-  `__v` and `_id`). */
+  // Retrieve the class document before deletion (excluding `__v` and `_id`).
   const classBeforeDelete = await Class.findOne(
     { classCode },
     hiddenFieldsDefault
   );
 
-  /* The the below code snippet is querying the database to
-  delete the document with the given `classCode` in the
-  classes collection (excluding the fields `__v` and 
-  `_id`). */
-  const classDelete = await Class.deleteOne({ classCode });
+  // Delete the class document from the database.
+  const classDelete = await Class.deleteOne({
+    classCode,
+  });
 
-  /* The the below code snippet is using `deletedCount` in the
-  `deleteOne` mongoose function response to confirm the document
-  deletion. If it is `0` then the document is not deleted, then
-  it return an error response using the `next` function with
-  an `ExpressResponse` object. */
+  // If the document deletion fails (i.e., `deletedCount` is 0), return an error response.
   if (classDelete?.deletedCount === 0) {
     return next(
       new ExpressResponse(
@@ -384,10 +321,7 @@ module.exports.DeleteClass = async (req, res, next) => {
     );
   }
 
-  /* The below code snippet is using the current logged in 
-  user's `userCode` to query the database to find the `_id`
-  of that user.
-   */
+  // Query the database for the current logged-in user's details using their `userCode`.
   const currentUser = await User.findOne(
     { userCode: req.user.userCode },
     hiddenFieldsUser
@@ -400,7 +334,7 @@ module.exports.DeleteClass = async (req, res, next) => {
     },
   });
 
-  /* The below code snippet is creating a audit log. */
+  // Create an audit log for the class deletion action.
   await logAudit(
     generateAuditCode(),
     auditActions?.DELETE,
@@ -412,8 +346,7 @@ module.exports.DeleteClass = async (req, res, next) => {
     currentUser?.toObject()
   );
 
-  /* The below code snippet returns an success response with
-  an `ExpressResponse` object. */
+  // Return a success response after the class is successfully deleted.
   res
     .status(STATUS_CODE_SUCCESS)
     .send(

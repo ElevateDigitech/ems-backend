@@ -10,8 +10,8 @@ const MESSAGE_GET_PERMISSION_SUCCESS = "Permission retrieved successfully";
 const MESSAGE_PERMISSION_NOT_FOUND =
   "The selected permission could not be found";
 
-const MESSAGE_GET_AUDITS_SUCCESS = "Countries retrieved successfully";
-const MESSAGE_GET_AUDIT_SUCCESS = "Country retrieved successfully";
+const MESSAGE_GET_AUDITS_SUCCESS = "Auditlogs retrieved successfully";
+const MESSAGE_GET_AUDIT_SUCCESS = "Auditlog retrieved successfully";
 const MESSAGE_AUDIT_NOT_FOUND = "The log entry could not be found";
 
 const MESSAGE_USER_REGISTER_SUCCESS = "User Registered Successfully";
@@ -130,6 +130,8 @@ const MESSAGE_PROFILE_NOT_FOUND_UNDER_USER =
 const MESSAGE_UPDATE_PROFILE_SUCCESS = "Profile Updated Successfully";
 const MESSAGE_DELETE_PROFILE_SUCCESS = "Profile deleted successfully";
 const MESSAGE_DELETE_PROFILE_ERROR = "Couldn't delete the profile";
+const MESSAGE_PROFILE_TAKEN =
+  "Profile phonenumber already taken. Please try a different one.";
 
 const MESSAGE_GET_CLASSES_SUCCESS = "Classes retrieved successfully";
 const MESSAGE_GET_CLASS_SUCCESS = "Class retrieved successfully";
@@ -250,6 +252,7 @@ module.exports = {
   MESSAGE_UPDATE_PROFILE_SUCCESS,
   MESSAGE_DELETE_PROFILE_SUCCESS,
   MESSAGE_DELETE_PROFILE_ERROR,
+  MESSAGE_PROFILE_TAKEN,
   MESSAGE_ACCESS_DENIED_NO_ROLES,
   MESSAGE_ACCESS_DENIED_NO_PERMISSION,
   MESSAGE_GET_AUDITS_SUCCESS,

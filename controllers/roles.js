@@ -1,14 +1,21 @@
 const moment = require("moment-timezone");
 const Role = require("../models/role");
+const User = require("../models/user");
 const ExpressResponse = require("../utils/ExpressResponse");
+const { logAudit } = require("../middleware");
 const {
+  auditActions,
+  auditChanges,
+  auditCollections,
+} = require("../utils/audit");
+const {
+  hiddenFieldsDefault,
+  hiddenFieldsUser,
   generateRoleCode,
   getPermissionIds,
   getInvalidPermissions,
   IsObjectIdReferenced,
-  hiddenFieldsDefault,
   generateAuditCode,
-  hiddenFieldsUser,
 } = require("../utils/helpers");
 const { STATUS_SUCCESS, STATUS_ERROR } = require("../utils/status");
 const {
@@ -30,27 +37,15 @@ const {
   MESSAGE_ROLE_NOT_ALLOWED_DELETE_REFERENCE_EXIST,
   MESSAGE_ROLE_TAKEN,
 } = require("../utils/messages");
-const { logAudit } = require("../middleware");
-const {
-  auditActions,
-  auditChanges,
-  auditCollections,
-} = require("../utils/audit");
-const User = require("../models/user");
 
 module.exports.GetRoles = async (req, res, next) => {
-  /* The below code snippet is used to query the database for 
-  all the documents in the `roles` collection (excluding `__v`
-  and `_id`) with populating the linked documents from the
-  `permissions` collection (excluding the fields `__v` and
-  `_id`). */
+  // Query the `roles` collection to retrieve all documents (excluding `__v` and `_id`) and populate the linked `rolePermissions` from the `permissions` collection (excluding `__v` and `_id`).
   const roles = await Role.find({}, hiddenFieldsDefault).populate(
     "rolePermissions",
     hiddenFieldsDefault
   );
 
-  /* The below code snippet returns an success response with
-  an `ExpressResponse` object. */
+  // Return a success response with the retrieved roles data.
   res
     .status(STATUS_CODE_SUCCESS)
     .send(
@@ -64,24 +59,16 @@ module.exports.GetRoles = async (req, res, next) => {
 };
 
 module.exports.GetOwnRole = async (req, res, next) => {
-  /* The below code snippet is extracting the `roleCode`
-  property from the user object in the request. It then uses 
-  this `roleCode` to query the database for a single document 
-  in the `roles` collection (excluding the fields `__v` and 
-  `_id`) with populating the linked documents from the 
-  `permissions` collection (excluding the fields `__v` and 
-  `_id`). */
+  // Extract the `roleCode` from the user object in the request, and query the `roles` collection for a document matching the `roleCode`. Populate the linked `rolePermissions` from the `permissions` collection.
   const { roleCode } = req.user?.role;
-  const role = await Role.findOne({ roleCode }, hiddenFieldsDefault).populate(
-    "rolePermissions",
+  const role = await Role.findOne(
+    {
+      roleCode,
+    },
     hiddenFieldsDefault
-  );
+  ).populate("rolePermissions", hiddenFieldsDefault);
 
-  /* The below code snippet is checking if there is no document
-  was found in the database that matches the specified `roleCode`
-  provided in the request parameters. If no document is found, 
-  then it returns an error response using the `next` function
-  with an `ExpressResponse` object. */
+  // Check if no role document was found in the database for the specified `roleCode`. If not, return an error response using the `next` function with an `ExpressResponse` object.
   if (!role) {
     return next(
       new ExpressResponse(
@@ -92,8 +79,7 @@ module.exports.GetOwnRole = async (req, res, next) => {
     );
   }
 
-  /* The below code snippet returns an success response with
-  an `ExpressResponse` object. */
+  // Return a success response with the found role data.
   res
     .status(STATUS_CODE_SUCCESS)
     .send(
@@ -107,23 +93,16 @@ module.exports.GetOwnRole = async (req, res, next) => {
 };
 
 module.exports.GetRoleByCode = async (req, res, next) => {
-  /* The below code snippet is extracting the `roleCode`
-  property from the request body. It then uses this `roleCode`
-  to query the database for a single document in the `roles`
-  collection (excluding the fields `__v` and `_id`) with
-  populating the linked documents from the `permissions`
-  collection (excluding the fields `__v` and `_id`). */
+  // Extract the `roleCode` from the request body and use it to query the database for a matching document in the `roles` collection. Also populate the related `rolePermissions` from the `permissions` collection.
   const { roleCode } = req.body;
-  const role = await Role.findOne({ roleCode }, hiddenFieldsDefault).populate(
-    "rolePermissions",
+  const role = await Role.findOne(
+    {
+      roleCode,
+    },
     hiddenFieldsDefault
-  );
+  ).populate("rolePermissions", hiddenFieldsDefault);
 
-  /* The below code snippet is checking if there is no document
-  was found in the database that matches the specified `roleCode`
-  provided in the request parameters. If no document is found, 
-  then it returns an error response using the `next` function
-  with an `ExpressResponse` object. */
+  // Check if no document is found for the provided `roleCode`. If not found, return an error response using the `next` function and an `ExpressResponse` object.
   if (!role) {
     return next(
       new ExpressResponse(
@@ -134,8 +113,7 @@ module.exports.GetRoleByCode = async (req, res, next) => {
     );
   }
 
-  /* The below code snippet returns an success response with
-  an `ExpressResponse` object. */
+  // Return a success response with the role data.
   res
     .status(STATUS_CODE_SUCCESS)
     .send(
@@ -149,24 +127,16 @@ module.exports.GetRoleByCode = async (req, res, next) => {
 };
 
 module.exports.CreateRole = async (req, res, next) => {
-  /* The below code snippet is extracting the `roleName`,
-  `roleDescription`, `roleAllowDeletion`, and `rolePermissions`
-  properties from the request body. */
+  // Extract the `roleName`, `roleDescription`, `roleAllowDeletion`, and `rolePermissions` properties from the request body.
   const { roleName, roleDescription, roleAllowDeletion, rolePermissions } =
     req.body;
 
-  /* The below code snippet remove extra spaces and capitalize
-  the `roleName` and the use it to query the database for a
-  single document in the `roles` collection. */
+  // Trim spaces and capitalize `roleName`, then query the database for an existing role with the same name.
   const existingRole = await Role.findOne({
     roleName: roleName?.trim()?.toUpperCase(),
   });
 
-  /* The below code snippet is checking if there is an existing
-  role with the same `roleName` in the database. If there is a
-  role with the same name already exists, it returns an
-  error response using the `next` function with an
-  `ExpressResponse` object. */
+  // If a role with the same name already exists, return an error response.
   if (existingRole) {
     return next(
       new ExpressResponse(
@@ -177,14 +147,10 @@ module.exports.CreateRole = async (req, res, next) => {
     );
   }
 
-  /* The below code snippet is checking if there is any invalid
-  `permissionCode` exist in the given `rolePermission` array. */
+  // Check if there are any invalid permission codes in the provided `rolePermissions` array.
   const invalidPermissions = await getInvalidPermissions(rolePermissions);
 
-  /* The below code snippet is checking if atleast one of the
-  given `permissionCode` is invalid. If so, then returns an error
-  response using the `next` function with an `ExpressResponse`
-  object. */
+  // If any of the permission codes are invalid, return an error response.
   if (invalidPermissions.some((isInvalid) => isInvalid)) {
     return next(
       new ExpressResponse(
@@ -195,16 +161,13 @@ module.exports.CreateRole = async (req, res, next) => {
     );
   }
 
-  /* The below code snippet is generating a unique role
-  code for a new role being created. */
+  // Generate a unique role code for the new role being created.
   const roleCode = generateRoleCode();
 
-  /* The below code snippet is creating an array of permission
-  ids from the given `permissionCodes` */
+  // Get the permission IDs corresponding to the provided permission codes.
   const permissions = await getPermissionIds(rolePermissions);
 
-  /* The below code snippet is creating a new instance of the
-  `Role` model with the provided data. */
+  // Create a new `Role` instance with the provided data.
   const role = new Role({
     roleCode,
     roleName: roleName?.trim()?.toUpperCase(),
@@ -213,24 +176,16 @@ module.exports.CreateRole = async (req, res, next) => {
     rolePermissions: [...permissions],
   });
 
-  /* The below code snippet is saving the newly created
-  `role` object to the database. */
+  // Save the newly created `Role` to the database.
   await role.save();
 
-  /* The below code snippet is querying the database to find
-  the newly created role document using the above generated
-  `roleCode` (excluding the fields `__v` and `_id`) with
-  populating the linked documents from the `permissions`
-  collection (excluding the fields `__v` and `_id`). */
+  // Query the database to retrieve the newly created role document using the generated `roleCode`, excluding `_id` and `__v` fields, and populate the linked `rolePermissions`.
   const createdRole = await Role.findOne(
     { roleCode },
     hiddenFieldsDefault
   ).populate("rolePermissions", hiddenFieldsDefault);
 
-  /* The below code snippet is using the current logged in 
-  user's `userCode` to query the database to find the `_id`
-  of that user.
-   */
+  // Use the current logged-in user's `userCode` to query the database for the user's details.
   const currentUser = await User.findOne(
     { userCode: req.user.userCode },
     hiddenFieldsUser
@@ -243,7 +198,7 @@ module.exports.CreateRole = async (req, res, next) => {
     },
   });
 
-  /* The below code snippet is creating a audit log. */
+  // Create an audit log for the role creation action.
   await logAudit(
     generateAuditCode(),
     auditActions?.CREATE,
@@ -255,8 +210,7 @@ module.exports.CreateRole = async (req, res, next) => {
     currentUser?.toObject()
   );
 
-  /* The below code snippet returns an success response with
-  an `ExpressResponse` object. */
+  // Return a success response with the newly created role data.
   res
     .status(STATUS_CODE_SUCCESS)
     .send(
@@ -270,20 +224,15 @@ module.exports.CreateRole = async (req, res, next) => {
 };
 
 module.exports.UpdateRole = async (req, res, next) => {
-  /* The below code snippet is extracting the `roleCode`,
-  `roleName`, `roleDescription`, `roleAllowDeletion`, and
-  `rolePermissions` properties from the request body. */
+  // Extract the properties `roleCode`, `roleName`, `roleDescription`, and `rolePermissions` from the request body.
   const { roleCode, roleName, roleDescription, rolePermissions } = req.body;
 
-  /* The below code snippet using the given `roleCode` to
-  query the database for a single document in the `roles`
-  collection. */
-  const existingRole = await Role.findOne({ roleCode });
+  // Query the database to check if a role with the given `roleCode` exists.
+  const existingRole = await Role.findOne({
+    roleCode,
+  });
 
-  /* The below code snippet is checking if no document is
-  found with the given `roleCode`. If so, then it returns
-  an error response using the `next` function with an
-  `ExpressResponse` object. */
+  // If no role with the specified `roleCode` is found, return an error response.
   if (!existingRole) {
     return next(
       new ExpressResponse(
@@ -294,20 +243,13 @@ module.exports.UpdateRole = async (req, res, next) => {
     );
   }
 
-  /* The below code snippet is querying the database to
-  find document without the `roleCode` from the request
-  body and with `roleName` from the request body. */
+  // Query the database to check if there are other roles with the same `roleName`, excluding the current role.
   const otherRoles = await Role.find({
     roleCode: { $ne: roleCode },
     roleName: roleName?.trim()?.toUpperCase(),
   });
 
-  /* The below code snippet is checking if there is a
-  document in the `roles` collection with the given 
-  `roleName` other than the document with the given 
-  `roleCode`. If so, then it returns an error response 
-  using the `next` function with an `ExpressResponse` 
-  object. */
+  // If a role with the same `roleName` already exists, return an error response.
   if (otherRoles?.length > 0) {
     return next(
       new ExpressResponse(
@@ -318,14 +260,10 @@ module.exports.UpdateRole = async (req, res, next) => {
     );
   }
 
-  /* The below code snippet is checking if there is any invalid
-  `permissionCode` exist in the given `rolePermission` array. */
+  // Check if any of the provided `rolePermissions` have invalid permission codes.
   const invalidPermissions = await getInvalidPermissions(rolePermissions);
 
-  /* The below code snippet is checking if atleast one of the
-  given `permissionCode` is invalid. If so, then returns an error
-  response using the `next` function with an `ExpressResponse`
-  object. */
+  // If there are invalid permission codes, return an error response.
   if (invalidPermissions.some((isInvalid) => isInvalid)) {
     return next(
       new ExpressResponse(
@@ -336,20 +274,16 @@ module.exports.UpdateRole = async (req, res, next) => {
     );
   }
 
-  /* The below code snippet is creating an array of permission
-  ids from the given `permissionCodes` */
+  // Create an array of permission IDs from the provided permission codes.
   const permissions = await getPermissionIds(rolePermissions);
 
-  /* The below code snippet is finding the instance of the 
-  `Role` model with the provided data. */
+  // Retrieve the current role details before updating it.
   const roleBeforeUpdate = await Role.findOne(
     { roleCode },
     hiddenFieldsDefault
   ).populate("rolePermissions", hiddenFieldsDefault);
 
-  // console.log(roleBeforeUpdate);
-  /* The below code snippet is finding and updating the instance
-  of the `Role` model with the provided data. */
+  // Update the `Role` document with the new data.
   const role = await Role.findOneAndUpdate(
     { roleCode },
     {
@@ -360,20 +294,13 @@ module.exports.UpdateRole = async (req, res, next) => {
     }
   );
 
-  /* The below code snippet is querying the database to find
-  and retrieve an updated role document (excluding the
-  fields `__v` and `_id`) with populating the linked documents
-  from the `permissions` collection (excluding the fields
-  `__v` and `_id`).. */
+  // Retrieve the updated role document, including the populated `rolePermissions`.
   const updatedRole = await Role.findOne(
     { roleCode },
     hiddenFieldsDefault
   ).populate("rolePermissions", hiddenFieldsDefault);
 
-  /* The below code snippet is using the current logged in 
-  user's `userCode` to query the database to find the `_id`
-  of that user.
-   */
+  // Query the database to get the details of the currently logged-in user.
   const currentUser = await User.findOne(
     { userCode: req.user.userCode },
     hiddenFieldsUser
@@ -386,7 +313,7 @@ module.exports.UpdateRole = async (req, res, next) => {
     },
   });
 
-  /* The below code snippet is creating a audit log. */
+  // Log the role update action in the audit log.
   await logAudit(
     generateAuditCode(),
     auditActions?.UPDATE,
@@ -398,8 +325,7 @@ module.exports.UpdateRole = async (req, res, next) => {
     currentUser?.toObject()
   );
 
-  /* The below code snippet returns an success response with
-  an `ExpressResponse` object. */
+  // Return a success response with the updated role data.
   res
     .status(STATUS_CODE_SUCCESS)
     .send(
@@ -413,19 +339,15 @@ module.exports.UpdateRole = async (req, res, next) => {
 };
 
 module.exports.DeleteRole = async (req, res, next) => {
-  /* The below code snippet is extracting the `roleCode`
-  property from the request body. */
+  // Extract the `roleCode` property from the request body.
   const { roleCode } = req.body;
 
-  /* The below code snippet is using the `rolecode`
-  to query the database for a single document in the
-  `roles` collection. */
-  const existingRole = await Role.findOne({ roleCode });
+  // Use the `roleCode` to query the database for a document in the `roles` collection.
+  const existingRole = await Role.findOne({
+    roleCode,
+  });
 
-  /* The below code snippet is checking if no document is
-  found with the given `roleCode`. If so, then it returns
-  an error response using the `next` function with an
-  `ExpressResponse` object. */
+  // Check if no document is found with the given `roleCode`. If not, return an error response.
   if (!existingRole) {
     return next(
       new ExpressResponse(
@@ -436,10 +358,7 @@ module.exports.DeleteRole = async (req, res, next) => {
     );
   }
 
-  /* The below code snippet is checking if the found
-  document is allowed to be deleted. If not, it returns
-  an error response using the `next` function with an
-  `ExpressResponse` object. */
+  // Check if the found role is allowed to be deleted. If not, return an error response.
   if (!existingRole?.roleAllowDeletion) {
     return next(
       new ExpressResponse(
@@ -450,13 +369,10 @@ module.exports.DeleteRole = async (req, res, next) => {
     );
   }
 
-  /* The below code snippet is checking if the role is
-  being used anywhere in the database. */
+  // Check if the role is being referenced anywhere in the database.
   const { isReferenced } = await IsObjectIdReferenced(existingRole._id);
 
-  /* The below code snippet returns an error response
-  using the `next` function with an `ExpressResponse`
-  object, when the found document is in use. */
+  // If the role is being referenced, return an error response.
   if (isReferenced) {
     return next(
       new ExpressResponse(
@@ -467,23 +383,18 @@ module.exports.DeleteRole = async (req, res, next) => {
     );
   }
 
-  /* The below code snippet is finding the instance of the 
-  `Role` model with the provided data. */
+  // Retrieve the role details before deletion.
   const roleBeforeDelete = await Role.findOne(
     { roleCode },
     hiddenFieldsDefault
   ).populate("rolePermissions", hiddenFieldsDefault);
 
-  /* The the below code snippet is querying the database
-  to delete the document with the given `rolecode` in the
-  `roles` collection. */
-  const role = await Role.deleteOne({ roleCode });
+  // Delete the role from the database using the `roleCode`.
+  const role = await Role.deleteOne({
+    roleCode,
+  });
 
-  /* The the below code snippet is using `deletedCount` in the
-  `deleteOne` mongoose function response to confirm the document
-  deletion. If it is `0` then the document is not deleted, then
-  it return an error response using the `next` function with
-  an `ExpressResponse` object. */
+  // Check if the deletion was successful by inspecting `deletedCount`. If not, return an error response.
   if (role?.deletedCount === 0) {
     return next(
       new ExpressResponse(
@@ -494,10 +405,7 @@ module.exports.DeleteRole = async (req, res, next) => {
     );
   }
 
-  /* The below code snippet is using the current logged in 
-  user's `userCode` to query the database to find the `_id`
-  of that user.
-   */
+  // Use the current logged-in user's `userCode` to find their `_id` in the database.
   const currentUser = await User.findOne(
     { userCode: req.user.userCode },
     hiddenFieldsUser
@@ -510,7 +418,7 @@ module.exports.DeleteRole = async (req, res, next) => {
     },
   });
 
-  /* The below code snippet is creating a audit log. */
+  // Log the deletion action in the audit log.
   await logAudit(
     generateAuditCode(),
     auditActions?.DELETE,
@@ -522,8 +430,7 @@ module.exports.DeleteRole = async (req, res, next) => {
     currentUser?.toObject()
   );
 
-  /* The below code snippet returns an success response with
-  an `ExpressResponse` object. */
+  // Return a success response confirming the role deletion.
   res
     .status(STATUS_CODE_SUCCESS)
     .send(

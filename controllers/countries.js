@@ -1,21 +1,27 @@
 const moment = require("moment-timezone");
-const { logAudit } = require("../middleware");
 const Country = require("../models/country");
 const User = require("../models/user");
+const ExpressResponse = require("../utils/ExpressResponse");
+const { logAudit } = require("../middleware");
 const {
   auditActions,
   auditCollections,
   auditChanges,
 } = require("../utils/audit");
-const ExpressResponse = require("../utils/ExpressResponse");
 const {
+  hiddenFieldsDefault,
+  hiddenFieldsUser,
   toCapitalize,
   generateCountryCode,
   IsObjectIdReferenced,
-  hiddenFieldsDefault,
   generateAuditCode,
-  hiddenFieldsUser,
 } = require("../utils/helpers");
+const { STATUS_ERROR, STATUS_SUCCESS } = require("../utils/status");
+const {
+  STATUS_CODE_CONFLICT,
+  STATUS_CODE_SUCCESS,
+  STATUS_CODE_BAD_REQUEST,
+} = require("../utils/statusCodes");
 const {
   MESSAGE_COUNTRY_EXIST,
   MESSAGE_CREATE_COUNTRY_SUCCESS,
@@ -28,21 +34,12 @@ const {
   MESSAGE_DELETE_COUNTRY_ERROR,
   MESSAGE_COUNTRY_TAKEN,
 } = require("../utils/messages");
-const { STATUS_ERROR, STATUS_SUCCESS } = require("../utils/status");
-const {
-  STATUS_CODE_CONFLICT,
-  STATUS_CODE_SUCCESS,
-  STATUS_CODE_BAD_REQUEST,
-} = require("../utils/statusCodes");
 
 module.exports.GetCountries = async (req, res, next) => {
-  /* The below code snippet is used to query the database for 
-  all the documents in the `countries` collection (excluding
-  the fields `__v` and `_id`). */
+  // Query the database to retrieve all documents from the `countries` collection (excluding `__v` and `_id` fields).
   const countries = await Country.find({}, hiddenFieldsDefault);
 
-  /* The below code snippet returns an success response with
-  an `ExpressResponse` object. */
+  // Return a success response with the list of countries.
   res
     .status(STATUS_CODE_SUCCESS)
     .send(
@@ -56,20 +53,17 @@ module.exports.GetCountries = async (req, res, next) => {
 };
 
 module.exports.GetCountryByCode = async (req, res, next) => {
-  /* The below code snippet is extracting the `countryCode` 
-  property from the request body. It then uses this `countryCode`
-  to query the database for a single document in the `countries`
-  collection (excluding the fields `__v` and `_id`). */
+  // Extract the `countryCode` from the request body and query the `countries` collection for the matching document (excluding `__v` and `_id` fields).
   const { countryCode } = req.body;
-  const countries = await Country.findOne({ countryCode }, hiddenFieldsDefault);
+  const country = await Country.findOne(
+    {
+      countryCode,
+    },
+    hiddenFieldsDefault
+  );
 
-  /* The below code snippet is checking if the `countries` variable
-  is falsy, which means that no document was found in the database
-  that matches the specified `countryCode` provided in the request
-  parameters. If no document is found (`countries` is falsy), it
-  returns an error response using the `next` function with an
-  `ExpressResponse` object. */
-  if (!countries) {
+  // Check if no document is found with the provided `countryCode` in the request. If not, return an error response.
+  if (!country) {
     return next(
       new ExpressResponse(
         STATUS_ERROR,
@@ -79,8 +73,7 @@ module.exports.GetCountryByCode = async (req, res, next) => {
     );
   }
 
-  /* The below code snippet returns an success response with
-  an `ExpressResponse` object. */
+  // Return a success response with the found country details.
   res
     .status(STATUS_CODE_SUCCESS)
     .send(
@@ -88,20 +81,16 @@ module.exports.GetCountryByCode = async (req, res, next) => {
         STATUS_SUCCESS,
         STATUS_CODE_SUCCESS,
         MESSAGE_GET_COUNTRY_SUCCESS,
-        countries
+        country
       )
     );
 };
 
 module.exports.CreateCountry = async (req, res, next) => {
-  /* The below code snippet is extracting the `name`, `iso2`,
-  and `iso3` properties from the request body. */
+  // Extract the `name`, `iso2`, and `iso3` properties from the request body.
   const { name, iso2, iso3 } = req.body;
 
-  /* The below code snippet capitalize the `name`, make all
-  letters capital for `iso2` and `iso3` and then the uses 
-  it to query the database for a single document in the
-  `countries` collection. */
+  // Capitalize the `name` and convert `iso2` and `iso3` to uppercase before querying the database for a matching country document.
   const existingCountry = await Country.findOne({
     $or: [
       { name: toCapitalize(name) },
@@ -110,12 +99,7 @@ module.exports.CreateCountry = async (req, res, next) => {
     ],
   });
 
-  /* The below code snippet is checking if there is an existing
-  country with the same `name` or `iso2` or `iso3` in the 
-  database. If `existingCountry` is truthy (meaning a country 
-  with the same `name` or `iso2` or `iso3` already exists), it 
-  returns an error response using the `next` function with an 
-  `ExpressResponse` object. */
+  // Check if a country with the same `name`, `iso2`, or `iso3` already exists. If found, return a conflict error.
   if (existingCountry) {
     return next(
       new ExpressResponse(
@@ -126,36 +110,27 @@ module.exports.CreateCountry = async (req, res, next) => {
     );
   }
 
-  /* The below code snippet is generating a unique `countryCode`
-  for a new country being created. */
+  // Generate a unique `countryCode` for the new country.
   const countryCode = generateCountryCode();
 
-  /* The below code snippet is creating a new instance of the
-  `Country` model with the provided data. */
+  // Create a new `Country` model instance with the provided data.
   const country = new Country({
-    name: toCapitalize(name),
     countryCode,
+    name: toCapitalize(name),
     iso2: iso2.toUpperCase(),
     iso3: iso3.toUpperCase(),
   });
 
-  /* The below code snippet is saving the newly created
-  `country` object to the database. */
+  // Save the newly created country to the database.
   await country.save();
 
-  /* The below code snippet is querying the database to find
-  the newly created country document using the above
-  generated `countryCode` (excluding the fields `__v` and
-  `_id`). */
+  // Retrieve the newly created country document using the generated `countryCode` (excluding `__v` and `_id` fields).
   const createdCountry = await Country.findOne(
     { countryCode },
     hiddenFieldsDefault
   );
 
-  /* The below code snippet is using the current logged in 
-  user's `userCode` to query the database to find the `_id`
-  of that user.
-   */
+  // Query the database for the current user's details using their `userCode`.
   const currentUser = await User.findOne(
     { userCode: req.user.userCode },
     hiddenFieldsUser
@@ -168,7 +143,7 @@ module.exports.CreateCountry = async (req, res, next) => {
     },
   });
 
-  /* The below code snippet is creating a audit log. */
+  // Create an audit log for the country creation.
   await logAudit(
     generateAuditCode(),
     auditActions?.CREATE,
@@ -180,8 +155,7 @@ module.exports.CreateCountry = async (req, res, next) => {
     currentUser?.toObject()
   );
 
-  /* The below code snippet returns an success response with
-  an `ExpressResponse` object. */
+  // Return a success response with the created country details.
   res
     .status(STATUS_CODE_SUCCESS)
     .send(
@@ -195,22 +169,15 @@ module.exports.CreateCountry = async (req, res, next) => {
 };
 
 module.exports.UpdateCountry = async (req, res, next) => {
-  /* The below code snippet is extracting the `countryCode`,
-  `name`, `iso2`, and `iso3` properties from the request 
-  body. */
+  // Extract the `countryCode`, `name`, `iso2`, and `iso3` properties from the request body.
   const { countryCode, name, iso2, iso3 } = req.body;
 
-  /* The below code snippet is using the `countryCode`
-  to query the database for a single document in the
-  `countries` collection. */
+  // Use the `countryCode` to search for an existing country document in the `countries` collection.
   const existingCountry = await Country.findOne({
     countryCode,
   });
 
-  /* The below code snippet is checking if no document is
-  found with the given `countryCode`. If so, it returns
-  an error response using the `next` function with an
-  `ExpressResponse` object. */
+  // If no document is found, return an error response indicating the country was not found.
   if (!existingCountry) {
     return next(
       new ExpressResponse(
@@ -221,10 +188,7 @@ module.exports.UpdateCountry = async (req, res, next) => {
     );
   }
 
-  /* The below code snippet is querying the database to
-  find document without the `countryCode` from the request
-  body and with either `name` (or) `iso2` (or) `iso3` from 
-  the request body.  */
+  // Search for any other countries with the same `name`, `iso2`, or `iso3` (excluding the current `countryCode`).
   const otherCountries = await Country.find({
     countryCode: { $ne: countryCode },
     $or: [
@@ -234,12 +198,7 @@ module.exports.UpdateCountry = async (req, res, next) => {
     ],
   });
 
-  /* The below code snippet is checking if there is a
-  document in the `countries` collection with the given 
-  `name` (or) `iso2` (or) `iso3` other than the document 
-  with the given `countryCode`. If so, then it returns 
-  an error response using the `next` function with an 
-  `ExpressResponse` object. */
+  // If any other countries with the same `name`, `iso2`, or `iso3` are found, return an error response.
   if (otherCountries?.length > 0) {
     return next(
       new ExpressResponse(
@@ -250,16 +209,13 @@ module.exports.UpdateCountry = async (req, res, next) => {
     );
   }
 
-  /* The below code snippet is querying the database to find
-  and retrieve the gender document (excluding the fields 
-  `__v` and `_id`). */
+  // Retrieve the current country document before the update (excluding `__v` and `_id`).
   const countryBeforeUpdate = await Country.findOne(
     { countryCode },
     hiddenFieldsDefault
   );
 
-  /* The below code snippet is updating the instance of the
-  `Country` model with the provided data. */
+  // Update the country document with the new data (`name`, `iso2`, `iso3`) and the current timestamp.
   const country = await Country.findOneAndUpdate(
     { countryCode },
     {
@@ -270,22 +226,16 @@ module.exports.UpdateCountry = async (req, res, next) => {
     }
   );
 
-  /* The below code snippet is saving the updated `country`
-  object to the database. */
+  // Save the updated country document to the database.
   await country.save();
 
-  /* The below code snippet is querying the database to find
-  and retrieve an updated country document (excluding the
-  fields `__v` and `_id`). */
+  // Retrieve the updated country document (excluding `__v` and `_id`).
   const updatedCountry = await Country.findOne(
     { countryCode },
     hiddenFieldsDefault
   );
 
-  /* The below code snippet is using the current logged in 
-  user's `userCode` to query the database to find the `_id`
-  of that user.
-   */
+  // Use the logged-in user's `userCode` to query and retrieve their details.
   const currentUser = await User.findOne(
     { userCode: req.user.userCode },
     hiddenFieldsUser
@@ -298,7 +248,7 @@ module.exports.UpdateCountry = async (req, res, next) => {
     },
   });
 
-  /* The below code snippet is creating a audit log. */
+  // Create an audit log for the update action.
   await logAudit(
     generateAuditCode(),
     auditActions?.UPDATE,
@@ -310,8 +260,7 @@ module.exports.UpdateCountry = async (req, res, next) => {
     currentUser?.toObject()
   );
 
-  /* The below code snippet returns an success response with
-    an `ExpressResponse` object. */
+  // Return a success response with the updated country details.
   res
     .status(STATUS_CODE_SUCCESS)
     .send(
@@ -325,21 +274,15 @@ module.exports.UpdateCountry = async (req, res, next) => {
 };
 
 module.exports.DeleteCountry = async (req, res, next) => {
-  /* The below code snippet is extracting the `countryCode`
-  property from the request body. */
+  // Extract the `countryCode` property from the request body.
   const { countryCode } = req.body;
 
-  /* The below code snippet is using the `countryCode`
-  to query the database for a single document in the
-  `countries` collection. */
+  // Query the database to find a country document matching the `countryCode`.
   const existingCountry = await Country.findOne({
     countryCode,
   });
 
-  /* The below code snippet is checking if no document is
-  found with the given `countryCode`. It returns an error
-  response using the `next` function with an `ExpressResponse`
-  object. */
+  // If no country document is found, return an error response.
   if (!existingCountry) {
     return next(
       new ExpressResponse(
@@ -350,13 +293,10 @@ module.exports.DeleteCountry = async (req, res, next) => {
     );
   }
 
-  /* The below code snippet is checking if the country is
-  being used anywhere in the database. */
+  // Check if the country is being referenced in any other part of the database.
   const { isReferenced } = await IsObjectIdReferenced(existingCountry._id);
 
-  /* The below code snippet returns an error response using
-  the `next` function with an `ExpressResponse` object, when
-  the found document is in use. */
+  // If the country is referenced, return an error response indicating it cannot be deleted.
   if (isReferenced) {
     return next(
       new ExpressResponse(
@@ -367,25 +307,18 @@ module.exports.DeleteCountry = async (req, res, next) => {
     );
   }
 
-  /* The below code snippet is querying the database to find
-  and retrieve the country document (excluding the fields 
-  `__v` and `_id`). */
+  // Retrieve the country document before deletion (excluding `__v` and `_id`).
   const countryBeforeDelete = await Country.findOne(
     { countryCode },
     hiddenFieldsDefault
   );
 
-  /* The the below code snippet is querying the database to
-  delete the document with the given `countryCode` in the
-  `countries` collection (excluding the fields `__v` and
-  `_id`). */
-  const country = await Country.deleteOne({ countryCode });
+  // Attempt to delete the country document with the given `countryCode`.
+  const country = await Country.deleteOne({
+    countryCode,
+  });
 
-  /* The the below code snippet is using `deletedCount` in the
-  `deleteOne` mongoose function response to confirm the document
-  deletion. If it is `0` then the document is not deleted, then
-  it return an error response using the `next` function with
-  an `ExpressResponse` object. */
+  // If the document is not deleted (i.e., `deletedCount` is 0), return an error response.
   if (country?.deletedCount === 0) {
     return next(
       new ExpressResponse(
@@ -396,10 +329,7 @@ module.exports.DeleteCountry = async (req, res, next) => {
     );
   }
 
-  /* The below code snippet is using the current logged in 
-  user's `userCode` to query the database to find the `_id`
-  of that user.
-   */
+  // Query the database for the current user's details using `userCode`.
   const currentUser = await User.findOne(
     { userCode: req.user.userCode },
     hiddenFieldsUser
@@ -412,7 +342,7 @@ module.exports.DeleteCountry = async (req, res, next) => {
     },
   });
 
-  /* The below code snippet is creating a audit log. */
+  // Create an audit log for the deletion action.
   await logAudit(
     generateAuditCode(),
     auditActions?.DELETE,
@@ -424,8 +354,7 @@ module.exports.DeleteCountry = async (req, res, next) => {
     currentUser?.toObject()
   );
 
-  /* The below code snippet returns an success response with
-  an `ExpressResponse` object. */
+  // Return a success response indicating the country was successfully deleted.
   res
     .status(STATUS_CODE_SUCCESS)
     .send(

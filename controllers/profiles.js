@@ -2,8 +2,8 @@ const Profile = require("../models/profile");
 const ExpressResponse = require("../utils/ExpressResponse");
 const {
   hiddenFieldsDefault,
-  generateProfileCode,
   hiddenFieldsUser,
+  generateProfileCode,
   generateAuditCode,
 } = require("../utils/helpers");
 const { STATUS_SUCCESS, STATUS_ERROR } = require("../utils/status");
@@ -30,6 +30,7 @@ const {
   MESSAGE_DELETE_PROFILE_ERROR,
   MESSAGE_DELETE_PROFILE_SUCCESS,
   MESSAGE_OWN_PROFILE_NOT_FOUND,
+  MESSAGE_PROFILE_TAKEN,
 } = require("../utils/messages");
 const Gender = require("../models/gender");
 const Country = require("../models/country");
@@ -44,12 +45,7 @@ const {
 } = require("../utils/audit");
 
 module.exports.getProfiles = async (req, res, next) => {
-  /* The below code snippet is used to query the database for 
-  all the documents in the `profiles` collection (excluding
-  the fields `__v` and `_id`) with populating the linked 
-  documents from the `genders`, `users`, `roles`, 
-  `rolePermissions`, `cities`, `states`, and `countries`
-  collections (excluding the fields `__v` and `_id). */
+  // Query the `Profile` collection and populate related fields
   const profiles = await Profile.find({}, hiddenFieldsDefault)
     .populate("gender", hiddenFieldsDefault)
     .populate({
@@ -95,12 +91,10 @@ module.exports.getProfiles = async (req, res, next) => {
       select: hiddenFieldsDefault,
     });
 
-  /* The below code snippet is running toJSON function on 
-  every document in the profiles array */
-  const profilesJSON = profiles.map((doc) => doc.toJSON());
+  // Convert queried profiles to JSON format
+  const profilesJSON = profiles.map((profile) => profile.toJSON());
 
-  /* The below code snippet returns an success response with
-  an `ExpressResponse` object. */
+  // Send success response with retrieved profiles
   res
     .status(STATUS_CODE_SUCCESS)
     .send(
@@ -114,225 +108,14 @@ module.exports.getProfiles = async (req, res, next) => {
 };
 
 module.exports.GetOwnProfile = async (req, res, next) => {
-  /* The below code snippet is extracting the `userCode`
-  property from the user object in the request. It then 
-  uses this `userCode` to query the database for a single 
-  document in the `profiles` collection (excluding the fields 
-  `__v` and `_id`) with populating the linked documents from 
-  the `genders`, `users`, `roles`, `rolePermissions`, `cities`, 
-  `states`, and `countries` collections (excluding the fields 
-  `__v` and `_id). */
+  /// Extract userCode from the request object
   const { userCode } = req.user;
-  const profiles = await Profile.findOne({ userCode }, hiddenFieldsDefault)
-    .populate("gender", hiddenFieldsDefault)
-    .populate({
-      path: "user",
-      select: hiddenFieldsDefault,
-      populate: {
-        path: "role",
-        select: hiddenFieldsDefault,
-        populate: {
-          path: "rolePermissions",
-          select: hiddenFieldsDefault,
-        },
-      },
-    })
-    .populate({
-      path: "address.city",
-      select: hiddenFieldsDefault,
-      populate: [
-        {
-          path: "state",
-          select: hiddenFieldsDefault,
-          populate: {
-            path: "country",
-            select: hiddenFieldsDefault,
-          },
-        },
-        {
-          path: "country",
-          select: hiddenFieldsDefault,
-        },
-      ],
-    })
-    .populate({
-      path: "address.state",
-      select: hiddenFieldsDefault,
-      populate: {
-        path: "country",
-        select: hiddenFieldsDefault,
-      },
-    })
-    .populate({
-      path: "address.country",
-      select: hiddenFieldsDefault,
-    });
 
-  /* The below code snippet is checking if the `profiles` variable
-  is falsy, which means that no document was found in the database
-  that matches the specified `profileCode` provided in the request
-  parameters. If no document is found (`profiles` is falsy), it
-  returns an error response using the `next` function with an
-  `ExpressResponse` object. */
-  if (!profiles) {
-    return next(
-      new ExpressResponse(
-        STATUS_ERROR,
-        STATUS_CODE_BAD_REQUEST,
-        MESSAGE_OWN_PROFILE_NOT_FOUND
-      )
-    );
-  }
-
-  /* The below code snippet is running toJSON function on 
-  found document in `profiles` */
-  const profilesJSON = profiles.toJSON();
-
-  /* The below code snippet returns an success response with
-  an `ExpressResponse` object. */
-  res
-    .status(STATUS_CODE_SUCCESS)
-    .send(
-      new ExpressResponse(
-        STATUS_SUCCESS,
-        STATUS_CODE_SUCCESS,
-        MESSAGE_GET_PROFILE_SUCCESS,
-        profilesJSON
-      )
-    );
-};
-
-module.exports.GetProfileByCode = async (req, res, next) => {
-  /* The below code snippet is extracting the `profileCode`
-  property from the request body. It then uses this `profileCode`
-  to query the database for a single document in the `profiles`
-  collection (excluding the fields `__v` and `_id`) with 
-  populating the linked documents from the `genders`, `users`,
-  `roles`, `rolePermissions`, `cities`, `states`, and `countries`
-  collections (excluding the fields `__v` and `_id). */
-  const { profileCode } = req.body;
-  const profiles = await Profile.findOne({ profileCode }, hiddenFieldsDefault)
-    .populate("gender", hiddenFieldsDefault)
-    .populate({
-      path: "user",
-      select: hiddenFieldsDefault,
-      populate: {
-        path: "role",
-        select: hiddenFieldsDefault,
-        populate: {
-          path: "rolePermissions",
-          select: hiddenFieldsDefault,
-        },
-      },
-    })
-    .populate({
-      path: "address.city",
-      select: hiddenFieldsDefault,
-      populate: [
-        {
-          path: "state",
-          select: hiddenFieldsDefault,
-          populate: {
-            path: "country",
-            select: hiddenFieldsDefault,
-          },
-        },
-        {
-          path: "country",
-          select: hiddenFieldsDefault,
-        },
-      ],
-    })
-    .populate({
-      path: "address.state",
-      select: hiddenFieldsDefault,
-      populate: {
-        path: "country",
-        select: hiddenFieldsDefault,
-      },
-    })
-    .populate({
-      path: "address.country",
-      select: hiddenFieldsDefault,
-    });
-
-  /* The below code snippet is checking if the `profiles` variable
-  is falsy, which means that no document was found in the database
-  that matches the specified `profileCode` provided in the request
-  parameters. If no document is found (`profiles` is falsy), it
-  returns an error response using the `next` function with an
-  `ExpressResponse` object. */
-  if (!profiles) {
-    return next(
-      new ExpressResponse(
-        STATUS_ERROR,
-        STATUS_CODE_BAD_REQUEST,
-        MESSAGE_PROFILE_NOT_FOUND
-      )
-    );
-  }
-
-  /* The below code snippet is running toJSON function on 
-  found document in `profiles` */
-  const profilesJSON = profiles.toJSON();
-
-  /* The below code snippet returns an success response with
-  an `ExpressResponse` object. */
-  res
-    .status(STATUS_CODE_SUCCESS)
-    .send(
-      new ExpressResponse(
-        STATUS_SUCCESS,
-        STATUS_CODE_SUCCESS,
-        MESSAGE_GET_PROFILE_SUCCESS,
-        profilesJSON
-      )
-    );
-};
-
-module.exports.GetProfileByUserCode = async (req, res, next) => {
-  /* The below code snippet is extracting the `userCode`
-  property from the request body. */
-  const { userCode } = req.body;
-
-  if (!userCode || userCode?.trim()?.length === 0) {
-    return next(
-      new ExpressResponse(
-        STATUS_ERROR,
-        STATUS_CODE_BAD_REQUEST,
-        MESSAGE_MISSING_REQUIRED_FIELDS
-      )
-    );
-  }
-
-  /* The below code snippet uses the `userCode` to query the 
-  database to find a document in the `users` collection. */
-  const user = await User.findOne({ userCode });
-
-  /* The below code snippet is checking if the `user` variable
-  is falsy, which means that no document was found in the database
-  that matches the specified `userCode` provided in the request
-  parameters. If no document is found (`user` is falsy), it
-  returns an error response using the `next` function with an
-  `ExpressResponse` object. */
-  if (!user) {
-    return next(
-      new ExpressResponse(
-        STATUS_ERROR,
-        STATUS_CODE_BAD_REQUEST,
-        MESSAGE_USER_NOT_FOUND
-      )
-    );
-  }
-
-  /* The below code snippet uses the `_id` from the above found user
-  document to query the database to find a document the `profiles` 
-  collection (excluding the fields `__v` and `_id`) with populating 
-  the linked documents from the `genders`, `users`, `roles`, 
-  `rolePermissions`, `cities`, `states`, and  `countries` collections 
-  (excluding the fields `__v` and `_id).*/
-  const profiles = await Profile.findOne(
-    { user: user?._id },
+  // Query the Profile document based on userCode and populate related fields
+  const profile = await Profile.findOne(
+    {
+      userCode,
+    },
     hiddenFieldsDefault
   )
     .populate("gender", hiddenFieldsDefault)
@@ -379,13 +162,193 @@ module.exports.GetProfileByUserCode = async (req, res, next) => {
       select: hiddenFieldsDefault,
     });
 
-  /* The below code snippet is checking if the `profiles` variable
-  is falsy, which means that no document was found in the database
-  that matches the specified `_id` found in the above found `user` 
-  document. If no document is found (`profiles` is falsy), it
-  returns an error response using the `next` function with an
-  `ExpressResponse` object. */
-  if (!profiles) {
+  // If no profile is found, return an error response
+  if (!profile) {
+    return next(
+      new ExpressResponse(
+        STATUS_ERROR,
+        STATUS_CODE_BAD_REQUEST,
+        MESSAGE_OWN_PROFILE_NOT_FOUND
+      )
+    );
+  }
+
+  // Convert the profile object to JSON format
+  const profileJSON = profile.toJSON();
+
+  // Send a success response with the retrieved profile data
+  res
+    .status(STATUS_CODE_SUCCESS)
+    .send(
+      new ExpressResponse(
+        STATUS_SUCCESS,
+        STATUS_CODE_SUCCESS,
+        MESSAGE_GET_PROFILE_SUCCESS,
+        profileJSON
+      )
+    );
+};
+
+module.exports.GetProfileByCode = async (req, res, next) => {
+  // Extract profileCode from the request body
+  const { profileCode } = req.body;
+
+  // Query the Profile document using profileCode and populate related fields
+  const profile = await Profile.findOne(
+    {
+      profileCode,
+    },
+    hiddenFieldsDefault
+  )
+    .populate("gender", hiddenFieldsDefault)
+    .populate({
+      path: "user",
+      select: hiddenFieldsDefault,
+      populate: {
+        path: "role",
+        select: hiddenFieldsDefault,
+        populate: {
+          path: "rolePermissions",
+          select: hiddenFieldsDefault,
+        },
+      },
+    })
+    .populate({
+      path: "address.city",
+      select: hiddenFieldsDefault,
+      populate: [
+        {
+          path: "state",
+          select: hiddenFieldsDefault,
+          populate: {
+            path: "country",
+            select: hiddenFieldsDefault,
+          },
+        },
+        {
+          path: "country",
+          select: hiddenFieldsDefault,
+        },
+      ],
+    })
+    .populate({
+      path: "address.state",
+      select: hiddenFieldsDefault,
+      populate: {
+        path: "country",
+        select: hiddenFieldsDefault,
+      },
+    })
+    .populate({
+      path: "address.country",
+      select: hiddenFieldsDefault,
+    });
+
+  // If no profile is found, return an error response
+  if (!profile) {
+    return next(
+      new ExpressResponse(
+        STATUS_ERROR,
+        STATUS_CODE_BAD_REQUEST,
+        MESSAGE_PROFILE_NOT_FOUND
+      )
+    );
+  }
+
+  // Convert the profile object to JSON format
+  const profileJSON = profile.toJSON();
+
+  // Send a success response with the retrieved profile data
+  res
+    .status(STATUS_CODE_SUCCESS)
+    .send(
+      new ExpressResponse(
+        STATUS_SUCCESS,
+        STATUS_CODE_SUCCESS,
+        MESSAGE_GET_PROFILE_SUCCESS,
+        profileJSON
+      )
+    );
+};
+
+module.exports.GetProfileByUserCode = async (req, res, next) => {
+  // Extract userCode from the request body and validate it
+  const { userCode } = req.body;
+  if (!userCode || userCode.trim().length === 0) {
+    return next(
+      new ExpressResponse(
+        STATUS_ERROR,
+        STATUS_CODE_BAD_REQUEST,
+        MESSAGE_MISSING_REQUIRED_FIELDS
+      )
+    );
+  }
+
+  // Search for the user in the database using the provided userCode
+  const user = await User.findOne({ userCode });
+  if (!user) {
+    return next(
+      new ExpressResponse(
+        STATUS_ERROR,
+        STATUS_CODE_BAD_REQUEST,
+        MESSAGE_USER_NOT_FOUND
+      )
+    );
+  }
+
+  // Query the Profile document associated with the found user and populate related fields
+  const profile = await Profile.findOne(
+    {
+      user: user._id,
+    },
+    hiddenFieldsDefault
+  )
+    .populate("gender", hiddenFieldsDefault)
+    .populate({
+      path: "user",
+      select: hiddenFieldsDefault,
+      populate: {
+        path: "role",
+        select: hiddenFieldsDefault,
+        populate: {
+          path: "rolePermissions",
+          select: hiddenFieldsDefault,
+        },
+      },
+    })
+    .populate({
+      path: "address.city",
+      select: hiddenFieldsDefault,
+      populate: [
+        {
+          path: "state",
+          select: hiddenFieldsDefault,
+          populate: {
+            path: "country",
+            select: hiddenFieldsDefault,
+          },
+        },
+        {
+          path: "country",
+          select: hiddenFieldsDefault,
+        },
+      ],
+    })
+    .populate({
+      path: "address.state",
+      select: hiddenFieldsDefault,
+      populate: {
+        path: "country",
+        select: hiddenFieldsDefault,
+      },
+    })
+    .populate({
+      path: "address.country",
+      select: hiddenFieldsDefault,
+    });
+
+  // If no profile is found, return an error response
+  if (!profile) {
     return next(
       new ExpressResponse(
         STATUS_ERROR,
@@ -395,12 +358,10 @@ module.exports.GetProfileByUserCode = async (req, res, next) => {
     );
   }
 
-  /* The below code snippet is running toJSON function on 
-  found document in `profiles` */
-  const profilesJSON = profiles.toJSON();
+  // Convert the profile object to JSON format
+  const profileJSON = profile.toJSON();
 
-  /* The below code snippet returns an success response with
-  an `ExpressResponse` object. */
+  // Send a success response with the retrieved profile data
   res
     .status(STATUS_CODE_SUCCESS)
     .send(
@@ -408,40 +369,30 @@ module.exports.GetProfileByUserCode = async (req, res, next) => {
         STATUS_SUCCESS,
         STATUS_CODE_SUCCESS,
         MESSAGE_GET_PROFILE_SUCCESS,
-        profilesJSON
+        profileJSON
       )
     );
 };
 
 module.exports.CreateProfile = async (req, res, next) => {
-  /* The below code snippet is extracting `firstName`, 
-  `lastName`, `profilePicture`, `gender`, `address`, 
-  `notification`, and `user` properties from the 
-  request body. */
+  // Destructure properties from the request body with default values where applicable
   const {
     firstName,
     lastName = "",
     profilePicture,
     gender,
+    phoneNumber,
     address,
     social = null,
     notification,
     user,
   } = req.body;
-
-  /* The below code snippet is extracting `city`, `state`, 
-  and `country` from the address object. */
   const { city, state, country } = address;
 
-  /* The below code snippet using the given `user` to
-  query the database for a single document in the `users`
-  collection. */
-  const existingUser = await User.findOne({ userCode: user });
-
-  /* The below code snippet is checking if no document is
-  found with the given `user`. If so, then it returns
-  an error response using the `next` function with an
-  `ExpressResponse` object. */
+  // Look for an existing user with the provided userCode
+  const existingUser = await User.findOne({
+    userCode: user,
+  });
   if (!existingUser) {
     return next(
       new ExpressResponse(
@@ -452,14 +403,10 @@ module.exports.CreateProfile = async (req, res, next) => {
     );
   }
 
-  /* The below code snippet is using the `_id` of the 
-  `existingUser` to check for if a profile for this user
-  is already there. */
-  const existingProfile = await Profile.findOne({ user: existingUser?._id });
-
-  /* The below code snippet is checking if a document is
-  found. If so, then it returns an error response using 
-  the `next` function with an `ExpressResponse ` object. */
+  // Check if a profile already exists for the user
+  const existingProfile = await Profile.findOne({
+    user: existingUser._id,
+  });
   if (existingProfile) {
     return next(
       new ExpressResponse(
@@ -470,17 +417,24 @@ module.exports.CreateProfile = async (req, res, next) => {
     );
   }
 
-  /* The below code snippet is using the `genderCode`
-  to query the database for a single document in the
-  `genders` collection. */
+  // Check if a profile with the given phone number already exists
+  const existingProfileWithPhone = await Profile.findOne({
+    phoneNumber: phoneNumber?.trim(),
+  });
+  if (existingProfileWithPhone) {
+    return next(
+      new ExpressResponse(
+        STATUS_ERROR,
+        STATUS_CODE_CONFLICT,
+        MESSAGE_PROFILE_TAKEN
+      )
+    );
+  }
+
+  // Retrieve the gender document using the genderCode
   const existingGender = await Gender.findOne({
     genderCode: gender,
   });
-
-  /* The below code snippet is checking if no document is
-  found with the given `genderCode`. If so, it returns
-  an error response using the `next` function with an
-  `ExpressResponse` object. */
   if (!existingGender) {
     return next(
       new ExpressResponse(
@@ -491,17 +445,10 @@ module.exports.CreateProfile = async (req, res, next) => {
     );
   }
 
-  /* The below code snippet is using the `countryCode`
-  to query the database for a single document in the
-  `countries` collection. */
+  // Retrieve the country document using the countryCode
   const existingCountry = await Country.findOne({
     countryCode: country,
   });
-
-  /* The below code snippet is checking if no document is
-  found with the given `countryCode`. If so, it returns
-  an error response using the `next` function with an
-  `ExpressResponse` object. */
   if (!existingCountry) {
     return next(
       new ExpressResponse(
@@ -512,18 +459,11 @@ module.exports.CreateProfile = async (req, res, next) => {
     );
   }
 
-  /* The below code snippet is using the `stateCode` to 
-  query the database for a single document in the `states` 
-  collection. */
+  // Retrieve the state document using the stateCode and ensure it belongs to the country
   const existingState = await State.findOne({
     stateCode: state,
-    country: existingCountry?._id,
+    country: existingCountry._id,
   });
-
-  /* The below code snippet is checking if no document is
-  found with the given `stateCode`. If so, it returns an 
-  error response using the `next` function with an
-  `ExpressResponse` object. */
   if (!existingState) {
     return next(
       new ExpressResponse(
@@ -534,17 +474,11 @@ module.exports.CreateProfile = async (req, res, next) => {
     );
   }
 
-  /* The below code snippet is using the `cityCode` to query 
-  the database for a single document in the `cities` 
-  collection. */
+  // Retrieve the city document using the cityCode and ensure it belongs to the state
   const existingCity = await City.findOne({
     cityCode: city,
-    state: existingState?._id,
+    state: existingState._id,
   });
-
-  /* The below code snippet is checking if no document is found 
-  with the given `cityCode`. If so, it returns an error response 
-  using the `next` function with an `ExpressResponse` object. */
   if (!existingCity) {
     return next(
       new ExpressResponse(
@@ -555,48 +489,37 @@ module.exports.CreateProfile = async (req, res, next) => {
     );
   }
 
-  /* The below code snippet is generating a unique `profileCode`
-  for a new profile being created. */
+  // Generate a unique profileCode for the new profile
   const profileCode = generateProfileCode();
 
-  /* The below code snippet is generating a object `obj`. */
-  const obj = {
+  // Construct the profile object with the retrieved data
+  const profileData = {
     profileCode,
     firstName,
     lastName,
     profilePicture,
-    gender: existingGender?._id,
+    gender: existingGender._id,
+    phoneNumber,
     address: {
       ...address,
-      country: existingCountry?._id,
-      state: existingState?._id,
-      city: existingCity?._id,
+      country: existingCountry._id,
+      state: existingState._id,
+      city: existingCity._id,
     },
     notification,
-    user: existingUser?._id,
+    user: existingUser._id,
   };
 
-  /* The below code snippet is adding social properties to the
-  object `obj` based on the `social` property from the request
-  body. */
+  // Include social data if provided
   if (social) {
-    obj.social = social;
+    profileData.social = social;
   }
 
-  /* The below code snippet is creating a new instance of the
-  `Profile` model with the provided object `obj`. */
-  const profile = new Profile(obj);
-
-  /* The below code snippet is saving the newly created
-  `Profile` object to the database. */
+  // Create a new profile instance and save it to the database
+  const profile = new Profile(profileData);
   await profile.save();
 
-  /* The below code snippet is querying the database to find
-  the newly created profile document using the above generated 
-  `profileCode` (excluding the fields `__v` and `_id`) with 
-  populating the linked documents from the `genders`, `users`, 
-  `roles`, `rolePermissions`, `cities`, `states`, and  `countries`
-  collections (excluding the fields `__v` and `_id). */
+  // Retrieve the newly created profile with related documents populated
   const createdProfile = await Profile.findOne(
     { profileCode },
     hiddenFieldsDefault
@@ -645,14 +568,10 @@ module.exports.CreateProfile = async (req, res, next) => {
       select: hiddenFieldsDefault,
     });
 
-  /* The below code snippet is running toJSON function on 
-  found document in `profiles` */
+  // Convert the profile document to JSON format
   const createdProfileData = createdProfile.toJSON();
 
-  /* The below code snippet is using the current logged in 
-  user's `userCode` to query the database to find the `_id`
-  of that user.
-   */
+  // Retrieve the current logged-in user and their role
   const currentUser = await User.findOne(
     { userCode: req.user.userCode },
     hiddenFieldsUser
@@ -665,20 +584,19 @@ module.exports.CreateProfile = async (req, res, next) => {
     },
   });
 
-  /* The below code snippet is creating a audit log. */
+  // Log the profile creation in the audit log
   await logAudit(
     generateAuditCode(),
-    auditActions?.CREATE,
-    auditCollections?.PROFILES,
-    createdProfileData?.profileCode,
-    auditChanges?.CREATE_PROFILE,
+    auditActions.CREATE,
+    auditCollections.PROFILES,
+    createdProfileData.profileCode,
+    auditChanges.CREATE_PROFILE,
     null,
-    createdProfileData?.toObject(),
+    createdProfileData.toObject(),
     currentUser?.toObject()
   );
 
-  /* The below code snippet returns an success response with
-  an `ExpressResponse` object. */
+  // Return a success response with the created profile data
   res
     .status(STATUS_CODE_SUCCESS)
     .send(
@@ -701,6 +619,7 @@ module.exports.UpdateProfile = async (req, res, next) => {
     firstName,
     lastName = "",
     profilePicture,
+    phoneNumber,
     gender,
     address,
     social = null,
@@ -743,6 +662,20 @@ module.exports.UpdateProfile = async (req, res, next) => {
         STATUS_ERROR,
         STATUS_CODE_CONFLICT,
         MESSAGE_USER_NOT_FOUND
+      )
+    );
+  }
+
+  const existingProfileWithPhone = await Profile.findOne({
+    profileCode: { $ne: profileCode },
+    phoneNumber: phoneNumber?.trim(),
+  });
+  if (existingProfileWithPhone) {
+    return next(
+      new ExpressResponse(
+        STATUS_ERROR,
+        STATUS_CODE_CONFLICT,
+        MESSAGE_PROFILE_TAKEN
       )
     );
   }

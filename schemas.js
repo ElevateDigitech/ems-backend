@@ -118,9 +118,9 @@ module.exports.profileSchema = Joi.object({
     url: Joi.string().required(),
     filename: Joi.string().required(),
   }).required(),
-  dob: Joi.string().pattern(VALID_DATE),
+  dob: Joi.string().required().pattern(VALID_DATE),
   gender: Joi.string().required(),
-  phoneNumber: Joi.string().pattern(VALID_PHONE),
+  phoneNumber: Joi.string().required().pattern(VALID_PHONE),
   address: Joi.object({
     addressLineOne: Joi.string(),
     addressLineTwo: Joi.string(),
@@ -156,9 +156,9 @@ module.exports.updateProfileSchema = Joi.object({
     url: Joi.string().required(),
     filename: Joi.string().required(),
   }).required(),
-  dob: Joi.string().pattern(VALID_DATE),
+  dob: Joi.string().required().pattern(VALID_DATE),
   gender: Joi.string().required(),
-  phoneNumber: Joi.string().pattern(VALID_PHONE),
+  phoneNumber: Joi.string().required().pattern(VALID_PHONE),
   address: Joi.object({
     addressLineOne: Joi.string(),
     addressLineTwo: Joi.string(),
