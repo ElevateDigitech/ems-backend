@@ -51,11 +51,11 @@ const MarkSchema = new Schema(
 );
 
 // Virtuals for timestamps
-MarkSchema.virtual("createdAtIST").get(function () {
+MarkSchema.virtual("createdAtEpochTimestamp").get(function () {
   return moment(this.createdAt).valueOf();
 });
 
-MarkSchema.virtual("updatedAtIST").get(function () {
+MarkSchema.virtual("updatedAtEpochTimestamp").get(function () {
   return moment(this.updatedAt).valueOf();
 });
 

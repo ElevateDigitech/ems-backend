@@ -42,11 +42,11 @@ const PermissionSchema = new Schema(
 );
 
 // Virtuals for timestamps
-PermissionSchema.virtual("createdAtIST").get(function () {
+PermissionSchema.virtual("createdAtEpochTimestamp").get(function () {
   return moment(this.createdAt).valueOf();
 });
 
-PermissionSchema.virtual("updatedAtIST").get(function () {
+PermissionSchema.virtual("updatedAtEpochTimestamp").get(function () {
   return moment(this.updatedAt).valueOf();
 });
 

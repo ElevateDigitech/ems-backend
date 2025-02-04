@@ -207,11 +207,11 @@ const ProfileSchema = new Schema(
 );
 
 /** Virtuals for Formatted Dates */
-ProfileSchema.virtual("createdAtIST").get(function () {
+ProfileSchema.virtual("createdAtEpochTimestamp").get(function () {
   return moment(this.createdAt).valueOf();
 });
 
-ProfileSchema.virtual("updatedAtIST").get(function () {
+ProfileSchema.virtual("updatedAtEpochTimestamp").get(function () {
   return moment(this.updatedAt).valueOf();
 });
 

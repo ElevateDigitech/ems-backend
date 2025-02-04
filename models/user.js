@@ -43,11 +43,11 @@ const UserSchema = new Schema(
 );
 
 // Virtuals for formatted timestamps
-UserSchema.virtual("createdAtIST").get(function () {
+UserSchema.virtual("createdAtEpochTimestamp").get(function () {
   return moment(this.createdAt).valueOf();
 });
 
-UserSchema.virtual("updatedAtIST").get(function () {
+UserSchema.virtual("updatedAtEpochTimestamp").get(function () {
   return moment(this.updatedAt).valueOf();
 });
 

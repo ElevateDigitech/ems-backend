@@ -42,11 +42,11 @@ const SectionSchema = new Schema(
 );
 
 // Virtuals for timestamps
-SectionSchema.virtual("createdAtIST").get(function () {
+SectionSchema.virtual("createdAtEpochTimestamp").get(function () {
   return moment(this.createdAt).valueOf();
 });
 
-SectionSchema.virtual("updatedAtIST").get(function () {
+SectionSchema.virtual("updatedAtEpochTimestamp").get(function () {
   return moment(this.updatedAt).valueOf();
 });
 

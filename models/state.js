@@ -48,11 +48,11 @@ const StateSchema = new Schema(
 );
 
 // Virtuals for formatted timestamps
-StateSchema.virtual("createdAtIST").get(function () {
+StateSchema.virtual("createdAtEpochTimestamp").get(function () {
   return moment(this.createdAt).valueOf();
 });
 
-StateSchema.virtual("updatedAtIST").get(function () {
+StateSchema.virtual("updatedAtEpochTimestamp").get(function () {
   return moment(this.updatedAt).valueOf();
 });
 

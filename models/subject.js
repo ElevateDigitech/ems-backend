@@ -37,11 +37,11 @@ const SubjectSchema = new Schema(
 );
 
 // Virtuals for timestamps
-SubjectSchema.virtual("createdAtIST").get(function () {
+SubjectSchema.virtual("createdAtEpochTimestamp").get(function () {
   return moment(this.createdAt).valueOf();
 });
 
-SubjectSchema.virtual("updatedAtIST").get(function () {
+SubjectSchema.virtual("updatedAtEpochTimestamp").get(function () {
   return moment(this.updatedAt).valueOf();
 });
 

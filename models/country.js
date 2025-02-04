@@ -49,11 +49,11 @@ const CountrySchema = new Schema(
 );
 
 // Virtuals for timestamps
-CountrySchema.virtual("createdAtIST").get(function () {
+CountrySchema.virtual("createdAtEpochTimestamp").get(function () {
   return moment(this.createdAt).valueOf();
 });
 
-CountrySchema.virtual("updatedAtIST").get(function () {
+CountrySchema.virtual("updatedAtEpochTimestamp").get(function () {
   return moment(this.updatedAt).valueOf();
 });
 

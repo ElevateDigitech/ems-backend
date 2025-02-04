@@ -37,11 +37,11 @@ const ClassSchema = new Schema(
 );
 
 // Virtuals for timestamps
-ClassSchema.virtual("createdAtIST").get(function () {
+ClassSchema.virtual("createdAtEpochTimestamp").get(function () {
   return moment(this.createdAt).valueOf();
 });
 
-ClassSchema.virtual("updatedAtIST").get(function () {
+ClassSchema.virtual("updatedAtEpochTimestamp").get(function () {
   return moment(this.updatedAt).valueOf();
 });
 

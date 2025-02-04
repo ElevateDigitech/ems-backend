@@ -63,7 +63,7 @@ const AuditSchema = new Schema(
   defaultOptions
 );
 
-AuditSchema.virtual("createdAtIST").get(function () {
+AuditSchema.virtual("createdAtEpochTimestamp").get(function () {
   return moment(this.createdAt).valueOf();
 });
 

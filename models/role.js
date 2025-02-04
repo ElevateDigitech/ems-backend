@@ -53,11 +53,11 @@ const RoleSchema = new Schema(
 );
 
 /** Virtuals for Formatted Dates */
-RoleSchema.virtual("createdAtIST").get(function () {
+RoleSchema.virtual("createdAtEpochTimestamp").get(function () {
   return moment(this.createdAt).valueOf();
 });
 
-RoleSchema.virtual("updatedAtIST").get(function () {
+RoleSchema.virtual("updatedAtEpochTimestamp").get(function () {
   return moment(this.updatedAt).valueOf();
 });
 

@@ -47,11 +47,11 @@ const CitySchema = new Schema(
 );
 
 // Virtuals for timestamps
-CitySchema.virtual("createdAtIST").get(function () {
+CitySchema.virtual("createdAtEpochTimestamp").get(function () {
   return moment(this.createdAt).valueOf();
 });
 
-CitySchema.virtual("updatedAtIST").get(function () {
+CitySchema.virtual("updatedAtEpochTimestamp").get(function () {
   return moment(this.updatedAt).valueOf();
 });
 

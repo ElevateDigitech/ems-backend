@@ -37,11 +37,11 @@ const GenderSchema = new Schema(
 );
 
 // Virtuals for timestamps
-GenderSchema.virtual("createdAtIST").get(function () {
+GenderSchema.virtual("createdAtEpochTimestamp").get(function () {
   return moment(this.createdAt).valueOf();
 });
 
-GenderSchema.virtual("updatedAtIST").get(function () {
+GenderSchema.virtual("updatedAtEpochTimestamp").get(function () {
   return moment(this.updatedAt).valueOf();
 });
 
