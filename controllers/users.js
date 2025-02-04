@@ -1,17 +1,24 @@
 const passport = require("passport");
 const User = require("../models/user");
-const allRegex = require("../utils/allRegex");
 const ExpressResponse = require("../utils/ExpressResponse");
+const allRegex = require("../utils/allRegex");
+const { logAudit } = require("../middleware");
 const {
+  auditActions,
+  auditCollections,
+  auditChanges,
+} = require("../utils/audit");
+const {
+  hiddenFieldsDefault,
+  hiddenFieldsUser,
   trimAndTestRegex,
   getInvalidRole,
   getRoleId,
   IsObjectIdReferenced,
   generateUserCode,
-  hiddenFieldsUser,
-  hiddenFieldsDefault,
   generateAuditCode,
 } = require("../utils/helpers");
+const { STATUS_ERROR, STATUS_SUCCESS } = require("../utils/status");
 const {
   STATUS_CODE_BAD_REQUEST,
   STATUS_CODE_CONFLICT,
@@ -42,20 +49,9 @@ const {
   MESSAGE_UPDATE_USER_SUCCESS,
   MESSAGE_ACCESS_DENIED_NO_PERMISSION,
 } = require("../utils/messages");
-const { STATUS_ERROR, STATUS_SUCCESS } = require("../utils/status");
-const {
-  auditActions,
-  auditCollections,
-  auditChanges,
-} = require("../utils/audit");
-const { logAudit } = require("../middleware");
 
 module.exports.register = async (req, res, next) => {
-  /* The below code snippet is extracting the `email`,
-  `username`, `password`, `userAllowDeletion`, and
-  `roleCode` properties from the request body. 
-  `userAllowDeletion` and `roleCode` are optional and
-  has a default values `true`. */
+  // Extract relevant properties from the request body, setting `userAllowDeletion` to `true` by default.
   const {
     email,
     username,
@@ -64,10 +60,7 @@ module.exports.register = async (req, res, next) => {
     roleCode,
   } = req.body;
 
-  /* The below code snippet is performing a check to
-  ensure that all required fields (email, username, and
-  password) are not empty or only contain whitespace
-  characters. */
+  // Validate that required fields (email, username, and password) are not empty or contain only whitespace.
   if (![email, username, password].every((field) => field?.trim()?.length)) {
     return next(
       new ExpressResponse(
@@ -78,9 +71,7 @@ module.exports.register = async (req, res, next) => {
     );
   }
 
-  /* The below code snippet is checking if the `email`
-  provided in the registration process passes a regex
-  test for a valid email format. */
+  // Verify if the provided email matches the required format using a regex pattern.
   if (!trimAndTestRegex(email, allRegex?.VALID_EMAIL)) {
     return next(
       new ExpressResponse(
@@ -91,11 +82,7 @@ module.exports.register = async (req, res, next) => {
     );
   }
 
-  /* The below code snippet is checking if the `password`
-  provided in the registration process passes a regex 
-  test for meeting certain constraints defined by the 
-  `VALID_PASSWORD` regex pattern stored in the `allRegex`
-  object. */
+  // Validate if the password meets the required constraints defined by a regex pattern.
   if (!trimAndTestRegex(password, allRegex?.VALID_PASSWORD)) {
     return next(
       new ExpressResponse(
@@ -106,20 +93,12 @@ module.exports.register = async (req, res, next) => {
     );
   }
 
-  /* The below code snippet is querying the database to
-  find a user record where either the email or username
-  matches the values provided during the registration
-  process. */
+  // Check if a user with the same email or username already exists in the database.
   const existingUser = await User.findOne({
     $or: [{ email: email?.trim()?.toLowerCase() }, { username }],
   });
 
-  /* The below code snippet is checking if there is an
-  existing user in the database with the same email or
-  username provided during the registration process. If
-  an existing user is found, it returns an error response
-  using `next()` function with a message indicating 
-  that the email or username already exists */
+  // If a duplicate email or username is found, return a conflict error response.
   if (existingUser) {
     return next(
       new ExpressResponse(
@@ -130,13 +109,7 @@ module.exports.register = async (req, res, next) => {
     );
   }
 
-  /* The below code snippet is calling a function
-  `getInvalidRole` with the `roleCode` parameter to check
-  if the provided `roleCode` is valid or not. If the 
-  `roleCode` is found to be invalid based on certain 
-  criteria within the `getInvalidRole` function, it will
-  return a truthy value indicating that the role is
-  invalid. */
+  // Validate if the provided `roleCode` is valid.
   const isRoleInvalid = await getInvalidRole(roleCode);
   if (isRoleInvalid) {
     return next(
@@ -148,19 +121,13 @@ module.exports.register = async (req, res, next) => {
     );
   }
 
-  /* The below code snippet is calling a function 
-  `getRoleId` with the `roleCode` parameter to 
-  retrieve the role ID associated with the provided
-  `roleCode`. */
+  // Retrieve the role ID associated with the given `roleCode`.
   const roleId = await getRoleId(roleCode);
 
-  /* The below code snippet is generating a unique
-  `userCode` for a new user being created. */
+  // Generate a unique `userCode` for the new user.
   const userCode = generateUserCode();
 
-  /* The below code snippet is creating a new instance
-  of the `User` model with the properties extracted 
-  from the `req.body` object. */
+  // Create a new `User` instance with the provided details.
   const user = new User({
     userCode,
     email: email?.trim()?.toLowerCase(),
@@ -169,22 +136,13 @@ module.exports.register = async (req, res, next) => {
     role: roleId,
   });
 
-  /* `The below code snippet is calling a method named
-  `register` on the `User` model. */
+  // Register the new user with the provided password.
   const registeredUser = await User.register(user, password);
 
-  /* The below code snippet is querying the database to find
-  the newly created user document using the above generated
-  `userCode` (excluding the fields `__v`, `_id`, `salt`, and
-  `hash`) with populating the linked documents from the 
-  `roles` collection (excluding the fields `__v` and `_id`)
-  and populating the linked documents from the `permissions`
-  collection (excluding the fields `__v` and `_id`) in the
-  role. */
+  // Retrieve the newly created user from the database, excluding certain fields,
+  // and populate associated role and permission details.
   const createdUser = await User.findOne(
-    {
-      userCode,
-    },
+    { userCode },
     hiddenFieldsUser
   ).populate({
     path: "role",
@@ -195,14 +153,9 @@ module.exports.register = async (req, res, next) => {
     },
   });
 
-  /* The below code snippet is using the current logged in 
-  user's `userCode` to query the database to find the `_id`
-  of that user.
-   */
+  // Retrieve the currently logged-in user's `_id` using their `userCode`.
   const currentUser = await User.findOne(
-    {
-      userCode: req.user.userCode,
-    },
+    { userCode: req.user.userCode },
     hiddenFieldsUser
   ).populate({
     path: "role",
@@ -213,7 +166,7 @@ module.exports.register = async (req, res, next) => {
     },
   });
 
-  /* The below code snippet is creating a audit log. */
+  // Log the creation of a new user in the audit system.
   await logAudit(
     generateAuditCode(),
     auditActions?.CREATE,
@@ -225,8 +178,7 @@ module.exports.register = async (req, res, next) => {
     currentUser?.toObject()
   );
 
-  /* The below code snippet returns an success response with
-  an `ExpressResponse` object. */
+  // Send a success response with the newly registered user details.
   res
     .status(STATUS_CODE_SUCCESS)
     .send(
@@ -241,12 +193,9 @@ module.exports.register = async (req, res, next) => {
 
 module.exports.login = async (req, res, next) => {
   try {
-    /* The below code snippet will use the `username' and
-    `password` properties provided in the request body to
-    authenticate the user. */
+    // Authenticate the user using the provided `username` and `password` from the request body.
     passport.authenticate("local", async (err, user, info) => {
-      /* The below code snippet is handling an error 
-      scenario during the authentication process. */
+      // Handle any errors that occur during the authentication process.
       if (err) {
         return next(
           new ExpressResponse(
@@ -257,9 +206,7 @@ module.exports.login = async (req, res, next) => {
         );
       }
 
-      /* The below code snippet is handling a scenario in 
-      the authentication process where it does not return a
-      valid user object. */
+      // If authentication fails and no user object is returned, send an unauthenticated response.
       if (!user) {
         return next(
           new ExpressResponse(
@@ -270,14 +217,10 @@ module.exports.login = async (req, res, next) => {
         );
       }
 
-      /* The below code snippet is using the current logged in 
-      user's `userCode` to query the database to find the `_id`
-      of that user.
-       */
+      // Retrieve the authenticated user's details from the database, excluding certain fields,
+      // and populate role and permission information.
       const currentUser = await User.findOne(
-        {
-          userCode: user.userCode,
-        },
+        { userCode: user.userCode },
         hiddenFieldsUser
       ).populate({
         path: "role",
@@ -288,10 +231,9 @@ module.exports.login = async (req, res, next) => {
         },
       });
 
-      /* The below code snippet is trying to login the user */
+      // Attempt to log the user in.
       req.login(user, async (err) => {
-        /* The code snipppet will return an error response using
-        the `next` function with an `ExpressResponse` object. */
+        // If an error occurs during login, return an internal server error response.
         if (err) {
           return next(
             new ExpressResponse(
@@ -302,7 +244,7 @@ module.exports.login = async (req, res, next) => {
           );
         }
 
-        /* The below code snippet is creating a audit log. */
+        // Log the successful login action in the audit system.
         await logAudit(
           generateAuditCode(),
           auditActions?.LOGIN,
@@ -314,8 +256,7 @@ module.exports.login = async (req, res, next) => {
           currentUser?.toObject()
         );
 
-        /* The below code snippet returns an success response with
-        an `ExpressResponse` object. */
+        // Send a success response with the logged-in user's details.
         res
           .status(STATUS_CODE_SUCCESS)
           .send(
@@ -329,10 +270,7 @@ module.exports.login = async (req, res, next) => {
       });
     })(req, res, next);
   } catch (e) {
-    /* The below code snippet catches any error that might occur
-    during executing the above try block and returns and error
-    response using the `next` function with an `ExpressResponse`
-    object. */
+    // Handle any unexpected errors and return an internal server error response.
     next(
       new ExpressResponse(
         STATUS_ERROR,
@@ -345,11 +283,11 @@ module.exports.login = async (req, res, next) => {
 
 module.exports.logout = (req, res, next) => {
   const currentUserCode = req?.user?.userCode;
+
   try {
-    /* The below code snippet is trying to logout the user */
+    // Attempt to log the user out.
     req.logout(async function (err) {
-      /* The code snipppet will return an error response using
-      the `next` function with an `ExpressResponse` object. */
+      // If an error occurs during logout, return an internal server error response.
       if (err) {
         return next(
           new ExpressResponse(
@@ -360,14 +298,10 @@ module.exports.logout = (req, res, next) => {
         );
       }
 
-      /* The below code snippet is using the current logged in 
-      user's `userCode` to query the database to find the `_id`
-      of that user.
-       */
+      // Retrieve the current user's details from the database, excluding certain fields,
+      // and populate role and permission information.
       const currentUser = await User.findOne(
-        {
-          userCode: currentUserCode,
-        },
+        { userCode: currentUserCode },
         hiddenFieldsUser
       ).populate({
         path: "role",
@@ -378,9 +312,7 @@ module.exports.logout = (req, res, next) => {
         },
       });
 
-      console.log(currentUser);
-
-      /* The below code snippet is creating a audit log. */
+      // Log the successful logout action in the audit system.
       await logAudit(
         generateAuditCode(),
         auditActions?.LOGOUT,
@@ -392,8 +324,7 @@ module.exports.logout = (req, res, next) => {
         currentUser?.toObject()
       );
 
-      /* The below code snippet returns an success response with
-      an `ExpressResponse` object. */
+      // Send a success response indicating the user has been logged out.
       res
         .status(STATUS_CODE_SUCCESS)
         .send(
@@ -405,10 +336,7 @@ module.exports.logout = (req, res, next) => {
         );
     });
   } catch (e) {
-    /* The below code snippet catches any error that might occur
-    during executing the above try block and returns and error
-    response using the `next` function with an `ExpressResponse`
-    object. */
+    // Handle any unexpected errors and return an internal server error response.
     next(
       new ExpressResponse(
         STATUS_ERROR,
@@ -421,17 +349,10 @@ module.exports.logout = (req, res, next) => {
 
 module.exports.changePassword = async (req, res, next) => {
   try {
-    /* The below code snippet is extracting the `email`,
-    `username`, `oldpassword`, and `newPassword` properties 
-    from the request body. */
+    // Extract relevant fields from the request body.
     const { email, username, oldPassword, newPassword } = req.body;
 
-    /* This below code snippet is performing a validation 
-    check to ensures either `username` or `email` field 
-    along with the `oldpassword` and `newpassword` fields 
-    are not empty or only contain whitespace characters. 
-    If so, then it returns an error response using the 
-    `next` function with an `ExpressResponse` object.*/
+    // Validate that either email or username, along with oldPassword and newPassword, are provided and not empty.
     if (
       ![email, oldPassword, newPassword].every(
         (field) => field?.trim()?.length
@@ -449,17 +370,12 @@ module.exports.changePassword = async (req, res, next) => {
       );
     }
 
-    /* This below code snippet is querying the database 
-    to find a user record where either the email or 
-    username matches the values provided. */
+    // Search the database for a user with the provided email or username.
     const existingUser = await User.findOne({
       $or: [{ email: email?.trim()?.toLowerCase() }, { username }],
     });
 
-    /* The below code snippet is checking if no document is
-    found with the given `username` or `email`. If so, then
-    it returns an error response using the `next` function 
-    with an `ExpressResponse` object. */
+    // If no matching user is found, return an error response.
     if (!existingUser) {
       return next(
         new ExpressResponse(
@@ -470,15 +386,10 @@ module.exports.changePassword = async (req, res, next) => {
       );
     }
 
-    /* The below code snippet will use the `oldPassword'
-    property provided in the request body to authenticate 
-    the `existingUser`. */
+    // Authenticate the user using the provided old password.
     const isAuthenticated = await existingUser.authenticate(oldPassword);
 
-    /* The below code snippet is checking if the user is
-    authenticated. If not, it returns an error response
-    using `next()` function with an `ExpressResponse` 
-    object. */
+    // If authentication fails, return an error response.
     if (!isAuthenticated.user) {
       return next(
         new ExpressResponse(
@@ -489,22 +400,15 @@ module.exports.changePassword = async (req, res, next) => {
       );
     }
 
-    /* The below code snippet is a method call that sets a 
-    new password for the `existingUser` object. */
+    // Update the user's password with the new password.
     await existingUser.setPassword(newPassword);
 
-    /* The bwlow code snippet saving the changes in 
-    `existingUser` object to the database. */
+    // Save the updated user information in the database.
     await existingUser.save();
 
-    /* The below code snippet is using the current logged in 
-      user's `userCode` to query the database to find the `_id`
-      of that user.
-       */
+    // Retrieve the current logged-in user's details, including role and permissions.
     const currentUser = await User.findOne(
-      {
-        userCode: req.user.userCode,
-      },
+      { userCode: req.user.userCode },
       hiddenFieldsUser
     ).populate({
       path: "role",
@@ -515,7 +419,7 @@ module.exports.changePassword = async (req, res, next) => {
       },
     });
 
-    /* The below code snippet is creating a audit log. */
+    // Log the password change action for auditing purposes.
     await logAudit(
       generateAuditCode(),
       auditActions?.CHANGE,
@@ -527,8 +431,7 @@ module.exports.changePassword = async (req, res, next) => {
       currentUser?.toObject()
     );
 
-    /* The below code snippet returns an success response with
-    an `ExpressResponse` object. */
+    // Send a success response indicating that the password has been changed.
     res
       .status(STATUS_CODE_SUCCESS)
       .send(
@@ -539,10 +442,7 @@ module.exports.changePassword = async (req, res, next) => {
         )
       );
   } catch (error) {
-    /* The below code snippet catches any error that might occur
-    during executing the above try block and returns and error
-    response using the `next` function with an `ExpressResponse`
-    object. */
+    // Handle any errors and return an internal server error response.
     next(
       new ExpressResponse(
         STATUS_ERROR,
@@ -555,17 +455,10 @@ module.exports.changePassword = async (req, res, next) => {
 
 module.exports.changeOwnPassword = async (req, res, next) => {
   try {
-    /* The below code snippet is extracting the `email`,
-    `username`, `oldpassword`, and `newPassword` properties 
-    from the request body. */
+    // Extract email, username, old password, and new password from the request body.
     const { email, username, oldPassword, newPassword } = req.body;
 
-    /* This below code snippet is performing a validation 
-    check to ensures either `username` or `email` field 
-    along with the `oldpassword` and `newpassword` fields 
-    are not empty or only contain whitespace characters. 
-    If so, then it returns an error response using the 
-    `next` function with an `ExpressResponse` object.*/
+    // Validate that either email or username is provided along with old and new passwords.
     if (
       ![email, oldPassword, newPassword].every(
         (field) => field?.trim()?.length
@@ -583,17 +476,12 @@ module.exports.changeOwnPassword = async (req, res, next) => {
       );
     }
 
-    /* This below code snippet is querying the database 
-    to find a user record where either the email or 
-    username matches the values provided. */
+    // Search for a user in the database by email or username.
     const existingUser = await User.findOne({
       $or: [{ email: email?.trim()?.toLowerCase() }, { username }],
     });
 
-    /* The below code snippet is checking if no document is
-    found with the given `username` or `email`. If so, then
-    it returns an error response using the `next` function 
-    with an `ExpressResponse` object. */
+    // If no user is found, return an error response.
     if (!existingUser) {
       return next(
         new ExpressResponse(
@@ -604,10 +492,7 @@ module.exports.changeOwnPassword = async (req, res, next) => {
       );
     }
 
-    /* The below code snippet is checking if the `userCode` in
-    the request body is same as the current logged in user. If
-    not, it will return an error response using the `next` function 
-    with an `ExpressResponse` object. */
+    // Check if the logged-in user's userCode matches the target user's userCode.
     if (req.user?.userCode && req.user?.userCode !== existingUser.userCode) {
       return next(
         new ExpressResponse(
@@ -618,15 +503,10 @@ module.exports.changeOwnPassword = async (req, res, next) => {
       );
     }
 
-    /* The below code snippet will use the `oldPassword'
-    property provided in the request body to authenticate 
-    the `existingUser`. */
+    // Authenticate the user using the provided old password.
     const isAuthenticated = await existingUser.authenticate(oldPassword);
 
-    /* The below code snippet is checking if the user is
-    authenticated. If not, it returns an error response
-    using `next()` function with an `ExpressResponse` 
-    object. */
+    // If authentication fails, return an error response.
     if (!isAuthenticated.user) {
       return next(
         new ExpressResponse(
@@ -637,22 +517,13 @@ module.exports.changeOwnPassword = async (req, res, next) => {
       );
     }
 
-    /* The below code snippet is a method call that sets a 
-    new password for the `existingUser` object. */
+    // Set and save the new password for the user.
     await existingUser.setPassword(newPassword);
-
-    /* The bwlow code snippet saving the changes in 
-    `existingUser` object to the database. */
     await existingUser.save();
 
-    /* The below code snippet is using the current logged in 
-      user's `userCode` to query the database to find the `_id`
-      of that user.
-       */
+    // Retrieve the currently logged-in user details, including role and permissions.
     const currentUser = await User.findOne(
-      {
-        userCode: req.user.userCode,
-      },
+      { userCode: req.user.userCode },
       hiddenFieldsUser
     ).populate({
       path: "role",
@@ -663,7 +534,7 @@ module.exports.changeOwnPassword = async (req, res, next) => {
       },
     });
 
-    /* The below code snippet is creating a audit log. */
+    // Log the password change event for auditing.
     await logAudit(
       generateAuditCode(),
       auditActions?.CHANGE,
@@ -675,8 +546,7 @@ module.exports.changeOwnPassword = async (req, res, next) => {
       currentUser?.toObject()
     );
 
-    /* The below code snippet returns an success response with
-    an `ExpressResponse` object. */
+    // Respond with a success message indicating the password change was successful.
     res
       .status(STATUS_CODE_SUCCESS)
       .send(
@@ -687,10 +557,7 @@ module.exports.changeOwnPassword = async (req, res, next) => {
         )
       );
   } catch (error) {
-    /* The below code snippet catches any error that might occur
-    during executing the above try block and returns and error
-    response using the `next` function with an `ExpressResponse`
-    object. */
+    // Handle any errors and return an internal server error response.
     next(
       new ExpressResponse(
         STATUS_ERROR,
@@ -703,13 +570,8 @@ module.exports.changeOwnPassword = async (req, res, next) => {
 
 module.exports.GetUsers = async (req, res, next) => {
   try {
-    /* The below code is fetching all users with their roles 
-    and role permissions from the database (excluding the fields 
-    `__v`, `_id`, `salt`, and `hash`) with populating the linked 
-    documents from the `roles` collection (excluding the fields 
-    `__v` and `_id`) and populating the linked documents from 
-    the `permissions` collection (excluding the fields `__v` and 
-    `_id`) in the role. */
+    // Retrieve all users from the database, excluding specified fields.
+    // Populate each user's role and associated role permissions while excluding unnecessary fields.
     const allUsers = await User.find({}, hiddenFieldsUser).populate({
       path: "role",
       select: hiddenFieldsDefault,
@@ -718,8 +580,8 @@ module.exports.GetUsers = async (req, res, next) => {
         select: hiddenFieldsDefault,
       },
     });
-    /* The below code snippet returns an success response with
-    an `ExpressResponse` object. */
+
+    // Respond with a success message and the retrieved user data.
     res
       .status(STATUS_CODE_SUCCESS)
       .send(
@@ -731,10 +593,7 @@ module.exports.GetUsers = async (req, res, next) => {
         )
       );
   } catch (error) {
-    /* The below code snippet catches any error that might occur
-    during executing the above try block and returns and error
-    response using the `next` function with an `ExpressResponse`
-    object. */
+    // Handle any errors that occur and return an internal server error response.
     next(
       new ExpressResponse(
         STATUS_ERROR,
@@ -747,9 +606,7 @@ module.exports.GetUsers = async (req, res, next) => {
 
 module.exports.GetOwnUser = async (req, res, next) => {
   try {
-    /* The below code snippet returns an success response with
-    an `ExpressResponse` object along with the logged in user
-    object */
+    // Send a success response with the currently logged-in user object.
     res
       .status(STATUS_CODE_SUCCESS)
       .send(
@@ -761,10 +618,7 @@ module.exports.GetOwnUser = async (req, res, next) => {
         )
       );
   } catch (error) {
-    /* The below code snippet catches any error that might occur
-    during executing the above try block and returns and error
-    response using the `next` function with an `ExpressResponse`
-    object. */
+    // Handle any errors that occur and return an internal server error response.
     next(
       new ExpressResponse(
         STATUS_ERROR,
@@ -777,16 +631,12 @@ module.exports.GetOwnUser = async (req, res, next) => {
 
 module.exports.GetUserById = async (req, res, next) => {
   try {
-    /* The below code snippet is extracting the `userCode`,
-    property from the request body. */
+    // Extract the `userCode` property from the request body.
     const { userCode } = req.body;
 
-    /* This below code snippet is performing a validation 
-    check to ensures `userCode` is not empty or only contain 
-    whitespace characters. If so, then it returns an error 
-    response using the `next` function with an 
-    `ExpressResponse` object.*/
-    if (!userCode || userCode?.trim()?.length === 0) {
+    // Validate that `userCode` is provided and is not empty or just whitespace.
+    // If invalid, return an error response.
+    if (!userCode?.trim()) {
       return next(
         new ExpressResponse(
           STATUS_ERROR,
@@ -796,14 +646,9 @@ module.exports.GetUserById = async (req, res, next) => {
       );
     }
 
-    /* The below code is quering the database to find an document
-    in the `users` collection with the given `userCode` with their
-    roles and role permissions (excluding the fields `__v`, `_id`, 
-    `salt`, and `hash`) with populating the linked documents from 
-    the `roles` collection (excluding the fields `__v` and `_id`) 
-    and populating the linked documents from the `permissions` 
-    collection (excluding the fields `__v` and `_id`) in the 
-    role. */
+    // Query the database to find a user matching the provided `userCode`,
+    // while excluding specific fields (`__v`, `_id`, `salt`, `hash`).
+    // Populate the associated role and its permissions, excluding certain fields.
     const requestedUser = await User.findOne(
       { userCode },
       hiddenFieldsUser
@@ -816,10 +661,7 @@ module.exports.GetUserById = async (req, res, next) => {
       },
     });
 
-    /* The below code snippet is checking if no document is
-    found with the given `userCode`. If so, then it returns 
-    an error response using the `next` function with an 
-    `ExpressResponse` object. */
+    // If no user is found, return an error response.
     if (!requestedUser) {
       return next(
         new ExpressResponse(
@@ -830,8 +672,7 @@ module.exports.GetUserById = async (req, res, next) => {
       );
     }
 
-    /* The below code snippet returns an success response with
-    an `ExpressResponse` object. */
+    // Respond with success, returning the retrieved user data.
     res
       .status(STATUS_CODE_SUCCESS)
       .send(
@@ -843,10 +684,7 @@ module.exports.GetUserById = async (req, res, next) => {
         )
       );
   } catch (error) {
-    /* The below code snippet catches any error that might occur
-    during executing the above try block and returns and error
-    response using the `next` function with an `ExpressResponse`
-    object. */
+    // Handle any errors that occur, returning an error response.
     next(
       new ExpressResponse(
         STATUS_ERROR,
@@ -859,17 +697,13 @@ module.exports.GetUserById = async (req, res, next) => {
 
 module.exports.UpdateUser = async (req, res, next) => {
   try {
-    /* The below code snippet is extracting the `userCode`,
-    `email`, and `username` properties from the request 
-    body. */
+    /* Extract the `userCode`, `email`, and `username` 
+    properties from the request body. */
     const { userCode, email, username } = req.body;
 
-    /* The below code snippet is performing a validation 
-    check to ensures `userCode`, `email`, and `username`
-    fields are not empty or only contain whitespace 
-    characters. If so, then it returns an error response 
-    using the `next` function with an `ExpressResponse` 
-    object.*/
+    /* Validate that none of the required fields are empty or
+    contain only whitespace characters. If any are missing, 
+    return an error response using `next`. */
     if (![userCode, email, username].every((field) => field?.trim()?.length)) {
       return next(
         new ExpressResponse(
@@ -880,15 +714,12 @@ module.exports.UpdateUser = async (req, res, next) => {
       );
     }
 
-    /* The below code snippet using the given `userCode` to
-    query the database for a single document in the `users`
-    collection. */
-    const existingUser = await User.findOne({ userCode });
+    /* Query the database for a user document matching the `userCode`. */
+    const existingUser = await User.findOne({
+      userCode,
+    });
 
-    /* The below code snippet is checking if no document is
-    found with the given `userCode`. If so, then it returns
-    an error response using the `next` function with an
-    `ExpressResponse` object. */
+    /* If no user is found, return an error response using `next`. */
     if (!existingUser) {
       return next(
         new ExpressResponse(
@@ -899,21 +730,14 @@ module.exports.UpdateUser = async (req, res, next) => {
       );
     }
 
-    /* The below code snippet is querying the database to
-    find document without the `userCode` from the request
-    body and with either `email` (or) `username` from the
-    request body.  */
+    /* Check if another user exists with the same `email` or `username`,
+    but a different `userCode`. */
     const otherUsers = await User.find({
       userCode: { $ne: userCode },
       $or: [{ email: email?.trim()?.toLowerCase() }, { username }],
     });
 
-    /* The below code snippet is checking if there is a
-    document in the `users` collection with the given 
-    `username` (or) `email` other than the document with 
-    the given `userCode`. If so, then it returns an error
-    response using the `next` function with an 
-    `ExpressResponse` object. */
+    /* If such a user exists, return an error response. */
     if (otherUsers?.length > 0) {
       return next(
         new ExpressResponse(
@@ -924,8 +748,7 @@ module.exports.UpdateUser = async (req, res, next) => {
       );
     }
 
-    /* The below code snippet is finding the instance of the 
-    `Role` model with the provided data. */
+    /* Retrieve the current user details along with role information. */
     const userBeforeUpdate = await User.findOne(
       { userCode },
       hiddenFieldsUser
@@ -938,8 +761,7 @@ module.exports.UpdateUser = async (req, res, next) => {
       },
     });
 
-    /* The below code snippet is finding and updating the instance
-    of the `User` model with the provided data. */
+    /* Update the user document with the provided `username` and `email`. */
     const user = await User.findOneAndUpdate(
       { userCode },
       {
@@ -948,21 +770,12 @@ module.exports.UpdateUser = async (req, res, next) => {
       }
     );
 
-    /* The below code snippet is saving the updated `user`
-    object to the database. */
+    /* Save the updated user object to the database. */
     await user.save();
 
-    /* The below code snippet is querying the database to find
-    the updated user document using the `userCode` (excluding the 
-    fields `__v`, `_id`, `salt`, and `hash`) with populating the 
-    linked documents from the `roles` collection (excluding the 
-    fields `__v` and `_id`) and populating the linked documents 
-    from the `permissions` collection (excluding the fields `__v` 
-    and `_id`) in the role. */
+    /* Retrieve the updated user details and populate role and permission information. */
     const updatedUser = await User.findOne(
-      {
-        userCode,
-      },
+      { userCode },
       hiddenFieldsUser
     ).populate({
       path: "role",
@@ -973,14 +786,9 @@ module.exports.UpdateUser = async (req, res, next) => {
       },
     });
 
-    /* The below code snippet is using the current logged in 
-    user's `userCode` to query the database to find the `_id`
-    of that user.
-   */
+    /* Query the database for the current logged-in user's `_id`. */
     const currentUser = await User.findOne(
-      {
-        userCode: req.user.userCode,
-      },
+      { userCode: req.user.userCode },
       hiddenFieldsUser
     ).populate({
       path: "role",
@@ -991,7 +799,7 @@ module.exports.UpdateUser = async (req, res, next) => {
       },
     });
 
-    /* The below code snippet is creating a audit log. */
+    /* Create an audit log for the update action. */
     await logAudit(
       generateAuditCode(),
       auditActions?.UPDATE,
@@ -1003,8 +811,7 @@ module.exports.UpdateUser = async (req, res, next) => {
       currentUser?.toObject()
     );
 
-    /* The below code snippet returns an success response with
-    an `ExpressResponse` object. */
+    /* Send a success response with the updated user data. */
     res
       .status(STATUS_CODE_SUCCESS)
       .send(
@@ -1016,10 +823,7 @@ module.exports.UpdateUser = async (req, res, next) => {
         )
       );
   } catch (error) {
-    /* The below code snippet catches any error that might occur
-    during executing the above try block and returns and error
-    response using the `next` function with an `ExpressResponse`
-    object. */
+    /* Catch any errors that occur during execution and return an error response. */
     next(
       new ExpressResponse(
         STATUS_ERROR,
@@ -1032,15 +836,11 @@ module.exports.UpdateUser = async (req, res, next) => {
 
 module.exports.DeleteUser = async (req, res, next) => {
   try {
-    /* The below code snippet is extracting the `userCode`,
-    property from the request body. */
+    /* Extract the `userCode` property from the request body. */
     const { userCode } = req.body;
 
-    /* The below code snippet is performing a validation 
-    check to ensures `userCode`, is not empty or only contain 
-    whitespace characters. If so, then it returns an error 
-    response using the `next` function with an `ExpressResponse` 
-    object.*/
+    /* Validate that `userCode` is provided and not just empty or whitespace. 
+    If validation fails, return an error response. */
     if (!userCode || userCode?.trim()?.length === 0) {
       return next(
         new ExpressResponse(
@@ -1051,15 +851,10 @@ module.exports.DeleteUser = async (req, res, next) => {
       );
     }
 
-    /* The below code snippet using the given `userCode` to
-    query the database for a single document in the `users`
-    collection. */
+    /* Query the database for a user document matching the `userCode`. */
     const existingUser = await User.findOne({ userCode });
 
-    /* The below code snippet is checking if no document is
-    found with the given `userCode`. If so, then it returns
-    an error response using the `next` function with an
-    `ExpressResponse` object. */
+    /* If no user is found, return an error response indicating the user doesn't exist. */
     if (!existingUser) {
       return next(
         new ExpressResponse(
@@ -1070,10 +865,7 @@ module.exports.DeleteUser = async (req, res, next) => {
       );
     }
 
-    /* The below code snippet is checking if the found
-    document is allowed to be deleted. If not, it returns
-    an error response using the `next` function with an
-    `ExpressResponse` object. */
+    /* Check if the user is allowed to be deleted. If not, return an error response. */
     if (!existingUser?.userAllowDeletion) {
       return next(
         new ExpressResponse(
@@ -1084,13 +876,10 @@ module.exports.DeleteUser = async (req, res, next) => {
       );
     }
 
-    /* The below code snippet is checking if the user is
-    being used anywhere in the database. */
+    /* Check if the user is referenced anywhere else in the database. */
     const { isReferenced } = await IsObjectIdReferenced(existingUser._id);
 
-    /* The below code snippet returns an error response
-    using the `next` function with an `ExpressResponse`
-    object, when the found document is in use. */
+    /* If the user is in use, return an error response. */
     if (isReferenced) {
       return next(
         new ExpressResponse(
@@ -1101,9 +890,8 @@ module.exports.DeleteUser = async (req, res, next) => {
       );
     }
 
-    /* The below code snippet is finding the instance of the 
-    `Role` model with the provided data. */
-    const userBeforeUpdate = await User.findOne(
+    /* Retrieve the current user details, including their role and permissions. */
+    const userBeforeDelete = await User.findOne(
       { userCode },
       hiddenFieldsUser
     ).populate({
@@ -1115,17 +903,11 @@ module.exports.DeleteUser = async (req, res, next) => {
       },
     });
 
-    /* The the below code snippet is querying the database
-    to delete the document with the given `userCode` in the 
-    `users` collection. */
-    const user = await User.deleteOne({ userCode });
+    /* Perform the deletion of the user from the database. */
+    const userDeletionResult = await User.deleteOne({ userCode });
 
-    /* The the below code snippet is using `deletedCount` in the
-    `deleteOne` mongoose function response to confirm the document
-    deletion. If it is `0` then the document is not deleted, then
-    it return an error response using the `next` function with
-    an `ExpressResponse` object. */
-    if (user?.deletedCount === 0) {
+    /* If no document was deleted, return an error response. */
+    if (userDeletionResult?.deletedCount === 0) {
       return next(
         new ExpressResponse(
           STATUS_ERROR,
@@ -1135,14 +917,9 @@ module.exports.DeleteUser = async (req, res, next) => {
       );
     }
 
-    /* The below code snippet is using the current logged in 
-    user's `userCode` to query the database to find the `_id`
-    of that user.
-   */
+    /* Retrieve the current logged-in user details. */
     const currentUser = await User.findOne(
-      {
-        userCode: req.user.userCode,
-      },
+      { userCode: req.user.userCode },
       hiddenFieldsUser
     ).populate({
       path: "role",
@@ -1153,20 +930,19 @@ module.exports.DeleteUser = async (req, res, next) => {
       },
     });
 
-    /* The below code snippet is creating a audit log. */
+    /* Create an audit log for the user deletion. */
     await logAudit(
       generateAuditCode(),
       auditActions?.DELETE,
       auditCollections?.USERS,
       userCode,
       auditChanges?.DELETE_USER,
-      userBeforeUpdate?.toObject(),
+      userBeforeDelete?.toObject(),
       null,
       currentUser?.toObject()
     );
 
-    /* The below code snippet returns an success response with
-    an `ExpressResponse` object. */
+    /* Return a success response confirming the user deletion. */
     res
       .status(STATUS_CODE_SUCCESS)
       .send(
@@ -1177,10 +953,7 @@ module.exports.DeleteUser = async (req, res, next) => {
         )
       );
   } catch (error) {
-    /* The below code snippet catches any error that might occur
-    during executing the above try block and returns and error
-    response using the `next` function with an `ExpressResponse`
-    object. */
+    /* Catch any errors during execution and return an error response. */
     next(
       new ExpressResponse(
         STATUS_ERROR,

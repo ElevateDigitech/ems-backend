@@ -1,15 +1,29 @@
 const moment = require("moment-timezone");
 const Country = require("../models/country");
 const State = require("../models/state");
+const User = require("../models/user");
 const ExpressResponse = require("../utils/ExpressResponse");
+const { logAudit } = require("../middleware");
 const {
+  auditActions,
+  auditCollections,
+  auditChanges,
+} = require("../utils/audit");
+const {
+  hiddenFieldsDefault,
+  hiddenFieldsUser,
   toCapitalize,
   IsObjectIdReferenced,
   generateStateCode,
-  hiddenFieldsDefault,
   generateAuditCode,
-  hiddenFieldsUser,
 } = require("../utils/helpers");
+const { STATUS_ERROR, STATUS_SUCCESS } = require("../utils/status");
+const {
+  STATUS_CODE_CONFLICT,
+  STATUS_CODE_SUCCESS,
+  STATUS_CODE_BAD_REQUEST,
+  STATUS_CODE_INTERNAL_SERVER_ERROR,
+} = require("../utils/statusCodes");
 const {
   MESSAGE_STATE_EXIST,
   MESSAGE_CREATE_STATE_SUCCESS,
@@ -24,34 +38,16 @@ const {
   MESSAGE_COUNTRY_NOT_FOUND,
   MESSAGE_STATE_TAKEN,
 } = require("../utils/messages");
-const { STATUS_ERROR, STATUS_SUCCESS } = require("../utils/status");
-const {
-  STATUS_CODE_CONFLICT,
-  STATUS_CODE_SUCCESS,
-  STATUS_CODE_BAD_REQUEST,
-  STATUS_CODE_INTERNAL_SERVER_ERROR,
-} = require("../utils/statusCodes");
-const User = require("../models/user");
-const { logAudit } = require("../middleware");
-const {
-  auditActions,
-  auditCollections,
-  auditChanges,
-} = require("../utils/audit");
 
 module.exports.GetStates = async (req, res, next) => {
-  /* The below code snippet is used to query the database for 
-  all the documents in the `states` collection (excluding
-  the fields `__v` and `_id`) with populating the linked 
-  documents from the `countries` collection (excluding the 
-  fields `__v` and `_id`). */
+  // Query the `states` collection for all documents, excluding `__v` and `_id` fields,
+  // and populate the linked documents from the `countries` collection, excluding the `__v` and `_id` fields.
   const states = await State.find({}, hiddenFieldsDefault).populate(
     "country",
     hiddenFieldsDefault
   );
 
-  /* The below code snippet returns an success response with
-  an `ExpressResponse` object. */
+  // Return a success response with the retrieved states data.
   res
     .status(STATUS_CODE_SUCCESS)
     .send(
@@ -65,25 +61,16 @@ module.exports.GetStates = async (req, res, next) => {
 };
 
 module.exports.GetStateByCode = async (req, res, next) => {
-  /* The below code snippet is extracting the `stateCode` property 
-  from the request body. It then uses this `stateCode`
-  to query the database for a single document in the `states`
-  collection (excluding the fields `__v` and `_id`) with 
-  populating the linked documents from the `countries` 
-  collection (excluding the fields `__v` and `_id`). */
+  // Extract `stateCode` from the request body and use it to find a document in the `states` collection,
+  // excluding the `__v` and `_id` fields, and populating the linked `country` document, also excluding `__v` and `_id`.
   const { stateCode } = req.body;
-  const states = await State.findOne(
+  const state = await State.findOne(
     { stateCode },
     hiddenFieldsDefault
   ).populate("country", hiddenFieldsDefault);
 
-  /* The below code snippet is checking if the `states` variable
-  is falsy, which means that no document was found in the database
-  that matches the specified `stateCode` provided in the request
-  parameters. If no document is found (`states` is falsy), it
-  returns an error response using the `next` function with an
-  `ExpressResponse` object. */
-  if (!states) {
+  // Check if no matching state document was found in the database. If so, return an error response.
+  if (!state) {
     return next(
       new ExpressResponse(
         STATUS_ERROR,
@@ -93,8 +80,7 @@ module.exports.GetStateByCode = async (req, res, next) => {
     );
   }
 
-  /* The below code snippet returns an success response with
-  an `ExpressResponse` object. */
+  // Return a success response with the retrieved state data.
   res
     .status(STATUS_CODE_SUCCESS)
     .send(
@@ -102,27 +88,21 @@ module.exports.GetStateByCode = async (req, res, next) => {
         STATUS_SUCCESS,
         STATUS_CODE_SUCCESS,
         MESSAGE_GET_STATE_SUCCESS,
-        states
+        state
       )
     );
 };
 
 module.exports.GetStatesByCountryCode = async (req, res, next) => {
-  /* The below code snippet is extracting the `countryCode` 
-  property from the request body. */
+  // Extract `countryCode` from the request body.
   const { countryCode } = req.body;
 
-  /* The below code snippet uses the `countryCode` to query the 
-  database to find a document in the `countries` collection
-  (excluding the fields `__v` and `_id`). */
-  const country = await Country.findOne({ countryCode });
+  // Use `countryCode` to query the `countries` collection and retrieve the country document.
+  const country = await Country.findOne({
+    countryCode,
+  });
 
-  /* The below code snippet is checking if the `country` variable
-  is falsy, which means that no document was found in the database
-  that matches the specified `countryCode` provided in the request
-  parameters. If no document is found (`country` is falsy), it
-  returns an error response using the `next` function with an
-  `ExpressResponse` object. */
+  // Check if no matching country document is found. If not, return an error response.
   if (!country) {
     return next(
       new ExpressResponse(
@@ -133,23 +113,14 @@ module.exports.GetStatesByCountryCode = async (req, res, next) => {
     );
   }
 
-  /* The below code snippet uses the `country._id` to query the 
-  database to find all the documents in the `states` collection
-  (excluding the fields `__v` and `_id`) with populating the 
-  linked documents from the `countries` collection (excluding the 
-  fields `__v` and `_id`). */
+  // Use `country._id` to find all documents in the `states` collection, populating the linked `country` document.
   const states = await State.find(
     { country: country?._id },
     hiddenFieldsDefault
   ).populate("country", hiddenFieldsDefault);
 
-  /* The below code snippet is checking if the `states` variable
-  is falsy, which means that no document was found in the database
-  that matches the specified `countryCode` provided in the request
-  parameters. If no document is found (`states` is falsy), it
-  returns an error response using the `next` function with an
-  `ExpressResponse` object. */
-  if (!states || !Array.isArray(states) || states?.length === 0) {
+  // Check if no matching state documents are found or if the `states` array is empty. If so, return an error response.
+  if (!states || !Array.isArray(states) || states.length === 0) {
     return next(
       new ExpressResponse(
         STATUS_ERROR,
@@ -159,8 +130,7 @@ module.exports.GetStatesByCountryCode = async (req, res, next) => {
     );
   }
 
-  /* The below code snippet returns an success response with
-  an `ExpressResponse` object. */
+  // Return a success response with the retrieved states data.
   res
     .status(STATUS_CODE_SUCCESS)
     .send(
@@ -174,24 +144,15 @@ module.exports.GetStatesByCountryCode = async (req, res, next) => {
 };
 
 module.exports.CreateState = async (req, res, next) => {
-  /* The below code snippet is extracting the `name`, `iso`, 
-  and `countryCode` properties from the request body. */
+  // Extract `name`, `iso`, and `countryCode` from the request body.
   const { name, iso, countryCode } = req.body;
 
-  /* The below code snippet capitalize the `name`, make all
-  letters capital for `iso` and then the uses it to query 
-  the database for a single document in the `states` 
-  collection. */
+  // Capitalize the `name` and make `iso` uppercase, then check if a state with the same `name` or `iso` exists in the database.
   const existingState = await State.findOne({
     $or: [{ name: toCapitalize(name) }, { iso: iso.toUpperCase() }],
   });
 
-  /* The below code snippet is checking if there is an existing
-  state with the same `name` or `iso` in the database. If
-  `existingState` is truthy (meaning a state with the same 
-  `name` or `iso` already exists), it returns an error 
-  response using the `next` function with an `ExpressResponse`
-  object. */
+  // If a state with the same `name` or `iso` exists, return a conflict error.
   if (existingState) {
     return next(
       new ExpressResponse(
@@ -202,17 +163,12 @@ module.exports.CreateState = async (req, res, next) => {
     );
   }
 
-  /* The below code snippet is using the `countryCode`
-  to query the database for a single document in the
-  `countries` collection. */
+  // Query the database to find the country by `countryCode`.
   const existingCountry = await Country.findOne({
     countryCode,
   });
 
-  /* The below code snippet is checking if no document is
-  found with the given `countryCode`. If so, it returns
-  an error response using the `next` function with an
-  `ExpressResponse` object. */
+  // If no country is found, return a conflict error.
   if (!existingCountry) {
     return next(
       new ExpressResponse(
@@ -223,12 +179,10 @@ module.exports.CreateState = async (req, res, next) => {
     );
   }
 
-  /* The below code snippet is generating a unique `stateCode`
-  for a new state being created. */
+  // Generate a unique `stateCode` for the new state.
   const stateCode = generateStateCode();
 
-  /* The below code snippet is creating a new instance of the
-  `State` model with the provided data. */
+  // Create a new state instance with the provided data.
   const state = new State({
     name: toCapitalize(name),
     stateCode,
@@ -236,25 +190,16 @@ module.exports.CreateState = async (req, res, next) => {
     country: existingCountry?._id,
   });
 
-  /* The below code snippet is saving the newly created
-  `State` object to the database. */
+  // Save the new state to the database.
   await state.save();
 
-  /* The below code snippet is querying the database to find
-  the newly created state document using the above
-  generated `stateCode` (excluding the fields `__v` and
-  `_id`) with populating the linked documents from the 
-  `countries` collection (excluding the fields `__v` and 
-  `_id`). */
+  // Retrieve the newly created state using the generated `stateCode` and populate the linked country document.
   const createdState = await State.findOne(
     { stateCode },
     hiddenFieldsDefault
   ).populate("country", hiddenFieldsDefault);
 
-  /* The below code snippet is using the current logged in 
-  user's `userCode` to query the database to find the `_id`
-  of that user.
-   */
+  // Retrieve the current user's data using their `userCode`.
   const currentUser = await User.findOne(
     { userCode: req.user.userCode },
     hiddenFieldsUser
@@ -267,7 +212,7 @@ module.exports.CreateState = async (req, res, next) => {
     },
   });
 
-  /* The below code snippet is creating a audit log. */
+  // Log the action to the audit log.
   await logAudit(
     generateAuditCode(),
     auditActions?.CREATE,
@@ -279,8 +224,7 @@ module.exports.CreateState = async (req, res, next) => {
     currentUser?.toObject()
   );
 
-  /* The below code snippet returns an success response with
-  an `ExpressResponse` object. */
+  // Return a success response with the created state data.
   res
     .status(STATUS_CODE_SUCCESS)
     .send(
@@ -294,22 +238,15 @@ module.exports.CreateState = async (req, res, next) => {
 };
 
 module.exports.UpdateState = async (req, res, next) => {
-  /* The below code snippet is extracting the `stateCode`,
-  `name`, `iso`, and `countryCode` properties from the 
-  request body. */
+  // Extract `stateCode`, `name`, `iso`, and `countryCode` from the request body.
   const { stateCode, name, iso, countryCode } = req.body;
 
-  /* The below code snippet is using the `stateCode`
-  to query the database for a single document in the
-  `states` collection. */
+  // Query the database to find a state document by `stateCode`.
   const existingState = await State.findOne({
     stateCode,
   });
 
-  /* The below code snippet is checking if no document is
-  found with the given `stateCode`. If so, it returns
-  an error response using the `next` function with an
-  `ExpressResponse` object. */
+  // If no state is found with the provided `stateCode`, return a conflict error.
   if (!existingState) {
     return next(
       new ExpressResponse(
@@ -320,17 +257,12 @@ module.exports.UpdateState = async (req, res, next) => {
     );
   }
 
-  /* The below code snippet is using the `countryCode`
-  to query the database for a single document in the
-  `countries` collection. */
+  // Query the database to find a country by `countryCode`.
   const existingCountry = await Country.findOne({
     countryCode,
   });
 
-  /* The below code snippet is checking if no document is
-  found with the given `countryCode`. If so, it returns
-  an error response using the `next` function with an
-  `ExpressResponse` object. */
+  // If no country is found with the provided `countryCode`, return a conflict error.
   if (!existingCountry) {
     return next(
       new ExpressResponse(
@@ -341,21 +273,14 @@ module.exports.UpdateState = async (req, res, next) => {
     );
   }
 
-  /* The below code snippet is querying the database to
-  find document without the `stateCode` from the request
-  body and with either `name` (or) `iso` from the 
-  request body.  */
+  // Query the `states` collection for documents where `stateCode` is different
+  // and either `name` or `iso` matches the provided values.
   const otherStates = await State.find({
     stateCode: { $ne: stateCode },
     $or: [{ name: toCapitalize(name) }, { iso: iso.toUpperCase() }],
   });
 
-  /* The below code snippet is checking if there is a
-  document in the `states` collection with the given 
-  `name` (or) `iso` other than the document with the 
-  given `stateCode`. If so, then it returns an error 
-  response using the `next` function with an 
-  `ExpressResponse` object. */
+  // If any such state exists, return a conflict error.
   if (otherStates?.length > 0) {
     return next(
       new ExpressResponse(
@@ -366,16 +291,13 @@ module.exports.UpdateState = async (req, res, next) => {
     );
   }
 
-  /* The below code snippet is querying the database to find
-  and retrieve the state document (excluding the fields 
-  `__v` and `_id`). */
+  // Query the database to retrieve the state document before updating.
   const stateBeforeUpdate = await State.findOne(
     { stateCode },
     hiddenFieldsDefault
   );
 
-  /* The below code snippet is updating the instance of the
-  `State` model with the provided data. */
+  // Update the `State` document with the new data.
   const state = await State.findOneAndUpdate(
     { stateCode },
     {
@@ -386,24 +308,16 @@ module.exports.UpdateState = async (req, res, next) => {
     }
   );
 
-  /* The below code snippet is saving the updated `state`
-  object to the database. */
+  // Save the updated `State` object to the database.
   await state.save();
 
-  /* The below code snippet is querying the database to find
-  and retrieve an updated state document (excluding the
-  fields `__v` and `_id`) with populating the linked documents
-  from the `countries` collection (excluding the fields `__v`
-  and `_id`). */
+  // Retrieve the updated state document, including populated country data.
   const updatedState = await State.findOne(
     { stateCode },
     hiddenFieldsDefault
   ).populate("country", hiddenFieldsDefault);
 
-  /* The below code snippet is using the current logged in 
-  user's `userCode` to query the database to find the `_id`
-  of that user.
-   */
+  // Query the database to find the current logged-in user's `_id` using their `userCode`.
   const currentUser = await User.findOne(
     { userCode: req.user.userCode },
     hiddenFieldsUser
@@ -416,7 +330,7 @@ module.exports.UpdateState = async (req, res, next) => {
     },
   });
 
-  /* The below code snippet is creating a audit log. */
+  // Log the update action in the audit log.
   await logAudit(
     generateAuditCode(),
     auditActions?.UPDATE,
@@ -428,8 +342,7 @@ module.exports.UpdateState = async (req, res, next) => {
     currentUser?.toObject()
   );
 
-  /* The below code snippet returns an success response with
-    an `ExpressResponse` object. */
+  // Return a success response with the updated state data.
   res
     .status(STATUS_CODE_SUCCESS)
     .send(
@@ -443,21 +356,15 @@ module.exports.UpdateState = async (req, res, next) => {
 };
 
 module.exports.DeleteState = async (req, res, next) => {
-  /* The below code snippet is extracting the `stateCode`
-  property from the request body. */
+  // Extract `stateCode` from the request body.
   const { stateCode } = req.body;
 
-  /* The below code snippet is using the `stateCode`
-  to query the database for a single document in the
-  `states` collection. */
+  // Use the `stateCode` to query the database for a state document.
   const existingState = await State.findOne({
     stateCode,
   });
 
-  /* The below code snippet is checking if no document is
-  found with the given `stateCode`. It returns an error
-  response using the `next` function with an `ExpressResponse`
-  object. */
+  // If no state is found, return a conflict error response.
   if (!existingState) {
     return next(
       new ExpressResponse(
@@ -468,13 +375,10 @@ module.exports.DeleteState = async (req, res, next) => {
     );
   }
 
-  /* The below code snippet is checking if the state is
-  being used anywhere in the database. */
+  // Check if the state is being referenced anywhere in the database.
   const { isReferenced } = await IsObjectIdReferenced(existingState._id);
 
-  /* The below code snippet returns an error response using
-  the `next` function with an `ExpressResponse` object, when
-  the found document is in use. */
+  // If the state is in use, return an error response indicating it cannot be deleted.
   if (isReferenced) {
     return next(
       new ExpressResponse(
@@ -485,25 +389,18 @@ module.exports.DeleteState = async (req, res, next) => {
     );
   }
 
-  /* The below code snippet is querying the database to find
-  and retrieve the state document (excluding the fields 
-  `__v` and `_id`). */
+  // Retrieve the state document before deletion (excluding `__v` and `_id`).
   const stateBeforeDelete = await State.findOne(
     { stateCode },
     hiddenFieldsDefault
   );
 
-  /* The the below code snippet is querying the database to
-  delete the document with the given `stateCode` in the
-  `states` collection (excluding the fields `__v` and
-  `_id`). */
-  const state = await State.deleteOne({ stateCode });
+  // Delete the state document from the database.
+  const state = await State.deleteOne({
+    stateCode,
+  });
 
-  /* The the below code snippet is using `deletedCount` in the
-  `deleteOne` mongoose function response to confirm the document
-  deletion. If it is `0` then the document is not deleted, then
-  it return an error response using the `next` function with
-  an `ExpressResponse` object. */
+  // If the document wasn't deleted, return an error response.
   if (state?.deletedCount === 0) {
     return next(
       new ExpressResponse(
@@ -514,10 +411,7 @@ module.exports.DeleteState = async (req, res, next) => {
     );
   }
 
-  /* The below code snippet is using the current logged in 
-  user's `userCode` to query the database to find the `_id`
-  of that user.
-   */
+  // Query the database to find the current logged-in user's `_id` using their `userCode`.
   const currentUser = await User.findOne(
     { userCode: req.user.userCode },
     hiddenFieldsUser
@@ -530,7 +424,7 @@ module.exports.DeleteState = async (req, res, next) => {
     },
   });
 
-  /* The below code snippet is creating a audit log. */
+  // Create an audit log for the delete action.
   await logAudit(
     generateAuditCode(),
     auditActions?.DELETE,
@@ -542,8 +436,7 @@ module.exports.DeleteState = async (req, res, next) => {
     currentUser?.toObject()
   );
 
-  /* The below code snippet returns an success response with
-  an `ExpressResponse` object. */
+  // Return a success response indicating the state was deleted.
   res
     .status(STATUS_CODE_SUCCESS)
     .send(

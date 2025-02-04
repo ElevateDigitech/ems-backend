@@ -1,5 +1,16 @@
 const Profile = require("../models/profile");
+const Gender = require("../models/gender");
+const Country = require("../models/country");
+const State = require("../models/state");
+const City = require("../models/city");
+const User = require("../models/user");
 const ExpressResponse = require("../utils/ExpressResponse");
+const { logAudit } = require("../middleware");
+const {
+  auditActions,
+  auditCollections,
+  auditChanges,
+} = require("../utils/audit");
 const {
   hiddenFieldsDefault,
   hiddenFieldsUser,
@@ -32,17 +43,6 @@ const {
   MESSAGE_OWN_PROFILE_NOT_FOUND,
   MESSAGE_PROFILE_TAKEN,
 } = require("../utils/messages");
-const Gender = require("../models/gender");
-const Country = require("../models/country");
-const State = require("../models/state");
-const City = require("../models/city");
-const User = require("../models/user");
-const { logAudit } = require("../middleware");
-const {
-  auditActions,
-  auditCollections,
-  auditChanges,
-} = require("../utils/audit");
 
 module.exports.getProfiles = async (req, res, next) => {
   // Query the `Profile` collection and populate related fields
@@ -610,10 +610,7 @@ module.exports.CreateProfile = async (req, res, next) => {
 };
 
 module.exports.UpdateProfile = async (req, res, next) => {
-  /* The below code snippet is extracting `profileCode`, 
-  `firstName`, `lastName`, `profilePicture`, `gender`, 
-  `address`, `notification`, and `user` properties from 
-  the request body. */
+  // Extract the required properties from the request body.
   const {
     profileCode,
     firstName,
@@ -629,14 +626,12 @@ module.exports.UpdateProfile = async (req, res, next) => {
 
   const { city, state, country } = address;
 
-  /* The below code snippet is using the `profileCode` 
-  property from the request body to query the database
-  for a document in the `profiles` collection. */
-  const existingProfile = await Profile.findOne({ profileCode });
+  // Query the database to find a profile with the provided `profileCode`.
+  const existingProfile = await Profile.findOne({
+    profileCode,
+  });
 
-  /* The below code snippet is checking if no document is
-  found. If so, then it returns an error response using 
-  the `next` function with an `ExpressResponse ` object. */
+  // If no profile is found, return an error response.
   if (!existingProfile) {
     return next(
       new ExpressResponse(
@@ -647,15 +642,12 @@ module.exports.UpdateProfile = async (req, res, next) => {
     );
   }
 
-  /* The below code snippet using the given `user` to
-  query the database for a single document in the `users`
-  collection. */
-  const existingUser = await User.findOne({ userCode: user });
+  // Query the database to find a user with the provided `user` code.
+  const existingUser = await User.findOne({
+    userCode: user,
+  });
 
-  /* The below code snippet is checking if no document is
-  found with the given `user`. If so, then it returns an 
-  error response using the `next` function with an
-  `ExpressResponse` object. */
+  // If no user is found, return an error response.
   if (!existingUser) {
     return next(
       new ExpressResponse(
@@ -666,6 +658,7 @@ module.exports.UpdateProfile = async (req, res, next) => {
     );
   }
 
+  // Check if the provided phone number already exists in the database for a different profile.
   const existingProfileWithPhone = await Profile.findOne({
     profileCode: { $ne: profileCode },
     phoneNumber: phoneNumber?.trim(),
@@ -680,17 +673,12 @@ module.exports.UpdateProfile = async (req, res, next) => {
     );
   }
 
-  /* The below code snippet is using the `genderCode` to 
-  query the database for a single document in the `genders` 
-  collection. */
+  // Query the `genders` collection to find the gender by `genderCode`.
   const existingGender = await Gender.findOne({
     genderCode: gender,
   });
 
-  /* The below code snippet is checking if no document is
-  found with the given `genderCode`. If so, it returns an 
-  error response using the `next` function with an
-  `ExpressResponse` object. */
+  // If no gender is found, return an error response.
   if (!existingGender) {
     return next(
       new ExpressResponse(
@@ -701,17 +689,12 @@ module.exports.UpdateProfile = async (req, res, next) => {
     );
   }
 
-  /* The below code snippet is using the `countryCode` to 
-  query the database for a single document in the `countries`
-  collection. */
+  // Query the `countries` collection to find the country by `countryCode`.
   const existingCountry = await Country.findOne({
     countryCode: country,
   });
 
-  /* The below code snippet is checking if no document is
-  found with the given `countryCode`. If so, it returns an 
-  error response using the `next` function with an
-  `ExpressResponse` object. */
+  // If no country is found, return an error response.
   if (!existingCountry) {
     return next(
       new ExpressResponse(
@@ -722,18 +705,13 @@ module.exports.UpdateProfile = async (req, res, next) => {
     );
   }
 
-  /* The below code snippet is using the `stateCode` to 
-  query the database for a single document in the `states` 
-  collection. */
+  // Query the `states` collection to find the state by `stateCode` and the associated country.
   const existingState = await State.findOne({
     stateCode: state,
     country: existingCountry?._id,
   });
 
-  /* The below code snippet is checking if no document is
-  found with the given `stateCode`. If so, it returns an 
-  error response using the `next` function with an
-  `ExpressResponse` object. */
+  // If no state is found, return an error response.
   if (!existingState) {
     return next(
       new ExpressResponse(
@@ -744,17 +722,13 @@ module.exports.UpdateProfile = async (req, res, next) => {
     );
   }
 
-  /* The below code snippet is using the `cityCode` to query 
-  the database for a single document in the `cities` 
-  collection. */
+  // Query the `cities` collection to find the city by `cityCode` and the associated state.
   const existingCity = await City.findOne({
     cityCode: city,
     state: existingState?._id,
   });
 
-  /* The below code snippet is checking if no document is found 
-  with the given `cityCode`. If so, it returns an error response 
-  using the `next` function with an `ExpressResponse` object. */
+  // If no city is found, return an error response.
   if (!existingCity) {
     return next(
       new ExpressResponse(
@@ -765,13 +739,14 @@ module.exports.UpdateProfile = async (req, res, next) => {
     );
   }
 
-  /* The below code snippet is generating a object `obj`. */
+  // Create an object to update the profile.
   const obj = {
     profileCode,
     firstName,
     lastName,
     profilePicture,
     gender: existingGender?._id,
+    phoneNumber,
     address: {
       ...address,
       country: existingCountry?._id,
@@ -782,27 +757,29 @@ module.exports.UpdateProfile = async (req, res, next) => {
     user: existingUser?._id,
   };
 
-  /* The below code snippet is adding social properties to the
-  object `obj` based on the `social` property from the request
-  body. */
+  // Add the `social` property to the object if provided in the request body.
   if (social) {
     obj.social = social;
   }
 
-  /* The below code snippet is updating the instance of the
-  `Profile` model with the provided data. */
-  const profile = await Profile.findOneAndUpdate({ profileCode }, obj);
+  // Retrieve the profile document before updating it, excluding certain fields.
+  const profileBeforeUpdate = await City.findOne(
+    { cityCode },
+    hiddenFieldsDefault
+  );
 
-  /* The below code snippet is saving the updated `Profile`
-  object to the database. */
+  // Update the profile in the database with the new information.
+  const profile = await Profile.findOneAndUpdate(
+    {
+      profileCode,
+    },
+    obj
+  );
+
+  // Save the updated profile object.
   await profile.save();
 
-  /* The below code snippet is querying the database to find
-  and retrieve an updated state document (excluding the fields 
-  `__v` and `_id`) with populating the linked documents from 
-  the `genders`, `users`, `roles`, `rolePermissions`, `cities`, 
-  `states`, and  `countries` collections (excluding the fields 
-  `__v` and `_id). */
+  // Query the database to retrieve the updated profile, including related documents such as gender, user, role, city, state, and country.
   const updatedProfile = await Profile.findOne(
     { profileCode },
     hiddenFieldsDefault
@@ -851,12 +828,35 @@ module.exports.UpdateProfile = async (req, res, next) => {
       select: hiddenFieldsDefault,
     });
 
-  /* The below code snippet is running toJSON function on 
-  found document in `profiles` */
+  // Convert the updated profile to JSON format.
   const updatedProfileData = updatedProfile.toJSON();
 
-  /* The below code snippet returns an success response with
-  an `ExpressResponse` object. */
+  // Retrieve the current logged-in user's details using their `userCode`.
+  const currentUser = await User.findOne(
+    { userCode: req.user.userCode },
+    hiddenFieldsUser
+  ).populate({
+    path: "role",
+    select: hiddenFieldsDefault,
+    populate: {
+      path: "rolePermissions",
+      select: hiddenFieldsDefault,
+    },
+  });
+
+  // Log the profile update in the audit log.
+  await logAudit(
+    generateAuditCode(),
+    auditActions?.UPDATE,
+    auditCollections?.CITIES,
+    updatedProfileData?.cityCode,
+    auditChanges?.UPDATE_CITY,
+    profileBeforeUpdate?.toObject(),
+    updatedProfileData?.toObject(),
+    currentUser?.toObject()
+  );
+
+  // Return a success response indicating that the profile was updated successfully.
   res
     .status(STATUS_CODE_SUCCESS)
     .send(
@@ -870,21 +870,15 @@ module.exports.UpdateProfile = async (req, res, next) => {
 };
 
 module.exports.DeleteProfile = async (req, res, next) => {
-  /* The below code snippet is extracting the `profileCode`
-  property from the request body. */
+  // Extract the `profileCode` from the request body.
   const { profileCode } = req.body;
 
-  /* The below code snippet is using the `profileCode` to 
-  query the database for a single document in the `genders` 
-  collection. */
+  // Use the `profileCode` to query the database for a profile document.
   const existingProfile = await Profile.findOne({
     profileCode,
   });
 
-  /* The below code snippet is checking if no document is
-  found with the given `profileCode`. It returns an error
-  response using the `next` function with an `ExpressResponse`
-  object. */
+  // If no profile is found, return an error response.
   if (!existingProfile) {
     return next(
       new ExpressResponse(
@@ -895,16 +889,13 @@ module.exports.DeleteProfile = async (req, res, next) => {
     );
   }
 
-  /* The the below code snippet is querying the database to
-  delete the document with the given `profileCode` in the
-  profiles collection. */
-  const profile = await Profile.deleteOne({ profileCode });
+  // Delete the profile document with the provided `profileCode`.
+  const profile = await Profile.deleteOne({
+    profileCode,
+  });
 
-  /* The the below code snippet is using `deletedCount` in the
-  `deleteOne` mongoose function response to confirm the document
-  deletion. If it is `0` then the document is not deleted, then
-  it return an error response using the `next` function with
-  an `ExpressResponse` object. */
+  // Check if the deletion was successful by verifying `deletedCount`.
+  // If no document was deleted, return an error response.
   if (profile?.deletedCount === 0) {
     return next(
       new ExpressResponse(
@@ -915,8 +906,7 @@ module.exports.DeleteProfile = async (req, res, next) => {
     );
   }
 
-  /* The below code snippet returns an success response with
-  an `ExpressResponse` object. */
+  // Return a success response indicating that the profile was deleted successfully.
   res
     .status(STATUS_CODE_SUCCESS)
     .send(

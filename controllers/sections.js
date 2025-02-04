@@ -1,29 +1,24 @@
 const moment = require("moment-timezone");
-const Country = require("../models/country");
-const State = require("../models/state");
 const Class = require("../models/class");
 const Section = require("../models/section");
 const ExpressResponse = require("../utils/ExpressResponse");
+const { STATUS_ERROR, STATUS_SUCCESS } = require("../utils/status");
 const {
+  STATUS_CODE_CONFLICT,
+  STATUS_CODE_SUCCESS,
+  STATUS_CODE_BAD_REQUEST,
+  STATUS_CODE_INTERNAL_SERVER_ERROR,
+} = require("../utils/statusCodes");
+const {
+  hiddenFieldsDefault,
   toCapitalize,
   IsObjectIdReferenced,
-  generateStateCode,
-  hiddenFieldsDefault,
   generateSectionCode,
+  hiddenFieldsUser,
+  generateAuditCode,
 } = require("../utils/helpers");
 const {
-  MESSAGE_STATE_EXIST,
-  MESSAGE_CREATE_STATE_SUCCESS,
-  MESSAGE_GET_STATES_SUCCESS,
   MESSAGE_GET_STATE_SUCCESS,
-  MESSAGE_STATE_NOT_FOUND,
-  MESSAGE_UPDATE_STATE_SUCCESS,
-  MESSAGE_STATE_NOT_ALLOWED_DELETE_REFERENCE_EXIST,
-  MESSAGE_DELETE_STATE_SUCCESS,
-  MESSAGE_DELETE_STATE_ERROR,
-  MESSAGE_STATES_NOT_FOUND,
-  MESSAGE_COUNTRY_NOT_FOUND,
-  MESSAGE_STATE_TAKEN,
   MESSAGE_GET_SECTIONS_SUCCESS,
   MESSAGE_SECTION_NOT_FOUND,
   MESSAGE_GET_SECTION_SUCCESS,
@@ -37,27 +32,23 @@ const {
   MESSAGE_DELETE_SECTION_ERROR,
   MESSAGE_DELETE_SECTION_SUCCESS,
 } = require("../utils/messages");
-const { STATUS_ERROR, STATUS_SUCCESS } = require("../utils/status");
+const User = require("../models/user");
+const { logAudit } = require("../middleware");
 const {
-  STATUS_CODE_CONFLICT,
-  STATUS_CODE_SUCCESS,
-  STATUS_CODE_BAD_REQUEST,
-  STATUS_CODE_INTERNAL_SERVER_ERROR,
-} = require("../utils/statusCodes");
+  auditActions,
+  auditCollections,
+  auditChanges,
+} = require("../utils/audit");
 
 module.exports.GetSections = async (req, res, next) => {
-  /* The below code snippet is used to query the database for 
-  all the documents in the `sections` collection (excluding
-  the fields `__v` and `_id`) with populating the linked 
-  documents from the `classes` collection (excluding the 
-  fields `__v` and `_id`). */
+  // Query the `sections` collection to retrieve all documents, excluding `__v` and `_id` fields,
+  // and populate the linked documents from the `classes` collection, excluding their `__v` and `_id` fields.
   const sections = await Section.find({}, hiddenFieldsDefault).populate(
     "class",
     hiddenFieldsDefault
   );
 
-  /* The below code snippet returns an success response with
-  an `ExpressResponse` object. */
+  // Return a success response with the retrieved sections data.
   res
     .status(STATUS_CODE_SUCCESS)
     .send(
@@ -71,25 +62,16 @@ module.exports.GetSections = async (req, res, next) => {
 };
 
 module.exports.GetSectionByCode = async (req, res, next) => {
-  /* The below code snippet is extracting the `sectionCode` property 
-  from the request body. It then uses this `sectionCode`
-  to query the database for a single document in the `sections`
-  collection (excluding the fields `__v` and `_id`) with 
-  populating the linked documents from the `classes` 
-  collection (excluding the fields `__v` and `_id`). */
+  // Extract the `sectionCode` from the request body and use it to query the `sections` collection for the document.
+  // Exclude `__v` and `_id` fields, and populate the linked documents from the `classes` collection, excluding their `__v` and `_id` fields.
   const { sectionCode } = req.body;
-  const sections = await Section.findOne(
+  const section = await Section.findOne(
     { sectionCode },
     hiddenFieldsDefault
   ).populate("class", hiddenFieldsDefault);
 
-  /* The below code snippet is checking if the `sections` variable
-  is falsy, which means that no document was found in the database
-  that matches the specified `sectionCode` provided in the request
-  parameters. If no document is found (`sections` is falsy), it
-  returns an error response using the `next` function with an
-  `ExpressResponse` object. */
-  if (!sections) {
+  // Check if no matching section is found in the database. If so, return an error response.
+  if (!section) {
     return next(
       new ExpressResponse(
         STATUS_ERROR,
@@ -99,8 +81,7 @@ module.exports.GetSectionByCode = async (req, res, next) => {
     );
   }
 
-  /* The below code snippet returns an success response with
-  an `ExpressResponse` object. */
+  // Return a success response with the retrieved section data.
   res
     .status(STATUS_CODE_SUCCESS)
     .send(
@@ -108,27 +89,19 @@ module.exports.GetSectionByCode = async (req, res, next) => {
         STATUS_SUCCESS,
         STATUS_CODE_SUCCESS,
         MESSAGE_GET_SECTION_SUCCESS,
-        sections
+        section
       )
     );
 };
 
 module.exports.GetSectionsByClassCode = async (req, res, next) => {
-  /* The below code snippet is extracting the `classCode` 
-  property from the request body. */
+  // Extract the `classCode` from the request body.
   const { classCode } = req.body;
 
-  /* The below code snippet uses the `classCode` to query the 
-  database to find a document in the `classes` collection
-  (excluding the fields `__v` and `_id`). */
+  // Use the `classCode` to search for a matching document in the `classes` collection.
   const foundClass = await Class.findOne({ classCode });
 
-  /* The below code snippet is checking if the `foundClass` variable
-  is falsy, which means that no document was found in the database
-  that matches the specified `classCode` provided in the request
-  parameters. If no document is found (`foundClass` is falsy), it
-  returns an error response using the `next` function with an
-  `ExpressResponse` object. */
+  // Check if no class was found with the provided `classCode`. If not, return an error response.
   if (!foundClass) {
     return next(
       new ExpressResponse(
@@ -139,22 +112,13 @@ module.exports.GetSectionsByClassCode = async (req, res, next) => {
     );
   }
 
-  /* The below code snippet uses the `foundClass._id` to query the 
-  database to find all the documents in the `sections` collection
-  (excluding the fields `__v` and `_id`) with populating the 
-  linked documents from the `classes` collection (excluding the 
-  fields `__v` and `_id`). */
+  // Use the `foundClass._id` to query the `sections` collection for all sections linked to the class.
   const sections = await Section.find(
     { class: foundClass?._id },
     hiddenFieldsDefault
   ).populate("Class", hiddenFieldsDefault);
 
-  /* The below code snippet is checking if the `sections` variable
-  is falsy, which means that no document was found in the database
-  that matches the specified `classCode` provided in the request
-  parameters. If no document is found (`sections` is falsy), it
-  returns an error response using the `next` function with an
-  `ExpressResponse` object. */
+  // Check if no sections were found for the specified class. If none are found, return an error response.
   if (!sections || !Array.isArray(sections) || sections?.length === 0) {
     return next(
       new ExpressResponse(
@@ -165,8 +129,7 @@ module.exports.GetSectionsByClassCode = async (req, res, next) => {
     );
   }
 
-  /* The below code snippet returns an success response with
-  an `ExpressResponse` object. */
+  // Return a success response with the found sections data.
   res
     .status(STATUS_CODE_SUCCESS)
     .send(
@@ -180,22 +143,16 @@ module.exports.GetSectionsByClassCode = async (req, res, next) => {
 };
 
 module.exports.CreateSection = async (req, res, next) => {
-  /* The below code snippet is extracting the `name`, and 
-  `classCode` properties from the request body. */
+  /* Extract the `name` and `classCode` properties from the request body. */
   const { name, classCode } = req.body;
 
-  /* The below code snippet capitalize the `name` and then 
-  the uses it to query the database for a single document 
-  in the `sections` collection. */
+  /* Capitalize the `name` and query the database to check for 
+   an existing section with the same name in the `sections` collection. */
   const existingSection = await Section.findOne({
     name: toCapitalize(name),
   });
 
-  /* The below code snippet is checking if there is an existing
-  section with the same `name` in the database. If 
-  `existingSection` is truthy (meaning a section with the same 
-  `name` already exists), it returns an error response using 
-  the `next` function with an `ExpressResponse` object. */
+  /* If a section with the same `name` exists, return an error response. */
   if (existingSection) {
     return next(
       new ExpressResponse(
@@ -206,17 +163,12 @@ module.exports.CreateSection = async (req, res, next) => {
     );
   }
 
-  /* The below code snippet is using the `classCode` to query 
-  the database for a single document in the `classes` 
-  collection. */
+  /* Use the provided `classCode` to query the database for an existing class. */
   const existingClass = await Class.findOne({
     classCode,
   });
 
-  /* The below code snippet is checking if no document is
-  found with the given `classCode`. If so, it returns
-  an error response using the `next` function with an
-  `ExpressResponse` object. */
+  /* If no class is found with the given `classCode`, return an error response. */
   if (!existingClass) {
     return next(
       new ExpressResponse(
@@ -227,34 +179,52 @@ module.exports.CreateSection = async (req, res, next) => {
     );
   }
 
-  /* The below code snippet is generating a unique `sectionCode`
-  for a new section being created. */
+  /* Generate a unique `sectionCode` for the new section. */
   const sectionCode = generateSectionCode();
 
-  /* The below code snippet is creating a new instance of the
-  `Section` model with the provided data. */
+  /* Create a new `Section` instance with the provided data. */
   const section = new Section({
     sectionCode,
     name: toCapitalize(name),
     class: existingClass?._id,
   });
 
-  /* The below code snippet is saving the newly created
-  `Section` object to the database. */
+  /* Save the newly created section to the database. */
   await section.save();
 
-  /* The below code snippet is querying the database to find
-  the newly created section document using the above generated 
-  `sectionCode` (excluding the fields `__v` and `_id`) with 
-  populating the linked documents from the `classes` 
-  collection (excluding the fields `__v` and `_id`). */
+  /* Retrieve the newly created section from the database, excluding 
+   `__v` and `_id`, and populate the linked `class` document. */
   const createdSection = await Section.findOne(
     { sectionCode },
     hiddenFieldsDefault
   ).populate("class", hiddenFieldsDefault);
 
-  /* The below code snippet returns an success response with
-  an `ExpressResponse` object. */
+  // Fetch the current logged-in user's data using their `userCode`.
+  const currentUser = await User.findOne(
+    { userCode: req.user.userCode },
+    hiddenFieldsUser
+  ).populate({
+    path: "role",
+    select: hiddenFieldsDefault,
+    populate: {
+      path: "rolePermissions",
+      select: hiddenFieldsDefault,
+    },
+  });
+
+  // Log the action in the audit log.
+  await logAudit(
+    generateAuditCode(),
+    auditActions?.CREATE,
+    auditCollections?.SECTION,
+    createdSection?.sectionCode,
+    auditChanges?.CREATE_SECTION,
+    null,
+    createdSection?.toObject(),
+    currentUser?.toObject()
+  );
+
+  /* Return a success response with the newly created section. */
   res
     .status(STATUS_CODE_SUCCESS)
     .send(
@@ -268,22 +238,15 @@ module.exports.CreateSection = async (req, res, next) => {
 };
 
 module.exports.UpdateSection = async (req, res, next) => {
-  /* The below code snippet is extracting the `sectionCode`,
-  `name`, and `classCode` properties from the request 
-  body. */
+  /* Extract `sectionCode`, `name`, and `classCode` from the request body. */
   const { sectionCode, name, classCode } = req.body;
 
-  /* The below code snippet is using the `sectionCode`
-  to query the database for a single document in the
-  `section` collection. */
+  /* Query the database to find a section document by the provided `sectionCode`. */
   const existingSection = await Section.findOne({
     sectionCode,
   });
 
-  /* The below code snippet is checking if no document is
-  found with the given `sectionCode`. If so, it returns
-  an error response using the `next` function with an
-  `ExpressResponse` object. */
+  /* If no section is found with the given `sectionCode`, return an error response. */
   if (!existingSection) {
     return next(
       new ExpressResponse(
@@ -294,17 +257,12 @@ module.exports.UpdateSection = async (req, res, next) => {
     );
   }
 
-  /* The below code snippet is using the `classCode`
-  to query the database for a single document in the
-  `classes` collection. */
+  /* Query the database to find a class document using the provided `classCode`. */
   const existingClass = await Class.findOne({
     classCode,
   });
 
-  /* The below code snippet is checking if no document is
-  found with the given `classCode`. If so, it returns
-  an error response using the `next` function with an
-  `ExpressResponse` object. */
+  /* If no class is found with the given `classCode`, return an error response. */
   if (!existingClass) {
     return next(
       new ExpressResponse(
@@ -315,20 +273,14 @@ module.exports.UpdateSection = async (req, res, next) => {
     );
   }
 
-  /* The below code snippet is querying the database to
-  find document without the `sectionCode` from the request
-  body and with either `name` from the request body.  */
+  /* Query the database to check if any section with the given `name` 
+   (other than the one with the provided `sectionCode`) exists. */
   const otherSections = await Section.find({
     sectionCode: { $ne: sectionCode },
     name: toCapitalize(name),
   });
 
-  /* The below code snippet is checking if there is a
-  document in the `sections` collection with the given 
-  `name` other than the document with the given 
-  `sectionCode`. If so, then it returns an error response 
-  using the `next` function with an `ExpressResponse` 
-  object. */
+  /* If another section with the same `name` is found, return an error response. */
   if (otherSections?.length > 0) {
     return next(
       new ExpressResponse(
@@ -339,8 +291,13 @@ module.exports.UpdateSection = async (req, res, next) => {
     );
   }
 
-  /* The below code snippet is updating the instance of the
-  `Section` model with the provided data. */
+  /* Retrieve the section data before updating. */
+  const sectionBeforeUpdate = await Section.findOne(
+    { sectionCode },
+    hiddenFieldsDefault
+  );
+
+  /* Update the section document with the new data. */
   const section = await Section.findOneAndUpdate(
     { sectionCode },
     {
@@ -350,22 +307,42 @@ module.exports.UpdateSection = async (req, res, next) => {
     }
   );
 
-  /* The below code snippet is saving the updated `section`
-  object to the database. */
+  /* Save the updated section document to the database. */
   await section.save();
 
-  /* The below code snippet is querying the database to find
-  and retrieve an updated section document (excluding the
-  fields `__v` and `_id`) with populating the linked documents
-  from the `classes` collection (excluding the fields `__v`
-  and `_id`). */
+  /* Retrieve the updated section document (excluding `__v` and `_id`) 
+   and populate the linked `class` document. */
   const updatedSection = await Section.findOne(
     { sectionCode },
     hiddenFieldsDefault
   ).populate("class", hiddenFieldsDefault);
 
-  /* The below code snippet returns an success response with
-    an `ExpressResponse` object. */
+  /* Find the current logged-in user's `_id` using their `userCode`. */
+  const currentUser = await User.findOne(
+    { userCode: req.user.userCode },
+    hiddenFieldsUser
+  ).populate({
+    path: "role",
+    select: hiddenFieldsDefault,
+    populate: {
+      path: "rolePermissions",
+      select: hiddenFieldsDefault,
+    },
+  });
+
+  /* Log the update action in the audit log. */
+  await logAudit(
+    generateAuditCode(),
+    auditActions?.UPDATE,
+    auditCollections?.SECTION,
+    updatedSection?.sectionCode,
+    auditChanges?.UPDATE_SECTION,
+    sectionBeforeUpdate?.toObject(),
+    updatedSection?.toObject(),
+    currentUser?.toObject()
+  );
+
+  /* Return a success response with the updated section data. */
   res
     .status(STATUS_CODE_SUCCESS)
     .send(
@@ -379,21 +356,15 @@ module.exports.UpdateSection = async (req, res, next) => {
 };
 
 module.exports.DeleteSection = async (req, res, next) => {
-  /* The below code snippet is extracting the `sectionCode`
-  property from the request body. */
+  /* Extract the `sectionCode` from the request body. */
   const { sectionCode } = req.body;
 
-  /* The below code snippet is using the `sectionCode`
-  to query the database for a single document in the
-  `sections` collection. */
+  /* Query the database to find a section document with the provided `sectionCode`. */
   const existingSection = await Section.findOne({
     sectionCode,
   });
 
-  /* The below code snippet is checking if no document is
-  found with the given `sectionCode`. It returns an error
-  response using the `next` function with an `ExpressResponse`
-  object. */
+  /* If no section is found with the given `sectionCode`, return an error response. */
   if (!existingSection) {
     return next(
       new ExpressResponse(
@@ -404,13 +375,10 @@ module.exports.DeleteSection = async (req, res, next) => {
     );
   }
 
-  /* The below code snippet is checking if the section is
-  being used anywhere in the database. */
+  /* Check if the section is being referenced anywhere in the database. */
   const { isReferenced } = await IsObjectIdReferenced(existingSection._id);
 
-  /* The below code snippet returns an error response using
-  the `next` function with an `ExpressResponse` object, when
-  the found document is in use. */
+  /* If the section is referenced, return an error response indicating it cannot be deleted. */
   if (isReferenced) {
     return next(
       new ExpressResponse(
@@ -421,17 +389,18 @@ module.exports.DeleteSection = async (req, res, next) => {
     );
   }
 
-  /* The the below code snippet is querying the database to
-  delete the document with the given `sectionCode` in the
-  `sections` collection (excluding the fields `__v` and
-  `_id`). */
-  const section = await Section.deleteOne({ sectionCode });
+  /* Retrieve the section document before deletion, excluding `__v` and `_id` fields. */
+  const sectionBeforeDelete = await Section.findOne(
+    { sectionCode },
+    hiddenFieldsDefault
+  );
 
-  /* The the below code snippet is using `deletedCount` in the
-  `deleteOne` mongoose function response to confirm the document
-  deletion. If it is `0` then the document is not deleted, then
-  it return an error response using the `next` function with
-  an `ExpressResponse` object. */
+  /* Attempt to delete the section document by its `sectionCode`. */
+  const section = await Section.deleteOne({
+    sectionCode,
+  });
+
+  /* If the section was not deleted (i.e., `deletedCount` is 0), return an error response. */
   if (section?.deletedCount === 0) {
     return next(
       new ExpressResponse(
@@ -442,8 +411,32 @@ module.exports.DeleteSection = async (req, res, next) => {
     );
   }
 
-  /* The below code snippet returns an success response with
-  an `ExpressResponse` object. */
+  /* Retrieve the current logged-in user's data by their `userCode`. */
+  const currentUser = await User.findOne(
+    { userCode: req.user.userCode },
+    hiddenFieldsUser
+  ).populate({
+    path: "role",
+    select: hiddenFieldsDefault,
+    populate: {
+      path: "rolePermissions",
+      select: hiddenFieldsDefault,
+    },
+  });
+
+  /* Create an audit log for the section deletion action. */
+  await logAudit(
+    generateAuditCode(),
+    auditActions?.DELETE,
+    auditCollections?.SECTION,
+    sectionBeforeDelete?.sectionCode,
+    auditChanges?.DELETE_SECTION,
+    sectionBeforeDelete?.toObject(),
+    null,
+    currentUser?.toObject()
+  );
+
+  /* Return a success response indicating the section was deleted. */
   res
     .status(STATUS_CODE_SUCCESS)
     .send(
