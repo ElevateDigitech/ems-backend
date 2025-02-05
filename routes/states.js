@@ -2,11 +2,11 @@ const express = require("express");
 const states = require("../controllers/states");
 const {
   isLoggedIn,
+  checkPermission,
   validateStateCode,
   validateState,
   validateUpdateState,
   validateCountryCode,
-  checkPermission,
 } = require("../middleware");
 const catchAsync = require("../utils/catchAsync");
 const { allPermissions } = require("../seeds/basePermissions");
@@ -16,14 +16,14 @@ const router = express.Router();
 router.get(
   "/GetStates",
   isLoggedIn,
-  checkPermission(allPermissions?.VIEW_STATE),
+  checkPermission(allPermissions?.VIEW_STATES),
   catchAsync(states.GetStates)
 );
 
 router.get(
   "/GetStateByCode",
   isLoggedIn,
-  checkPermission(allPermissions?.VIEW_STATE),
+  checkPermission(allPermissions?.VIEW_STATES),
   validateStateCode,
   catchAsync(states.GetStateByCode)
 );
@@ -31,7 +31,7 @@ router.get(
 router.get(
   "/GetStatesByCountryCode",
   isLoggedIn,
-  checkPermission(allPermissions?.VIEW_STATE),
+  checkPermission(allPermissions?.VIEW_STATES),
   validateCountryCode,
   catchAsync(states.GetStatesByCountryCode)
 );

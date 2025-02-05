@@ -1,47 +1,51 @@
 const allPermissions = {
   VIEW_PERMISSIONS: "VIEW PERMISSIONS",
+  VIEW_AUDITS: "VIEW AUDITS",
   VIEW_ROLES: "VIEW ROLES",
   VIEW_OWN_ROLE_ONLY: "VIEW OWN ROLE ONLY",
   CREATE_ROLE: "CREATE ROLE",
   UPDATE_ROLE: "UPDATE ROLE",
   DELETE_ROLE: "DELETE ROLE",
-  VIEW_USER: "VIEW USER",
+  VIEW_USERS: "VIEW USERS",
   VIEW_OWN_USER_ONLY: "VIEW OWN USER ONLY",
   CREATE_USER: "CREATE USER",
   UPDATE_USER: "UPDATE USER",
   DELETE_USER: "DELETE USER",
   CHANGE_PASSWORDS: "CHANGE PASSWORDS",
   CHANGE_OWN_PASSWORD: "CHANGE OWN PASSWORD",
-  VIEW_PROFILE: "VIEW PROFILE",
+  VIEW_PROFILES: "VIEW PROFILES",
   VIEW_OWN_PROFILE_ONLY: "VIEW OWN PROFILE ONLY",
   CREATE_PROFILE: "CREATE PROFILE",
   UPDATE_PROFILE: "UPDATE PROFILE",
   DELETE_PROFILE: "DELETE PROFILE",
-  VIEW_GENDER: "VIEW GENDER",
+  VIEW_GENDERS: "VIEW GENDERS",
   CREATE_GENDER: "CREATE GENDER",
   UPDATE_GENDER: "UPDATE GENDER",
   DELETE_GENDER: "DELETE GENDER",
-  VIEW_COUNTRY: "VIEW COUNTRY",
+  VIEW_COUNTRIES: "VIEW COUNTRIES",
   CREATE_COUNTRY: "CREATE COUNTRY",
   UPDATE_COUNTRY: "UPDATE COUNTRY",
   DELETE_COUNTRY: "DELETE COUNTRY",
-  VIEW_STATE: "VIEW STATE",
+  VIEW_STATES: "VIEW STATES",
   CREATE_STATE: "CREATE STATE",
   UPDATE_STATE: "UPDATE STATE",
   DELETE_STATE: "DELETE STATE",
-  VIEW_CITY: "VIEW CITY",
+  VIEW_CITIES: "VIEW CITIES",
   CREATE_CITY: "CREATE CITY",
   UPDATE_CITY: "UPDATE CITY",
   DELETE_CITY: "DELETE CITY",
-  VIEW_AUDIT: "VIEW AUDIT",
-  VIEW_CLASS: "VIEW CLASS",
+  VIEW_CLASSES: "VIEW CLASSES",
   CREATE_CLASS: "CREATE CLASS",
   UPDATE_CLASS: "UPDATE CLASS",
   DELETE_CLASS: "DELETE CLASS",
-  VIEW_SECTION: "VIEW SECTION",
+  VIEW_SECTIONS: "VIEW SECTIONS",
   CREATE_SECTION: "CREATE SECTION",
   UPDATE_SECTION: "UPDATE SECTION",
   DELETE_SECTION: "DELETE SECTION",
+  VIEW_SUBJECTS: "VIEW SUBJECTS",
+  CREATE_SUBJECT: "CREATE SUBJECT",
+  UPDATE_SUBJECT: "UPDATE SUBJECT",
+  DELETE_SUBJECT: "DELETE SUBJECT",
 };
 
 const basePermissions = [
@@ -70,7 +74,7 @@ const basePermissions = [
     permissionDescription: "can delete role",
   },
   {
-    permissionName: allPermissions?.VIEW_USER,
+    permissionName: allPermissions?.VIEW_USERS,
     permissionDescription: "can view users",
   },
   {
@@ -98,7 +102,7 @@ const basePermissions = [
     permissionDescription: "can only change own password",
   },
   {
-    permissionName: allPermissions?.VIEW_PROFILE,
+    permissionName: allPermissions?.VIEW_PROFILES,
     permissionDescription: "can view profiles",
   },
   {
@@ -118,7 +122,7 @@ const basePermissions = [
     permissionDescription: "can delete profile",
   },
   {
-    permissionName: allPermissions?.VIEW_GENDER,
+    permissionName: allPermissions?.VIEW_GENDERS,
     permissionDescription: "can view gender",
   },
   {
@@ -134,7 +138,7 @@ const basePermissions = [
     permissionDescription: "can delete gender",
   },
   {
-    permissionName: allPermissions?.VIEW_COUNTRY,
+    permissionName: allPermissions?.VIEW_COUNTRIES,
     permissionDescription: "can view country",
   },
   {
@@ -150,7 +154,7 @@ const basePermissions = [
     permissionDescription: "can modify country",
   },
   {
-    permissionName: allPermissions?.VIEW_STATE,
+    permissionName: allPermissions?.VIEW_STATES,
     permissionDescription: "can view states",
   },
   {
@@ -166,7 +170,7 @@ const basePermissions = [
     permissionDescription: "can delete state",
   },
   {
-    permissionName: allPermissions?.VIEW_CITY,
+    permissionName: allPermissions?.VIEW_CITIES,
     permissionDescription: "can view cities",
   },
   {
@@ -182,11 +186,11 @@ const basePermissions = [
     permissionDescription: "can delete city",
   },
   {
-    permissionName: allPermissions?.VIEW_AUDIT,
+    permissionName: allPermissions?.VIEW_AUDITS,
     permissionDescription: "can view log entries",
   },
   {
-    permissionName: allPermissions?.VIEW_CLASS,
+    permissionName: allPermissions?.VIEW_CLASSES,
     permissionDescription: "can view classes",
   },
   {
@@ -202,7 +206,7 @@ const basePermissions = [
     permissionDescription: "can delete class",
   },
   {
-    permissionName: allPermissions?.VIEW_SECTION,
+    permissionName: allPermissions?.VIEW_SECTIONS,
     permissionDescription: "can view sections",
   },
   {
@@ -216,6 +220,22 @@ const basePermissions = [
   {
     permissionName: allPermissions?.DELETE_SECTION,
     permissionDescription: "can delete section",
+  },
+  {
+    permissionName: allPermissions?.VIEW_SUBJECTS,
+    permissionDescription: "can view subjects",
+  },
+  {
+    permissionName: allPermissions?.CREATE_SUBJECT,
+    permissionDescription: "can create subject",
+  },
+  {
+    permissionName: allPermissions?.UPDATE_SUBJECT,
+    permissionDescription: "can update subject",
+  },
+  {
+    permissionName: allPermissions?.DELETE_SUBJECT,
+    permissionDescription: "can delete subject",
   },
 ];
 

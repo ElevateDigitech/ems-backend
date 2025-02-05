@@ -1,11 +1,11 @@
 const express = require("express");
-const countries = require("../controllers/countries");
+const subjects = require("../controllers/subjects");
 const {
   isLoggedIn,
-  validateCountry,
-  validateUpdateCountry,
-  validateCountryCode,
   checkPermission,
+  validateSubjectCode,
+  validateSubject,
+  validateUpdateSubject,
 } = require("../middleware");
 const catchAsync = require("../utils/catchAsync");
 const { allPermissions } = require("../seeds/basePermissions");
@@ -13,42 +13,42 @@ const { allPermissions } = require("../seeds/basePermissions");
 const router = express.Router();
 
 router.get(
-  "/GetCountries",
+  "/GetSubjects",
   isLoggedIn,
-  checkPermission(allPermissions?.VIEW_USER),
-  catchAsync(countries.GetCountries)
+  checkPermission(allPermissions?.VIEW_USERS),
+  catchAsync(subjects.GetSubjects)
 );
 
 router.get(
-  "/GetCountryByCode",
+  "/GetSubjectByCode",
   isLoggedIn,
-  checkPermission(allPermissions?.VIEW_USER),
-  validateCountryCode,
-  catchAsync(countries.GetCountryByCode)
+  checkPermission(allPermissions?.VIEW_USERS),
+  validateSubjectCode,
+  catchAsync(subjects.GetSubjectByCode)
 );
 
 router.post(
-  "/CreateCountry",
+  "/CreateSubject",
   isLoggedIn,
   checkPermission(allPermissions?.CREATE_USER),
-  validateCountry,
-  catchAsync(countries.CreateCountry)
+  validateSubject,
+  catchAsync(subjects.CreateSubject)
 );
 
 router.post(
-  "/UpdateCountry",
+  "/UpdateSubject",
   isLoggedIn,
   checkPermission(allPermissions?.UPDATE_COUNTRY),
-  validateUpdateCountry,
-  catchAsync(countries.UpdateCountry)
+  validateUpdateSubject,
+  catchAsync(subjects.UpdateSubject)
 );
 
 router.post(
-  "/DeleteCountry",
+  "/DeleteSubject",
   isLoggedIn,
   checkPermission(allPermissions?.DELETE_COUNTRY),
-  validateCountryCode,
-  catchAsync(countries.DeleteCountry)
+  validateSubjectCode,
+  catchAsync(subjects.DeleteSubject)
 );
 
-module.exports.countryRoutes = router;
+module.exports.subjectRoutes = router;

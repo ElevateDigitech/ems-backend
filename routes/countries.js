@@ -2,10 +2,10 @@ const express = require("express");
 const countries = require("../controllers/countries");
 const {
   isLoggedIn,
+  checkPermission,
   validateCountry,
   validateUpdateCountry,
   validateCountryCode,
-  checkPermission,
 } = require("../middleware");
 const catchAsync = require("../utils/catchAsync");
 const { allPermissions } = require("../seeds/basePermissions");
@@ -15,14 +15,14 @@ const router = express.Router();
 router.get(
   "/GetCountries",
   isLoggedIn,
-  checkPermission(allPermissions?.VIEW_USER),
+  checkPermission(allPermissions?.VIEW_COUNTRIES),
   catchAsync(countries.GetCountries)
 );
 
 router.get(
   "/GetCountryByCode",
   isLoggedIn,
-  checkPermission(allPermissions?.VIEW_USER),
+  checkPermission(allPermissions?.VIEW_COUNTRIES),
   validateCountryCode,
   catchAsync(countries.GetCountryByCode)
 );
@@ -30,7 +30,7 @@ router.get(
 router.post(
   "/CreateCountry",
   isLoggedIn,
-  checkPermission(allPermissions?.CREATE_USER),
+  checkPermission(allPermissions?.CREATE_COUNTRY),
   validateCountry,
   catchAsync(countries.CreateCountry)
 );

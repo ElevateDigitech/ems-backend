@@ -13,14 +13,14 @@ const router = express.Router();
 router.get(
   "/GetAudits",
   isLoggedIn,
-  checkPermission(allPermissions?.VIEW_AUDIT),
+  checkPermission(allPermissions?.VIEW_AUDITS),
   catchAsync(auditLogs.GetAudits)
 );
 
 router.get(
   "/GetAuditByCode",
   isLoggedIn,
-  checkPermission(allPermissions?.VIEW_USER),
+  checkPermission(allPermissions?.VIEW_USERS),
   validateAuditCode,
   catchAsync(auditLogs.GetAuditByCode)
 );

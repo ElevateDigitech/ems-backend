@@ -4,10 +4,10 @@ const roles = require("../controllers/roles");
 const catchAsync = require("../utils/catchAsync");
 const {
   isLoggedIn,
+  checkPermission,
   validateRoleCode,
   validateRole,
   validateUpdateRole,
-  checkPermission,
 } = require("../middleware");
 const { allPermissions } = require("../seeds/basePermissions");
 

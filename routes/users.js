@@ -33,7 +33,7 @@ router.post(
 router.get(
   "/Getusers",
   isLoggedIn,
-  checkPermission(allPermissions?.VIEW_USER),
+  checkPermission(allPermissions?.VIEW_USERS),
   users.GetUsers
 );
 
@@ -47,7 +47,7 @@ router.get(
 router.get(
   "/GetUserById",
   isLoggedIn,
-  checkPermission(allPermissions?.VIEW_USER),
+  checkPermission(allPermissions?.VIEW_USERS),
   users.GetUserById
 );
 

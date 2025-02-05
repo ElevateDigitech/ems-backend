@@ -10,34 +10,7 @@ const {
 } = require("./utils/messages");
 const { STATUS_ERROR } = require("./utils/status");
 const ExpressResponse = require("./utils/ExpressResponse");
-const {
-  permissionCodeSchema,
-  roleCodeSchema,
-  roleSchema,
-  updateRoleSchema,
-  genderCodeSchema,
-  genderSchema,
-  updateGenderSchema,
-  profileSchema,
-  countrySchema,
-  countryCodeSchema,
-  updateCountrySchema,
-  stateCodeSchema,
-  stateSchema,
-  updateStateSchema,
-  cityCodeSchema,
-  citySchema,
-  updateCitySchema,
-  profileCodeSchema,
-  updateProfileSchema,
-  auditCodeSchema,
-  classCodeSchema,
-  classSchema,
-  updateClassSchema,
-  sectionCodeSchema,
-  sectionSchema,
-  updateSectionSchema,
-} = require("./schemas");
+const schemas = require("./schemas");
 const { cloudinary } = require("./cloudinary");
 const { IMAGE_FIELD_PROFILE_PICTURE } = require("./utils/imageFields");
 const { uploadProfilePicture } = require("./multer");
@@ -45,387 +18,222 @@ const { MulterError } = require("multer");
 const catchAsync = require("./utils/catchAsync");
 const AuditLog = require("./models/auditLog");
 
-module.exports.storeReturnTo = (req, res, next) => {
-  if (req.session.returnTo) {
-    res.locals.returnTo = req.session.returnTo;
-  }
-  next();
-};
-
-module.exports.isLoggedIn = (req, res, next) => {
-  if (!req.isAuthenticated()) {
-    req.session.returnTo = req.originalUrl;
-    throw new ExpressResponse(
-      STATUS_ERROR,
-      STATUS_CODE_BAD_REQUEST,
-      MESSAGE_NOT_LOGGED_IN_YET
-    );
-  } else {
-    next();
-  }
-};
-
-module.exports.checkPermission = (requiredPermission) => {
-  return catchAsync(async (req, res, next) => {
-    const user = req.user;
-    if (!user || !user.role) {
-      throw new ExpressResponse(
-        STATUS_ERROR,
-        STATES_CODE_UNAUTHORIZED,
-        MESSAGE_ACCESS_DENIED_NO_ROLES
-      );
+/**
+ * Middleware for validating request bodies against a provided schema.
+ * @param {Object} passedSchema - Joi schema for validation.
+ * @returns {Function} Middleware function.
+ */
+const validateSchema = (passedSchema) =>
+  catchAsync(async (req, res, next) => {
+    const { error } = passedSchema.validate(req.body);
+    if (error) {
+      const msg = error.details.map((d) => d.message).join(", ");
+      throw new ExpressResponse(STATUS_ERROR, STATUS_CODE_BAD_REQUEST, msg);
     }
-
-    const userPermissions = user.role?.rolePermissions || [];
-    if (
-      !userPermissions.find((p) => p?.permissionName === requiredPermission)
-    ) {
-      throw new ExpressResponse(
-        STATUS_ERROR,
-        STATES_CODE_UNAUTHORIZED,
-        MESSAGE_ACCESS_DENIED_NO_PERMISSION
-      );
-    }
-
     next();
   });
-};
 
-module.exports.logAudit = async (
-  auditCode,
-  action,
-  collection,
-  document,
-  changes,
-  before = null,
-  after = null,
-  user
-) => {
-  try {
-    const audit = new AuditLog({
-      auditCode,
-      action,
-      collection,
-      document,
-      changes,
-      before,
-      after,
-      user,
+module.exports = {
+  /**
+   * Middleware to store return URL in session before redirecting.
+   */
+  storeReturnTo(req, res, next) {
+    if (req.session.returnTo) {
+      res.locals.returnTo = req.session.returnTo;
+    }
+    next();
+  },
+
+  /**
+   * Middleware to check if the user is authenticated.
+   */
+  isLoggedIn(req, res, next) {
+    if (!req.isAuthenticated()) {
+      req.session.returnTo = req.originalUrl;
+      throw new ExpressResponse(
+        STATUS_ERROR,
+        STATUS_CODE_BAD_REQUEST,
+        MESSAGE_NOT_LOGGED_IN_YET
+      );
+    }
+    next();
+  },
+
+  /**
+   * Middleware to check if the user has the required permission.
+   * @param {string} requiredPermission - The required permission name.
+   */
+  checkPermission: (requiredPermission) =>
+    catchAsync(async (req, res, next) => {
+      const user = req.user;
+      if (!user || !user.role) {
+        throw new ExpressResponse(
+          STATUS_ERROR,
+          STATES_CODE_UNAUTHORIZED,
+          MESSAGE_ACCESS_DENIED_NO_ROLES
+        );
+      }
+
+      const hasPermission = user.role?.rolePermissions?.some(
+        (p) => p?.permissionName === requiredPermission
+      );
+      if (!hasPermission) {
+        throw new ExpressResponse(
+          STATUS_ERROR,
+          STATES_CODE_UNAUTHORIZED,
+          MESSAGE_ACCESS_DENIED_NO_PERMISSION
+        );
+      }
+      next();
+    }),
+
+  /**
+   * Function to log audit trail for actions performed.
+   * @param {string} auditCode - Unique audit identifier.
+   * @param {string} action - Action performed.
+   * @param {string} collection - Database collection involved.
+   * @param {string} document - Specific document ID.
+   * @param {Object} changes - Changes made.
+   * @param {Object} [before] - Previous state.
+   * @param {Object} [after] - New state.
+   * @param {Object} user - User performing the action.
+   */
+  async logAudit(
+    auditCode,
+    action,
+    collection,
+    document,
+    changes,
+    before = null,
+    after = null,
+    user
+  ) {
+    try {
+      const audit = new AuditLog({
+        auditCode,
+        action,
+        collection,
+        document,
+        changes,
+        before,
+        after,
+        user,
+      });
+      await audit.save();
+    } catch (error) {
+      console.error("Failed to log audit:", error);
+    }
+  },
+
+  /**
+   * Middleware for validating permission schemas.
+   */
+  validatePermissionCode: validateSchema(schemas.permissionCodeSchema),
+
+  /**
+   * Middleware for validating audit schemas.
+   */
+  validateAuditCode: validateSchema(schemas.auditCodeSchema),
+
+  /**
+   * Middleware for validating role schemas.
+   */
+  validateRoleCode: validateSchema(schemas.roleCodeSchema),
+  validateRole: validateSchema(schemas.roleSchema),
+  validateUpdateRole: validateSchema(schemas.updateRoleSchema),
+
+  /**
+   * Middleware for validating gender schemas.
+   */
+  validateGenderCode: validateSchema(schemas.genderCodeSchema),
+  validateGender: validateSchema(schemas.genderSchema),
+  validateUpdateGender: validateSchema(schemas.updateGenderSchema),
+
+  /**
+   * Middleware for validating country schemas.
+   */
+  validateCountryCode: validateSchema(schemas.countryCodeSchema),
+  validateCountry: validateSchema(schemas.countrySchema),
+  validateUpdateCountry: validateSchema(schemas.updateCountrySchema),
+
+  /**
+   * Middleware for validating state schemas.
+   */
+  validateStateCode: validateSchema(schemas.stateCodeSchema),
+  validateState: validateSchema(schemas.stateSchema),
+  validateUpdateState: validateSchema(schemas.updateStateSchema),
+
+  /**
+   * Middleware for validating city schemas.
+   */
+  validateCityCode: validateSchema(schemas.cityCodeSchema),
+  validateCity: validateSchema(schemas.citySchema),
+  validateUpdateCity: validateSchema(schemas.updateCitySchema),
+
+  /**
+   * Middleware for validating and uploading profile pictures.
+   */
+  validateProfilePicture(req, res, next) {
+    uploadProfilePicture(req, res, (err) => {
+      if (err) {
+        const statusCode =
+          err instanceof MulterError
+            ? STATUS_CODE_BAD_REQUEST
+            : err?.statusCode ?? STATUS_CODE_BAD_REQUEST;
+        return res
+          .status(statusCode)
+          .send(
+            new ExpressResponse(
+              STATUS_ERROR,
+              statusCode,
+              err?.message ?? MESSAGE_INTERNAL_SERVER_ERROR
+            )
+          );
+      }
+      next();
     });
-    await audit.save();
+  },
 
-    const audits = await AuditLog.find({});
-    const auditJSON = audits.map((a) => a.toJSON());
-  } catch (error) {
-    console.error("Failed to log audit:", error);
-  }
-};
-
-module.exports.validatePermissionCode = (req, res, next) => {
-  const { error } = permissionCodeSchema.validate(req.body);
-  if (error) {
-    const msg = error.details.map((d) => d.message).join(", ");
-    throw new ExpressResponse(STATUS_ERROR, STATUS_CODE_BAD_REQUEST, msg);
-  } else {
-    next();
-  }
-};
-
-module.exports.validateRoleCode = (req, res, next) => {
-  const { error } = roleCodeSchema.validate(req.body);
-  if (error) {
-    const msg = error.details.map((d) => d.message).join(", ");
-    throw new ExpressResponse(STATUS_ERROR, STATUS_CODE_BAD_REQUEST, msg);
-  } else {
-    next();
-  }
-};
-
-module.exports.validateRole = (req, res, next) => {
-  const { error } = roleSchema.validate(req.body);
-  if (error) {
-    const msg = error.details.map((d) => d.message).join(", ");
-    throw new ExpressResponse(STATUS_ERROR, STATUS_CODE_BAD_REQUEST, msg);
-  } else {
-    next();
-  }
-};
-
-module.exports.validateUpdateRole = (req, res, next) => {
-  const { error } = updateRoleSchema.validate(req.body);
-  if (error) {
-    const msg = error.details.map((d) => d.message).join(", ");
-    throw new ExpressResponse(STATUS_ERROR, STATUS_CODE_BAD_REQUEST, msg);
-  } else {
-    next();
-  }
-};
-
-module.exports.validateGenderCode = (req, res, next) => {
-  const { error } = genderCodeSchema.validate(req.body);
-  if (error) {
-    const msg = error.details.map((d) => d.message).join(", ");
-    throw new ExpressResponse(STATUS_ERROR, STATUS_CODE_BAD_REQUEST, msg);
-  } else {
-    next();
-  }
-};
-
-module.exports.validateGender = (req, res, next) => {
-  const { error } = genderSchema.validate(req.body);
-  if (error) {
-    const msg = error.details.map((d) => d.message).join(", ");
-    throw new ExpressResponse(STATUS_ERROR, STATUS_CODE_BAD_REQUEST, msg);
-  } else {
-    next();
-  }
-};
-
-module.exports.validateUpdateGender = (req, res, next) => {
-  const { error } = updateGenderSchema.validate(req.body);
-  if (error) {
-    const msg = error.details.map((d) => d.message).join(", ");
-    throw new ExpressResponse(STATUS_ERROR, STATUS_CODE_BAD_REQUEST, msg);
-  } else {
-    next();
-  }
-};
-
-module.exports.validateCountryCode = (req, res, next) => {
-  const { error } = countryCodeSchema.validate(req.body);
-  if (error) {
-    const msg = error.details.map((d) => d.message).join(", ");
-    throw new ExpressResponse(STATUS_ERROR, STATUS_CODE_BAD_REQUEST, msg);
-  } else {
-    next();
-  }
-};
-
-module.exports.validateCountry = (req, res, next) => {
-  const { error } = countrySchema.validate(req.body);
-  if (error) {
-    const msg = error.details.map((d) => d.message).join(", ");
-    throw new ExpressResponse(STATUS_ERROR, STATUS_CODE_BAD_REQUEST, msg);
-  } else {
-    next();
-  }
-};
-
-module.exports.validateUpdateCountry = (req, res, next) => {
-  const { error } = updateCountrySchema.validate(req.body);
-  if (error) {
-    const msg = error.details.map((d) => d.message).join(", ");
-    throw new ExpressResponse(STATUS_ERROR, STATUS_CODE_BAD_REQUEST, msg);
-  } else {
-    next();
-  }
-};
-
-module.exports.validateStateCode = (req, res, next) => {
-  const { error } = stateCodeSchema.validate(req.body);
-  if (error) {
-    const msg = error.details.map((d) => d.message).join(", ");
-    throw new ExpressResponse(STATUS_ERROR, STATUS_CODE_BAD_REQUEST, msg);
-  } else {
-    next();
-  }
-};
-
-module.exports.validateState = (req, res, next) => {
-  const { error } = stateSchema.validate(req.body);
-  if (error) {
-    const msg = error.details.map((d) => d.message).join(", ");
-    throw new ExpressResponse(STATUS_ERROR, STATUS_CODE_BAD_REQUEST, msg);
-  } else {
-    next();
-  }
-};
-
-module.exports.validateUpdateState = (req, res, next) => {
-  const { error } = updateStateSchema.validate(req.body);
-  if (error) {
-    const msg = error.details.map((d) => d.message).join(", ");
-    throw new ExpressResponse(STATUS_ERROR, STATUS_CODE_BAD_REQUEST, msg);
-  } else {
-    next();
-  }
-};
-
-module.exports.validateCityCode = (req, res, next) => {
-  const { error } = cityCodeSchema.validate(req.body);
-  if (error) {
-    const msg = error.details.map((d) => d.message).join(", ");
-    throw new ExpressResponse(STATUS_ERROR, STATUS_CODE_BAD_REQUEST, msg);
-  } else {
-    next();
-  }
-};
-
-module.exports.validateCity = (req, res, next) => {
-  const { error } = citySchema.validate(req.body);
-  if (error) {
-    const msg = error.details.map((d) => d.message).join(", ");
-    throw new ExpressResponse(STATUS_ERROR, STATUS_CODE_BAD_REQUEST, msg);
-  } else {
-    next();
-  }
-};
-
-module.exports.validateUpdateCity = (req, res, next) => {
-  const { error } = updateCitySchema.validate(req.body);
-  if (error) {
-    const msg = error.details.map((d) => d.message).join(", ");
-    throw new ExpressResponse(STATUS_ERROR, STATUS_CODE_BAD_REQUEST, msg);
-  } else {
-    next();
-  }
-};
-
-module.exports.validateProfilePicture = async (req, res, next) => {
-  uploadProfilePicture(req, res, (err) => {
-    if (err instanceof MulterError) {
-      return res
-        .status(STATUS_CODE_BAD_REQUEST)
-        .send(
-          new ExpressResponse(
-            STATUS_ERROR,
-            STATUS_CODE_BAD_REQUEST,
-            err?.message ?? MESSAGE_INTERNAL_SERVER_ERROR
-          )
-        );
-    } else if (err) {
-      return res
-        .status(err?.statusCode ?? STATUS_CODE_BAD_REQUEST)
-        .send(
-          new ExpressResponse(
-            err?.status ?? STATUS_ERROR,
-            err?.statusCode ?? STATUS_CODE_BAD_REQUEST,
-            err?.message ?? MESSAGE_INTERNAL_SERVER_ERROR
-          )
-        );
+  /**
+   * Middleware for validating profile schemas.
+   */
+  validateProfileCode: validateSchema(schemas.profileCodeSchema),
+  validateProfile: async (req, res, next) => {
+    const file = {
+      url: req?.file?.path ?? "",
+      filename: req?.file?.filename ?? "",
+    };
+    req.body[req?.file?.fieldname ?? IMAGE_FIELD_PROFILE_PICTURE] = file;
+    const { error } = schemas.profileSchema.validate(req.body);
+    if (error) {
+      if (file?.filename && file?.filename?.trim()?.length) {
+        await cloudinary.uploader.destroy(file.filename);
+      }
+      const msg = error.details.map((d) => d.message).join(", ");
+      throw new ExpressResponse(STATUS_ERROR, STATUS_CODE_BAD_REQUEST, msg);
     }
     next();
-  });
-};
+  },
+  validateUpdateProfile: validateSchema(schemas.updateProfileSchema),
 
-module.exports.validateProfile = async (req, res, next) => {
-  const file = {
-    url: req?.file?.path ?? "",
-    filename: req?.file?.filename ?? "",
-  };
+  /**
+   * Middleware for validating class schemas.
+   */
+  validateClassCode: validateSchema(schemas.classCodeSchema),
+  validateClass: validateSchema(schemas.classSchema),
+  validateUpdateClass: validateSchema(schemas.updateClassSchema),
 
-  const fieldName = req?.file?.fieldname ?? IMAGE_FIELD_PROFILE_PICTURE;
-  req.body[fieldName] = file;
+  /**
+   * Middleware for validating section schemas.
+   */
+  validateSectionCode: validateSchema(schemas.sectionCodeSchema),
+  validateSection: validateSchema(schemas.sectionSchema),
+  validateUpdateSection: validateSchema(schemas.updateSectionSchema),
 
-  const { error } = profileSchema.validate(req.body);
-  if (error) {
-    if (file?.filename && file?.filename?.trim()?.length) {
-      await cloudinary.uploader.destroy(file.filename);
-    }
-    const msg = error.details.map((d) => d.message).join(", ");
-    throw new ExpressResponse(STATUS_ERROR, STATUS_CODE_BAD_REQUEST, msg);
-  } else {
-    next();
-  }
-};
-
-module.exports.validateProfileCode = (req, res, next) => {
-  const { error } = profileCodeSchema.validate(req.body);
-  if (error) {
-    const msg = error.details.map((d) => d.message).join(", ");
-    throw new ExpressResponse(STATUS_ERROR, STATUS_CODE_BAD_REQUEST, msg);
-  } else {
-    next();
-  }
-};
-
-module.exports.validateUpdateProfile = async (req, res, next) => {
-  const file = {
-    url: req?.file?.path ?? "",
-    filename: req?.file?.filename ?? "",
-  };
-
-  const fieldName = req?.file?.fieldname ?? IMAGE_FIELD_PROFILE_PICTURE;
-  req.body[fieldName] = file;
-
-  const { error } = updateProfileSchema.validate(req.body);
-  if (error) {
-    if (file?.filename && file?.filename?.trim()?.length) {
-      await cloudinary.uploader.destroy(file.filename);
-    }
-    const msg = error.details.map((d) => d.message).join(", ");
-    throw new ExpressResponse(STATUS_ERROR, STATUS_CODE_BAD_REQUEST, msg);
-  } else {
-    next();
-  }
-};
-
-module.exports.validateAuditCode = (req, res, next) => {
-  const { error } = auditCodeSchema.validate(req.body);
-  if (error) {
-    const msg = error.details.map((d) => d.message).join(", ");
-    throw new ExpressResponse(STATUS_ERROR, STATUS_CODE_BAD_REQUEST, msg);
-  } else {
-    next();
-  }
-};
-
-module.exports.validateClassCode = (req, res, next) => {
-  const { error } = classCodeSchema.validate(req.body);
-  if (error) {
-    const msg = error.details.map((d) => d.message).join(", ");
-    throw new ExpressResponse(STATUS_ERROR, STATUS_CODE_BAD_REQUEST, msg);
-  } else {
-    next();
-  }
-};
-
-module.exports.validateClass = (req, res, next) => {
-  const { error } = classSchema.validate(req.body);
-  if (error) {
-    const msg = error.details.map((d) => d.message).join(", ");
-    throw new ExpressResponse(STATUS_ERROR, STATUS_CODE_BAD_REQUEST, msg);
-  } else {
-    next();
-  }
-};
-
-module.exports.validateUpdateClass = (req, res, next) => {
-  const { error } = updateClassSchema.validate(req.body);
-  if (error) {
-    const msg = error.details.map((d) => d.message).join(", ");
-    throw new ExpressResponse(STATUS_ERROR, STATUS_CODE_BAD_REQUEST, msg);
-  } else {
-    next();
-  }
-};
-
-module.exports.validateSectionCode = (req, res, next) => {
-  const { error } = sectionCodeSchema.validate(req.body);
-  if (error) {
-    const msg = error.details.map((d) => d.message).join(", ");
-    throw new ExpressResponse(STATUS_ERROR, STATUS_CODE_BAD_REQUEST, msg);
-  } else {
-    next();
-  }
-};
-
-module.exports.validateSection = (req, res, next) => {
-  const { error } = sectionSchema.validate(req.body);
-  if (error) {
-    const msg = error.details.map((d) => d.message).join(", ");
-    throw new ExpressResponse(STATUS_ERROR, STATUS_CODE_BAD_REQUEST, msg);
-  } else {
-    next();
-  }
-};
-
-module.exports.validateUpdateSection = (req, res, next) => {
-  const { error } = updateSectionSchema.validate(req.body);
-  if (error) {
-    const msg = error.details.map((d) => d.message).join(", ");
-    throw new ExpressResponse(STATUS_ERROR, STATUS_CODE_BAD_REQUEST, msg);
-  } else {
-    next();
-  }
+  /**
+   * Middleware for validating subject schemas.
+   */
+  validateSubjectCode: validateSchema(schemas.subjectCodeSchema),
+  validateSubject: validateSchema(schemas.subjectSchema),
+  validateUpdateSubject: validateSchema(schemas.updateSubjectSchema),
 };

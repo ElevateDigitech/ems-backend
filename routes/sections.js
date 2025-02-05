@@ -16,14 +16,14 @@ const router = express.Router();
 router.get(
   "/GetSections",
   isLoggedIn,
-  checkPermission(allPermissions?.VIEW_SECTION),
+  checkPermission(allPermissions?.VIEW_SECTIONS),
   catchAsync(sections.GetSections)
 );
 
 router.get(
   "/GetSectionByCode",
   isLoggedIn,
-  checkPermission(allPermissions?.VIEW_SECTION),
+  checkPermission(allPermissions?.VIEW_SECTIONS),
   validateSectionCode,
   catchAsync(sections.GetSectionByCode)
 );
@@ -31,7 +31,7 @@ router.get(
 router.get(
   "/GetSectionsByClassCode",
   isLoggedIn,
-  checkPermission(allPermissions?.VIEW_SECTION),
+  checkPermission(allPermissions?.VIEW_SECTIONS),
   validateClassCode,
   catchAsync(sections.GetSectionsByClassCode)
 );

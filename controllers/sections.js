@@ -216,7 +216,7 @@ module.exports.CreateSection = async (req, res, next) => {
   await logAudit(
     generateAuditCode(),
     auditActions?.CREATE,
-    auditCollections?.SECTION,
+    auditCollections?.SECTIONS,
     createdSection?.sectionCode,
     auditChanges?.CREATE_SECTION,
     null,
@@ -334,7 +334,7 @@ module.exports.UpdateSection = async (req, res, next) => {
   await logAudit(
     generateAuditCode(),
     auditActions?.UPDATE,
-    auditCollections?.SECTION,
+    auditCollections?.SECTIONS,
     updatedSection?.sectionCode,
     auditChanges?.UPDATE_SECTION,
     sectionBeforeUpdate?.toObject(),
@@ -428,7 +428,7 @@ module.exports.DeleteSection = async (req, res, next) => {
   await logAudit(
     generateAuditCode(),
     auditActions?.DELETE,
-    auditCollections?.SECTION,
+    auditCollections?.SECTIONS,
     sectionBeforeDelete?.sectionCode,
     auditChanges?.DELETE_SECTION,
     sectionBeforeDelete?.toObject(),

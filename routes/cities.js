@@ -2,12 +2,12 @@ const express = require("express");
 const cities = require("../controllers/cities");
 const {
   isLoggedIn,
+  checkPermission,
   validateCityCode,
   validateCity,
   validateUpdateCity,
   validateStateCode,
   validateCountryCode,
-  checkPermission,
 } = require("../middleware");
 const catchAsync = require("../utils/catchAsync");
 const { allPermissions } = require("../seeds/basePermissions");
@@ -17,14 +17,14 @@ const router = express.Router();
 router.get(
   "/GetCities",
   isLoggedIn,
-  checkPermission(allPermissions?.VIEW_CITY),
+  checkPermission(allPermissions?.VIEW_CITIES),
   catchAsync(cities.GetCities)
 );
 
 router.get(
   "/GetCityByCode",
   isLoggedIn,
-  checkPermission(allPermissions?.VIEW_CITY),
+  checkPermission(allPermissions?.VIEW_CITIES),
   validateCityCode,
   catchAsync(cities.GetCityByCode)
 );
@@ -32,7 +32,7 @@ router.get(
 router.get(
   "/GetCitiesByStateCode",
   isLoggedIn,
-  checkPermission(allPermissions?.VIEW_CITY),
+  checkPermission(allPermissions?.VIEW_CITIES),
   validateStateCode,
   catchAsync(cities.GetCitiesByStateCode)
 );
@@ -40,7 +40,7 @@ router.get(
 router.get(
   "/GetCitiesByCountryCode",
   isLoggedIn,
-  checkPermission(allPermissions?.VIEW_CITY),
+  checkPermission(allPermissions?.VIEW_CITIES),
   validateCountryCode,
   catchAsync(cities.GetCitiesByCountryCode)
 );

@@ -15,8 +15,9 @@ const auditCollections = {
   CITIES: "CITIES",
   STATES: "STATES",
   COUNTRIES: "COUNTRIES",
-  CLASS: "CLASS",
-  SECTION: "SECTION",
+  CLASSES: "CLASSES",
+  SECTIONS: "SECTIONS",
+  SUBJECTS: "SUBJECTS",
 };
 
 const auditChanges = {
@@ -50,6 +51,9 @@ const auditChanges = {
   CREATE_SECTION: "A Section Created",
   UPDATE_SECTION: "A Section Updated",
   DELETE_SECTION: "A Section Deleted",
+  CREATE_SUBJECT: "A Subject Created",
+  UPDATE_SUBJECT: "A Subject Updated",
+  DELETE_SUBJECT: "A Subject Deleted",
 };
 
 module.exports = { auditActions, auditCollections, auditChanges };

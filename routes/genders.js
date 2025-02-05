@@ -4,24 +4,24 @@ const genders = require("../controllers/genders");
 const catchAsync = require("../utils/catchAsync");
 const {
   isLoggedIn,
+  checkPermission,
   validateGenderCode,
   validateGender,
   validateUpdateGender,
-  checkPermission,
 } = require("../middleware");
 const { allPermissions } = require("../seeds/basePermissions");
 
 router.get(
   "/GetGenders",
   isLoggedIn,
-  checkPermission(allPermissions?.VIEW_GENDER),
+  checkPermission(allPermissions?.VIEW_GENDERS),
   catchAsync(genders.GetGenders)
 );
 
 router.get(
   "/GetGenderByCode",
   isLoggedIn,
-  checkPermission(allPermissions?.VIEW_GENDER),
+  checkPermission(allPermissions?.VIEW_GENDERS),
   validateGenderCode,
   catchAsync(genders.GetGenderByCode)
 );

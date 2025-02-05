@@ -4,18 +4,18 @@ const profiles = require("../controllers/profiles");
 const catchAsync = require("../utils/catchAsync");
 const {
   isLoggedIn,
+  checkPermission,
   validateProfile,
   validateProfilePicture,
   validateProfileCode,
   validateUpdateProfile,
-  checkPermission,
 } = require("../middleware");
 const { allPermissions } = require("../seeds/basePermissions");
 
 router.get(
   "/GetProfiles",
   isLoggedIn,
-  checkPermission(allPermissions?.VIEW_PROFILE),
+  checkPermission(allPermissions?.VIEW_PROFILES),
   catchAsync(profiles.getProfiles)
 );
 
@@ -29,7 +29,7 @@ router.get(
 router.get(
   "/GetProfileByCode",
   isLoggedIn,
-  checkPermission(allPermissions?.VIEW_PROFILE),
+  checkPermission(allPermissions?.VIEW_PROFILES),
   validateProfileCode,
   profiles.GetProfileByCode
 );
@@ -37,7 +37,7 @@ router.get(
 router.get(
   "/GetProfileByUserCode",
   isLoggedIn,
-  checkPermission(allPermissions?.VIEW_PROFILE),
+  checkPermission(allPermissions?.VIEW_PROFILES),
   profiles.GetProfileByUserCode
 );
 

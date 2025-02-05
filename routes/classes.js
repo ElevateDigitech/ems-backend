@@ -14,14 +14,14 @@ const { allPermissions } = require("../seeds/basePermissions");
 router.get(
   "/GetClasses",
   isLoggedIn,
-  checkPermission(allPermissions?.VIEW_CLASS),
+  checkPermission(allPermissions?.VIEW_CLASSES),
   catchAsync(classes.GetClasses)
 );
 
 router.get(
   "/GetClassByCode",
   isLoggedIn,
-  checkPermission(allPermissions?.VIEW_CLASS),
+  checkPermission(allPermissions?.VIEW_CLASSES),
   validateClassCode,
   catchAsync(classes.GetClassByCode)
 );

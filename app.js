@@ -15,17 +15,18 @@ const MongoStore = require("connect-mongo");
 const helmet = require("helmet");
 const mongoSanitize = require("express-mongo-sanitize");
 
-const { usersRoutes } = require("./routes/users");
 const { permissionsRoutes } = require("./routes/permissions");
+const { auditLogRoutes } = require("./routes/auditLogs");
 const { rolesRoutes } = require("./routes/roles");
+const { usersRoutes } = require("./routes/users");
 const { genderRoutes } = require("./routes/genders");
 const { countryRoutes } = require("./routes/countries");
 const { stateRoutes } = require("./routes/states");
 const { cityRoutes } = require("./routes/cities");
 const { profileRoutes } = require("./routes/profiles");
-const { auditLogRoutes } = require("./routes/auditLogs");
 const { classRoutes } = require("./routes/classes");
 const { sectionRoutes } = require("./routes/sections");
+const { subjectRoutes } = require("./routes/subjects");
 
 const { STATUS_ERROR } = require("./utils/status");
 const { MESSAGE_PAGE_NOT_FOUND } = require("./utils/messages");
@@ -134,17 +135,18 @@ app.use((req, res, next) => {
   next();
 });
 
-app.use("/", usersRoutes);
 app.use("/", permissionsRoutes);
+app.use("/", auditLogRoutes);
 app.use("/", rolesRoutes);
+app.use("/", usersRoutes);
 app.use("/", genderRoutes);
 app.use("/", countryRoutes);
 app.use("/", stateRoutes);
 app.use("/", cityRoutes);
 app.use("/", profileRoutes);
-app.use("/", auditLogRoutes);
 app.use("/", classRoutes);
 app.use("/", sectionRoutes);
+app.use("/", subjectRoutes);
 
 app.all("*", (req, res, next) => {
   next(

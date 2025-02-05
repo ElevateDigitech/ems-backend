@@ -143,7 +143,7 @@ module.exports.CreateClass = async (req, res, next) => {
   await logAudit(
     generateAuditCode(),
     auditActions?.CREATE,
-    auditCollections?.CLASS,
+    auditCollections?.CLASSES,
     createdClass?.classCode,
     auditChanges?.CREATE_CLASS,
     null,
@@ -244,7 +244,7 @@ module.exports.UpdateClass = async (req, res, next) => {
   await logAudit(
     generateAuditCode(),
     auditActions?.UPDATE,
-    auditCollections?.CLASS,
+    auditCollections?.CLASSES,
     classBeforeUpdate?.classCode,
     auditChanges?.UPDATE_CLASS,
     classBeforeUpdate?.toObject(),
@@ -338,7 +338,7 @@ module.exports.DeleteClass = async (req, res, next) => {
   await logAudit(
     generateAuditCode(),
     auditActions?.DELETE,
-    auditCollections?.CLASS,
+    auditCollections?.CLASSES,
     classBeforeDelete?.classCode,
     auditChanges?.DELETE_CLASS,
     classBeforeDelete?.toObject(),

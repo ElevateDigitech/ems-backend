@@ -4,8 +4,8 @@ const permissions = require("../controllers/permissions");
 const catchAsync = require("../utils/catchAsync");
 const {
   isLoggedIn,
-  validatePermissionCode,
   checkPermission,
+  validatePermissionCode,
 } = require("../middleware");
 const { allPermissions } = require("../seeds/basePermissions");
 
