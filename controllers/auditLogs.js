@@ -12,11 +12,18 @@ const {
   MESSAGE_GET_AUDIT_SUCCESS,
 } = require("../utils/messages");
 
+/**
+ * Retrieves all audit logs from the database.
+ *
+ * @param {Object} req - Express request object
+ * @param {Object} res - Express response object
+ * @param {Function} next - Express next middleware function
+ */
 module.exports.GetAudits = async (req, res, next) => {
-  // Retrieve all documents from the `auditLogs` collection while excluding specific fields
+  // Fetch all audit logs, excluding hidden fields
   const auditLogs = await AuditLog.find({}, hiddenFieldsDefault);
 
-  // Send a success response containing the retrieved audit logs
+  // Send a successful response with the retrieved audit logs
   res
     .status(STATUS_CODE_SUCCESS)
     .send(
@@ -29,18 +36,22 @@ module.exports.GetAudits = async (req, res, next) => {
     );
 };
 
+/**
+ * Retrieves a specific audit log based on the provided audit code.
+ *
+ * @param {Object} req - Express request object containing auditCode in body
+ * @param {Object} res - Express response object
+ * @param {Function} next - Express next middleware function
+ */
 module.exports.GetAuditByCode = async (req, res, next) => {
-  // Extract the `auditCode` from the request body and query the `auditLogs` collection for a matching document, excluding specific fields
+  // Extract auditCode from the request body
   const { auditCode } = req.body;
-  const auditLogs = await AuditLog.findOne(
-    {
-      auditCode,
-    },
-    hiddenFieldsDefault
-  );
 
-  // If no matching document is found, return an error response
-  if (!auditLogs) {
+  // Find a single audit log that matches the provided audit code
+  const auditLog = await AuditLog.findOne({ auditCode }, hiddenFieldsDefault);
+
+  // If no audit log is found, pass an error response to the next middleware
+  if (!auditLog) {
     return next(
       new ExpressResponse(
         STATUS_ERROR,
@@ -50,7 +61,7 @@ module.exports.GetAuditByCode = async (req, res, next) => {
     );
   }
 
-  // Send a success response with the retrieved audit log data
+  // Send a successful response with the retrieved audit log
   res
     .status(STATUS_CODE_SUCCESS)
     .send(
@@ -58,7 +69,7 @@ module.exports.GetAuditByCode = async (req, res, next) => {
         STATUS_SUCCESS,
         STATUS_CODE_SUCCESS,
         MESSAGE_GET_AUDIT_SUCCESS,
-        auditLogs
+        auditLog
       )
     );
 };

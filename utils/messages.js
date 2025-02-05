@@ -164,6 +164,20 @@ const MESSAGE_DELETE_SECTION_ERROR = "Couldn't delete the section";
 const MESSAGE_SECTION_TAKEN =
   "Section name (or) iso already taken. Please try a different one.";
 
+const MESSAGE_GET_SUBJECTS_SUCCESS = "Subjects retrieved successfully";
+const MESSAGE_GET_SUBJECT_SUCCESS = "Subject retrieved successfully";
+const MESSAGE_SUBJECT_EXIST =
+  "Subject already exist. Please try a different one";
+const MESSAGE_CREATE_SUBJECT_SUCCESS = "Subject created successfully";
+const MESSAGE_SUBJECT_NOT_FOUND = "The selected subject could not be found";
+const MESSAGE_UPDATE_SUBJECT_SUCCESS = "Subject updated successfully";
+const MESSAGE_SUBJECT_NOT_ALLOWED_DELETE_REFERENCE_EXIST =
+  "The selected subject is in use and not allowed to be deleted.";
+const MESSAGE_DELETE_SUBJECT_SUCCESS = "Subject deleted successfully";
+const MESSAGE_DELETE_SUBJECT_ERROR = "Couldn't delete the subject";
+const MESSAGE_SUBJECT_TAKEN =
+  "Subject name already taken. Please try a different one.";
+
 module.exports = {
   MESSAGE_MISSING_REQUIRED_FIELDS,
   MESSAGE_INVALID_EMAIL_FORMAT,
@@ -285,4 +299,15 @@ module.exports = {
   MESSAGE_DELETE_SECTION_SUCCESS,
   MESSAGE_DELETE_SECTION_ERROR,
   MESSAGE_SECTION_TAKEN,
+
+  MESSAGE_GET_SUBJECTS_SUCCESS,
+  MESSAGE_GET_SUBJECT_SUCCESS,
+  MESSAGE_SUBJECT_EXIST,
+  MESSAGE_CREATE_SUBJECT_SUCCESS,
+  MESSAGE_SUBJECT_NOT_FOUND,
+  MESSAGE_UPDATE_SUBJECT_SUCCESS,
+  MESSAGE_SUBJECT_NOT_ALLOWED_DELETE_REFERENCE_EXIST,
+  MESSAGE_DELETE_SUBJECT_SUCCESS,
+  MESSAGE_DELETE_SUBJECT_ERROR,
+  MESSAGE_SUBJECT_TAKEN,
 };

@@ -17,7 +17,7 @@ const SubjectSchema = new Schema(
       trim: true,
       immutable: true,
     },
-    subjectName: {
+    name: {
       type: String,
       required: true,
       unique: true,
