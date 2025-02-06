@@ -3,7 +3,6 @@ const City = require("../models/city");
 const State = require("../models/state");
 const Country = require("../models/country");
 const User = require("../models/user");
-const ExpressResponse = require("../utils/ExpressResponse");
 const { logAudit } = require("../middleware");
 const {
   auditActions,
@@ -13,12 +12,13 @@ const {
 const {
   hiddenFieldsDefault,
   hiddenFieldsUser,
+  handleError,
+  handleSuccess,
   toCapitalize,
   IsObjectIdReferenced,
   generateCityCode,
   generateAuditCode,
 } = require("../utils/helpers");
-const { STATUS_ERROR, STATUS_SUCCESS } = require("../utils/status");
 const {
   STATUS_CODE_CONFLICT,
   STATUS_CODE_SUCCESS,
@@ -41,254 +41,20 @@ const {
   MESSAGE_CITY_TAKEN,
 } = require("../utils/messages");
 
-module.exports.GetCities = async (req, res, next) => {
-  // Query the `cities` collection to retrieve all documents, excluding specific fields, and populate related `states` and `countries` data
-  const cities = await City.find({}, hiddenFieldsDefault)
+// Utility functions for database queries
+const findCitiesByQuery = async (query) =>
+  await City.find(query, hiddenFieldsDefault)
     .populate("state", hiddenFieldsDefault)
     .populate("country", hiddenFieldsDefault);
-
-  // Send a success response with the retrieved city data
-  res
-    .status(STATUS_CODE_SUCCESS)
-    .send(
-      new ExpressResponse(
-        STATUS_SUCCESS,
-        STATUS_CODE_SUCCESS,
-        MESSAGE_GET_CITIES_SUCCESS,
-        cities
-      )
-    );
-};
-
-module.exports.GetCityByCode = async (req, res, next) => {
-  // Extract `cityCode` from the request body and query the `cities` collection for a matching document,
-  // excluding specific fields and populating related `state` and `country` data.
-  const { cityCode } = req.body;
-  const city = await City.findOne(
-    {
-      cityCode,
-    },
-    hiddenFieldsDefault
-  )
+const findCityByQuery = async (query) =>
+  await City.findOne(query, hiddenFieldsDefault)
     .populate("state", hiddenFieldsDefault)
     .populate("country", hiddenFieldsDefault);
-
-  // If no matching city is found, return an error response.
-  if (!city) {
-    return next(
-      new ExpressResponse(
-        STATUS_ERROR,
-        STATUS_CODE_BAD_REQUEST,
-        MESSAGE_CITY_NOT_FOUND
-      )
-    );
-  }
-
-  // Send a success response with the retrieved city data.
-  res
-    .status(STATUS_CODE_SUCCESS)
-    .send(
-      new ExpressResponse(
-        STATUS_SUCCESS,
-        STATUS_CODE_SUCCESS,
-        MESSAGE_GET_CITY_SUCCESS,
-        city
-      )
-    );
-};
-
-module.exports.GetCitiesByStateCode = async (req, res, next) => {
-  // Extract `stateCode` from the request body.
-  const { stateCode } = req.body;
-
-  // Query the database to find a state document matching the provided `stateCode`.
-  const state = await State.findOne({
-    stateCode,
-  });
-
-  // If no matching state is found, return an error response.
-  if (!state) {
-    return next(
-      new ExpressResponse(
-        STATUS_ERROR,
-        STATUS_CODE_BAD_REQUEST,
-        MESSAGE_STATE_NOT_FOUND
-      )
-    );
-  }
-
-  // Retrieve all cities associated with the found state's `_id`,
-  // excluding specific fields and populating related `state` and `country` data.
-  const cities = await City.find(
-    {
-      state: state?._id,
-    },
-    hiddenFieldsDefault
-  )
-    .populate("state", hiddenFieldsDefault)
-    .populate("country", hiddenFieldsDefault);
-
-  // If no cities are found, return an error response.
-  if (!cities || !Array.isArray(cities) || cities.length === 0) {
-    return next(
-      new ExpressResponse(
-        STATUS_ERROR,
-        STATUS_CODE_BAD_REQUEST,
-        MESSAGE_CITIES_NOT_FOUND
-      )
-    );
-  }
-
-  // Send a success response with the retrieved city data.
-  res
-    .status(STATUS_CODE_SUCCESS)
-    .send(
-      new ExpressResponse(
-        STATUS_SUCCESS,
-        STATUS_CODE_SUCCESS,
-        MESSAGE_GET_CITY_SUCCESS,
-        cities
-      )
-    );
-};
-
-module.exports.GetCitiesByCountryCode = async (req, res, next) => {
-  // Extract `countryCode` from the request body.
-  const { countryCode } = req.body;
-
-  // Query the database to find the country document corresponding to the provided `countryCode`.
-  const country = await Country.findOne({
-    countryCode,
-  });
-
-  // If no matching country is found, return an error response.
-  if (!country) {
-    return next(
-      new ExpressResponse(
-        STATUS_ERROR,
-        STATUS_CODE_BAD_REQUEST,
-        MESSAGE_COUNTRY_NOT_FOUND
-      )
-    );
-  }
-
-  // Retrieve all cities related to the found country using the `country._id`,
-  // excluding specific fields and populating linked `state` and `country` data.
-  const cities = await City.find(
-    {
-      country: country?._id,
-    },
-    hiddenFieldsDefault
-  )
-    .populate("state", hiddenFieldsDefault)
-    .populate("country", hiddenFieldsDefault);
-
-  // If no cities are found, return an error response.
-  if (!cities || !Array.isArray(cities) || cities.length === 0) {
-    return next(
-      new ExpressResponse(
-        STATUS_ERROR,
-        STATUS_CODE_BAD_REQUEST,
-        MESSAGE_CITIES_NOT_FOUND
-      )
-    );
-  }
-
-  // Send a success response with the list of cities.
-  res
-    .status(STATUS_CODE_SUCCESS)
-    .send(
-      new ExpressResponse(
-        STATUS_SUCCESS,
-        STATUS_CODE_SUCCESS,
-        MESSAGE_GET_CITY_SUCCESS,
-        cities
-      )
-    );
-};
-
-module.exports.CreateCity = async (req, res, next) => {
-  // Extract `name`, `stateCode`, and `countryCode` from the request body.
-  const { name, stateCode, countryCode } = req.body;
-
-  // Check if a city with the same `name` already exists in the database.
-  const existingCity = await City.findOne({
-    name: toCapitalize(name),
-  });
-
-  // If a city with the same `name` is found, return a conflict error.
-  if (existingCity) {
-    return next(
-      new ExpressResponse(
-        STATUS_ERROR,
-        STATUS_CODE_CONFLICT,
-        MESSAGE_CITY_EXIST
-      )
-    );
-  }
-
-  // Query the database to find the state corresponding to the provided `stateCode`.
-  const existingState = await State.findOne({
-    stateCode,
-  });
-
-  // If no matching state is found, return an error response.
-  if (!existingState) {
-    return next(
-      new ExpressResponse(
-        STATUS_ERROR,
-        STATUS_CODE_CONFLICT,
-        MESSAGE_STATE_NOT_FOUND
-      )
-    );
-  }
-
-  // Query the database to find the country corresponding to the provided `countryCode`.
-  const existingCountry = await Country.findOne({
-    countryCode,
-  });
-
-  // If no matching country is found, return an error response.
-  if (!existingCountry) {
-    return next(
-      new ExpressResponse(
-        STATUS_ERROR,
-        STATUS_CODE_CONFLICT,
-        MESSAGE_COUNTRY_NOT_FOUND
-      )
-    );
-  }
-
-  // Generate a unique `cityCode` for the new city.
-  const cityCode = generateCityCode();
-
-  // Create a new `City` document with the provided data and related state and country.
-  const city = new City({
-    name: toCapitalize(name),
-    cityCode,
-    state: existingState?._id,
-    country: existingCountry?._id,
-  });
-
-  // Save the newly created city to the database.
-  await city.save();
-
-  // Query the database to retrieve the newly created city using the generated `cityCode`,
-  // populating related `state` and `country` documents while excluding specific fields.
-  const createdCity = await City.findOne(
-    {
-      cityCode,
-    },
-    hiddenFieldsDefault
-  )
-    .populate("state", hiddenFieldsDefault)
-    .populate("country", hiddenFieldsDefault);
-
-  // Retrieve the current logged-in user's details using their `userCode`.
-  const currentUser = await User.findOne(
-    { userCode: req.user.userCode },
-    hiddenFieldsUser
-  ).populate({
+const findStateByCode = async (stateCode) => await State.findOne({ stateCode });
+const findCountryByCode = async (countryCode) =>
+  await Country.findOne({ countryCode });
+const findUserByCode = async (userCode) =>
+  await User.findOne({ userCode }, hiddenFieldsUser).populate({
     path: "role",
     select: hiddenFieldsDefault,
     populate: {
@@ -297,257 +63,292 @@ module.exports.CreateCity = async (req, res, next) => {
     },
   });
 
-  // Create an audit log entry for this city creation.
-  await logAudit(
-    generateAuditCode(),
-    auditActions?.CREATE,
-    auditCollections?.CITIES,
-    createdCity?.cityCode,
-    auditChanges?.CREATE_CITY,
-    null,
-    createdCity?.toObject(),
-    currentUser?.toObject()
-  );
+// City Controller
+module.exports = {
+  /**
+   * Retrieves all cities from the database.
+   *
+   * @param {Object} req - Express request object
+   * @param {Object} res - Express response object
+   */
+  GetCities: async (req, res) => {
+    // Retrieve all cities from the database
+    const cities = await findCitiesByQuery({});
 
-  // Return a success response with the created city details.
-  res
-    .status(STATUS_CODE_SUCCESS)
-    .send(
-      new ExpressResponse(
-        STATUS_SUCCESS,
-        STATUS_CODE_SUCCESS,
-        MESSAGE_CREATE_CITY_SUCCESS,
-        createdCity
-      )
-    );
-};
+    // Send the retrieved cities in the response
+    res
+      .status(STATUS_CODE_SUCCESS)
+      .send(
+        handleSuccess(STATUS_CODE_SUCCESS, MESSAGE_GET_CITIES_SUCCESS, cities)
+      );
+  },
 
-module.exports.UpdateCity = async (req, res, next) => {
-  // Extract `cityCode`, `name`, `stateCode`, and `countryCode` from the request body.
-  const { cityCode, name, stateCode, countryCode } = req.body;
+  /**
+   * Retrieves a city by its code.
+   *
+   * @param {Object} req - Express request object
+   * @param {Object} res - Express response object
+   * @param {Function} next - Express next middleware function
+   */
+  GetCityByCode: async (req, res, next) => {
+    // Extract the city code from the request
+    const { cityCode } = req.body;
 
-  // Query the database to find a city document using the provided `cityCode`.
-  const existingCity = await City.findOne({
-    cityCode,
-  });
+    // Find the city by its code
+    const city = await findCityByQuery({ cityCode });
 
-  // If no city is found with the given `cityCode`, return a conflict error.
-  if (!existingCity) {
-    return next(
-      new ExpressResponse(
-        STATUS_ERROR,
-        STATUS_CODE_CONFLICT,
-        MESSAGE_CITY_NOT_FOUND
-      )
-    );
-  }
+    // Return the city if found, else return an error
+    return city
+      ? res
+          .status(STATUS_CODE_SUCCESS)
+          .send(
+            handleSuccess(STATUS_CODE_SUCCESS, MESSAGE_GET_CITY_SUCCESS, city)
+          )
+      : handleError(next, STATUS_CODE_BAD_REQUEST, MESSAGE_CITY_NOT_FOUND);
+  },
 
-  // Query the database to find a state document using the provided `stateCode`.
-  const existingState = await State.findOne({
-    stateCode,
-  });
-
-  // If no state is found with the given `stateCode`, return a conflict error.
-  if (!existingState) {
-    return next(
-      new ExpressResponse(
-        STATUS_ERROR,
-        STATUS_CODE_CONFLICT,
+  /**
+   * Retrieves cities by the given state code.
+   *
+   * @param {Object} req - Express request object
+   * @param {Object} res - Express response object
+   * @param {Function} next - Express next middleware function
+   */
+  GetCitiesByStateCode: async (req, res, next) => {
+    // Find the state by its code
+    const state = await findStateByCode(req.body.stateCode);
+    if (!state)
+      return handleError(
+        next,
+        STATUS_CODE_BAD_REQUEST,
         MESSAGE_STATE_NOT_FOUND
-      )
-    );
-  }
+      );
 
-  // Query the database to find a country document using the provided `countryCode`.
-  const existingCountry = await Country.findOne({
-    countryCode,
-  });
+    // Find cities that belong to the state
+    const cities = await findCitiesByQuery({ state: state._id });
 
-  // If no country is found with the given `countryCode`, return a conflict error.
-  if (!existingCountry) {
-    return next(
-      new ExpressResponse(
-        STATUS_ERROR,
-        STATUS_CODE_CONFLICT,
+    // Return the cities if found, else return an error
+    return cities.length
+      ? res
+          .status(STATUS_CODE_SUCCESS)
+          .send(
+            handleSuccess(STATUS_CODE_SUCCESS, MESSAGE_GET_CITY_SUCCESS, cities)
+          )
+      : handleError(next, STATUS_CODE_BAD_REQUEST, MESSAGE_CITIES_NOT_FOUND);
+  },
+
+  /**
+   * Retrieves cities by the given country code.
+   *
+   * @param {Object} req - Express request object
+   * @param {Object} res - Express response object
+   * @param {Function} next - Express next middleware function
+   */
+  GetCitiesByCountryCode: async (req, res, next) => {
+    // Find the country by its code
+    const country = await findCountryByCode(req.body.countryCode);
+    if (!country)
+      return handleError(
+        next,
+        STATUS_CODE_BAD_REQUEST,
         MESSAGE_COUNTRY_NOT_FOUND
-      )
-    );
-  }
+      );
 
-  // Query the database to find other cities with the same `name` (excluding the current `cityCode`).
-  const otherCities = await City.find({
-    cityCode: { $ne: cityCode },
-    name: toCapitalize(name),
-  });
+    // Find cities that belong to the country
+    const cities = await findCitiesByQuery({ country: country._id });
 
-  // If another city with the same `name` exists (excluding the current city), return a conflict error.
-  if (otherCities?.length > 0) {
-    return next(
-      new ExpressResponse(
-        STATUS_ERROR,
-        STATUS_CODE_CONFLICT,
-        MESSAGE_CITY_TAKEN
-      )
-    );
-  }
+    // Return the cities if found, else return an error
+    return cities.length
+      ? res
+          .status(STATUS_CODE_SUCCESS)
+          .send(
+            handleSuccess(STATUS_CODE_SUCCESS, MESSAGE_GET_CITY_SUCCESS, cities)
+          )
+      : handleError(next, STATUS_CODE_BAD_REQUEST, MESSAGE_CITIES_NOT_FOUND);
+  },
 
-  // Retrieve the city document before updating it, excluding certain fields.
-  const cityBeforeUpdate = await City.findOne(
-    { cityCode },
-    hiddenFieldsDefault
-  );
+  /**
+   * Creates a new city in the database.
+   *
+   * @param {Object} req - Express request object
+   * @param {Object} res - Express response object
+   * @param {Function} next - Express next middleware function
+   */
+  CreateCity: async (req, res, next) => {
+    const { name, stateCode, countryCode } = req.body;
 
-  // Update the city document with the new data.
-  const city = await City.findOneAndUpdate(
-    { cityCode },
-    {
+    // Check if the city already exists
+    if (await City.findOne({ name: toCapitalize(name) }))
+      return handleError(next, STATUS_CODE_CONFLICT, MESSAGE_CITY_EXIST);
+
+    // Validate state and country
+    const state = await findStateByCode(stateCode);
+    if (!state)
+      return handleError(next, STATUS_CODE_CONFLICT, MESSAGE_STATE_NOT_FOUND);
+
+    const country = await findCountryByCode(countryCode);
+    if (!country)
+      return handleError(next, STATUS_CODE_CONFLICT, MESSAGE_COUNTRY_NOT_FOUND);
+
+    // Create and save the city
+    const city = new City({
       name: toCapitalize(name),
-      state: existingState?._id,
-      country: existingCountry?._id,
-      updatedAt: moment().valueOf(),
-    }
-  );
+      cityCode: generateCityCode(),
+      state: state._id,
+      country: country._id,
+    });
+    await city.save();
 
-  // Save the updated city document.
-  await city.save();
+    // Log the audit
+    const createdCity = await findCityByQuery({ cityCode: city.cityCode });
+    const user = await findUserByCode(req.user.userCode);
+    await logAudit(
+      generateAuditCode(),
+      auditActions.CREATE,
+      auditCollections.CITIES,
+      city.cityCode,
+      auditChanges.CREATE_CITY,
+      null,
+      createdCity,
+      user
+    );
 
-  // Retrieve the updated city document, including the populated `state` and `country` documents.
-  const updatedCity = await City.findOne(
-    {
+    // Return the created city
+    res
+      .status(STATUS_CODE_SUCCESS)
+      .send(
+        handleSuccess(
+          STATUS_CODE_SUCCESS,
+          MESSAGE_CREATE_CITY_SUCCESS,
+          createdCity
+        )
+      );
+  },
+
+  /**
+   * Updates an existing city in the database.
+   *
+   * @param {Object} req - Express request object
+   * @param {Object} res - Express response object
+   * @param {Function} next - Express next middleware function
+   */
+  UpdateCity: async (req, res, next) => {
+    const { cityCode, name, stateCode, countryCode } = req.body;
+
+    // Validate the city
+    const city = await findCityByQuery({ cityCode });
+    if (!city)
+      return handleError(next, STATUS_CODE_CONFLICT, MESSAGE_CITY_NOT_FOUND);
+
+    // Validate state and country
+    const state = await findStateByCode(stateCode);
+    if (!state)
+      return handleError(next, STATUS_CODE_CONFLICT, MESSAGE_STATE_NOT_FOUND);
+
+    const country = await findCountryByCode(countryCode);
+    if (!country)
+      return handleError(next, STATUS_CODE_CONFLICT, MESSAGE_COUNTRY_NOT_FOUND);
+
+    // Check for duplicate city name
+    if (
+      await City.findOne({
+        name: toCapitalize(name),
+        cityCode: { $ne: cityCode },
+      })
+    )
+      return handleError(next, STATUS_CODE_CONFLICT, MESSAGE_CITY_TAKEN);
+
+    // City details before update
+    const cityBeforeUpdate = city.toObject();
+
+    // Update the city details
+    await City.updateOne(
+      { cityCode },
+      {
+        name: toCapitalize(name),
+        state: state._id,
+        country: country._id,
+        updatedAt: moment().valueOf(),
+      }
+    );
+
+    // Log the audit
+    const updatedCity = await findCityByQuery({ cityCode });
+    const user = await findUserByCode(req.user.userCode);
+    await logAudit(
+      generateAuditCode(),
+      auditActions.UPDATE,
+      auditCollections.CITIES,
       cityCode,
-    },
-    hiddenFieldsDefault
-  )
-    .populate("state", hiddenFieldsDefault)
-    .populate("country", hiddenFieldsDefault);
-
-  // Retrieve the current logged-in user's details using their `userCode`.
-  const currentUser = await User.findOne(
-    { userCode: req.user.userCode },
-    hiddenFieldsUser
-  ).populate({
-    path: "role",
-    select: hiddenFieldsDefault,
-    populate: {
-      path: "rolePermissions",
-      select: hiddenFieldsDefault,
-    },
-  });
-
-  // Create an audit log for the city update.
-  await logAudit(
-    generateAuditCode(),
-    auditActions?.UPDATE,
-    auditCollections?.CITIES,
-    updatedCity?.cityCode,
-    auditChanges?.UPDATE_CITY,
-    cityBeforeUpdate?.toObject(),
-    updatedCity?.toObject(),
-    currentUser?.toObject()
-  );
-
-  // Return a success response with the updated city details.
-  res
-    .status(STATUS_CODE_SUCCESS)
-    .send(
-      new ExpressResponse(
-        STATUS_SUCCESS,
-        STATUS_CODE_SUCCESS,
-        MESSAGE_UPDATE_CITY_SUCCESS,
-        updatedCity
-      )
+      auditChanges.UPDATE_CITY,
+      cityBeforeUpdate,
+      updatedCity,
+      user
     );
-};
 
-module.exports.DeleteCity = async (req, res, next) => {
-  // Extract the `cityCode` from the request body.
-  const { cityCode } = req.body;
+    // Return the updated city
+    res
+      .status(STATUS_CODE_SUCCESS)
+      .send(
+        handleSuccess(
+          STATUS_CODE_SUCCESS,
+          MESSAGE_UPDATE_CITY_SUCCESS,
+          updatedCity
+        )
+      );
+  },
 
-  // Query the database to find the city document matching the provided `cityCode`.
-  const existingCity = await City.findOne({
-    cityCode,
-  });
+  /**
+   * Deletes a city from the database.
+   *
+   * @param {Object} req - Express request object
+   * @param {Object} res - Express response object
+   * @param {Function} next - Express next middleware function
+   */
+  DeleteCity: async (req, res, next) => {
+    // Extract the city code from the request
+    const { cityCode } = req.body;
 
-  // If no city document is found, return a conflict error response.
-  if (!existingCity) {
-    return next(
-      new ExpressResponse(
-        STATUS_ERROR,
-        STATUS_CODE_CONFLICT,
-        MESSAGE_CITY_NOT_FOUND
-      )
-    );
-  }
+    // Validate the city
+    const city = await findCityByQuery({ cityCode });
+    if (!city)
+      return handleError(next, STATUS_CODE_CONFLICT, MESSAGE_CITY_NOT_FOUND);
 
-  // Check if the city is referenced elsewhere in the database.
-  const { isReferenced } = await IsObjectIdReferenced(existingCity._id);
-
-  // If the city is referenced, return an error response.
-  if (isReferenced) {
-    return next(
-      new ExpressResponse(
-        STATUS_ERROR,
+    // Check if the city is referenced elsewhere
+    const { isReferenced } = await IsObjectIdReferenced(city._id);
+    if (isReferenced)
+      return handleError(
+        next,
         STATUS_CODE_CONFLICT,
         MESSAGE_CITY_NOT_ALLOWED_DELETE_REFERENCE_EXIST
-      )
+      );
+
+    // Delete the city
+    const deletionResult = await City.deleteOne({ cityCode: city.cityCode });
+    if (deletionResult.deletedCount === 0)
+      return next(
+        handleSuccess(
+          STATUS_CODE_INTERNAL_SERVER_ERROR,
+          MESSAGE_DELETE_CITY_ERROR
+        )
+      );
+
+    // Log the audit
+    const user = await findUserByCode(req.user.userCode);
+    await logAudit(
+      generateAuditCode(),
+      auditActions.DELETE,
+      auditCollections.CITIES,
+      city.cityCode,
+      auditChanges.DELETE_CITY,
+      city,
+      null,
+      user
     );
-  }
 
-  // Retrieve the city document before deletion (excluding `__v` and `_id` fields).
-  const cityBeforeDelete = await City.findOne(
-    { cityCode },
-    hiddenFieldsDefault
-  );
-
-  // Delete the city document matching the provided `cityCode`.
-  const deletionResult = await City.deleteOne({
-    cityCode,
-  });
-
-  // If no document is deleted, return an internal server error response.
-  if (deletionResult?.deletedCount === 0) {
-    return next(
-      new ExpressResponse(
-        STATUS_ERROR,
-        STATUS_CODE_INTERNAL_SERVER_ERROR,
-        MESSAGE_DELETE_CITY_ERROR
-      )
-    );
-  }
-
-  // Query the database to retrieve the current logged-in user's details using their `userCode`.
-  const currentUser = await User.findOne(
-    { userCode: req.user.userCode },
-    hiddenFieldsUser
-  ).populate({
-    path: "role",
-    select: hiddenFieldsDefault,
-    populate: {
-      path: "rolePermissions",
-      select: hiddenFieldsDefault,
-    },
-  });
-
-  // Create an audit log for the city deletion action.
-  await logAudit(
-    generateAuditCode(),
-    auditActions?.DELETE,
-    auditCollections?.CITIES,
-    cityBeforeDelete?.cityCode,
-    auditChanges?.DELETE_CITY,
-    cityBeforeDelete?.toObject(),
-    null,
-    currentUser?.toObject()
-  );
-
-  // Return a success response indicating that the city was deleted successfully.
-  res
-    .status(STATUS_CODE_SUCCESS)
-    .send(
-      new ExpressResponse(
-        STATUS_SUCCESS,
-        STATUS_CODE_SUCCESS,
-        MESSAGE_DELETE_CITY_SUCCESS
-      )
-    );
+    // Return the success message
+    res
+      .status(STATUS_CODE_SUCCESS)
+      .send(handleSuccess(STATUS_CODE_SUCCESS, MESSAGE_DELETE_CITY_SUCCESS));
+  },
 };

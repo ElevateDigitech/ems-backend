@@ -192,6 +192,7 @@ const ProfileSchema = new Schema(
       ref: "User",
       unique: true,
       required: true,
+      immutable: true,
     },
     createdAt: {
       type: Date,

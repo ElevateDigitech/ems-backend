@@ -1,7 +1,6 @@
 const moment = require("moment-timezone");
 const Country = require("../models/country");
 const User = require("../models/user");
-const ExpressResponse = require("../utils/ExpressResponse");
 const { logAudit } = require("../middleware");
 const {
   auditActions,
@@ -11,16 +10,18 @@ const {
 const {
   hiddenFieldsDefault,
   hiddenFieldsUser,
+  handleError,
+  handleSuccess,
   toCapitalize,
   generateCountryCode,
   IsObjectIdReferenced,
   generateAuditCode,
 } = require("../utils/helpers");
-const { STATUS_ERROR, STATUS_SUCCESS } = require("../utils/status");
 const {
   STATUS_CODE_CONFLICT,
   STATUS_CODE_SUCCESS,
   STATUS_CODE_BAD_REQUEST,
+  STATUS_CODE_INTERNAL_SERVER_ERROR,
 } = require("../utils/statusCodes");
 const {
   MESSAGE_COUNTRY_EXIST,
@@ -35,333 +36,252 @@ const {
   MESSAGE_COUNTRY_TAKEN,
 } = require("../utils/messages");
 
-module.exports.GetCountries = async (req, res, next) => {
-  // Query the database to retrieve all documents from the `countries` collection (excluding `__v` and `_id` fields).
-  const countries = await Country.find({}, hiddenFieldsDefault);
-
-  // Return a success response with the list of countries.
-  res
-    .status(STATUS_CODE_SUCCESS)
-    .send(
-      new ExpressResponse(
-        STATUS_SUCCESS,
-        STATUS_CODE_SUCCESS,
-        MESSAGE_GET_COUNTRIES_SUCCESS,
-        countries
-      )
-    );
-};
-
-module.exports.GetCountryByCode = async (req, res, next) => {
-  // Extract the `countryCode` from the request body and query the `countries` collection for the matching document (excluding `__v` and `_id` fields).
-  const { countryCode } = req.body;
-  const country = await Country.findOne(
-    {
-      countryCode,
-    },
-    hiddenFieldsDefault
-  );
-
-  // Check if no document is found with the provided `countryCode` in the request. If not, return an error response.
-  if (!country) {
-    return next(
-      new ExpressResponse(
-        STATUS_ERROR,
-        STATUS_CODE_BAD_REQUEST,
-        MESSAGE_COUNTRY_NOT_FOUND
-      )
-    );
-  }
-
-  // Return a success response with the found country details.
-  res
-    .status(STATUS_CODE_SUCCESS)
-    .send(
-      new ExpressResponse(
-        STATUS_SUCCESS,
-        STATUS_CODE_SUCCESS,
-        MESSAGE_GET_COUNTRY_SUCCESS,
-        country
-      )
-    );
-};
-
-module.exports.CreateCountry = async (req, res, next) => {
-  // Extract the `name`, `iso2`, and `iso3` properties from the request body.
-  const { name, iso2, iso3 } = req.body;
-
-  // Capitalize the `name` and convert `iso2` and `iso3` to uppercase before querying the database for a matching country document.
-  const existingCountry = await Country.findOne({
-    $or: [
-      { name: toCapitalize(name) },
-      { iso2: iso2.toUpperCase() },
-      { iso3: iso3.toUpperCase() },
-    ],
-  });
-
-  // Check if a country with the same `name`, `iso2`, or `iso3` already exists. If found, return a conflict error.
-  if (existingCountry) {
-    return next(
-      new ExpressResponse(
-        STATUS_ERROR,
-        STATUS_CODE_CONFLICT,
-        MESSAGE_COUNTRY_EXIST
-      )
-    );
-  }
-
-  // Generate a unique `countryCode` for the new country.
-  const countryCode = generateCountryCode();
-
-  // Create a new `Country` model instance with the provided data.
-  const country = new Country({
-    countryCode,
-    name: toCapitalize(name),
-    iso2: iso2.toUpperCase(),
-    iso3: iso3.toUpperCase(),
-  });
-
-  // Save the newly created country to the database.
-  await country.save();
-
-  // Retrieve the newly created country document using the generated `countryCode` (excluding `__v` and `_id` fields).
-  const createdCountry = await Country.findOne(
-    { countryCode },
-    hiddenFieldsDefault
-  );
-
-  // Query the database for the current user's details using their `userCode`.
-  const currentUser = await User.findOne(
-    { userCode: req.user.userCode },
-    hiddenFieldsUser
-  ).populate({
+// Utility Functions
+const findCountryByCode = async (countryCode) =>
+  await Country.findOne({ countryCode }, hiddenFieldsDefault);
+const findUserByCode = async (userCode) =>
+  await User.findOne({ userCode }, hiddenFieldsUser).populate({
     path: "role",
     select: hiddenFieldsDefault,
-    populate: {
-      path: "rolePermissions",
-      select: hiddenFieldsDefault,
-    },
+    populate: { path: "rolePermissions", select: hiddenFieldsDefault },
   });
 
-  // Create an audit log for the country creation.
-  await logAudit(
-    generateAuditCode(),
-    auditActions?.CREATE,
-    auditCollections?.COUNTRIES,
-    createdCountry?.countryCode,
-    auditChanges?.CREATE_COUNTRY,
-    null,
-    createdCountry?.toObject(),
-    currentUser?.toObject()
-  );
+// Country Controller
+module.exports = {
+  /**
+   * Retrieves all countries from the database.
+   *
+   * @param {Object} req - Express request object
+   * @param {Object} res - Express response object
+   */
+  GetCountries: async (req, res) => {
+    // Fetch all countries from the database
+    const countries = await Country.find({}, hiddenFieldsDefault);
 
-  // Return a success response with the created country details.
-  res
-    .status(STATUS_CODE_SUCCESS)
-    .send(
-      new ExpressResponse(
-        STATUS_SUCCESS,
-        STATUS_CODE_SUCCESS,
-        MESSAGE_CREATE_COUNTRY_SUCCESS,
-        createdCountry
-      )
-    );
-};
+    // Send the retrieved countries in the response
+    res
+      .status(STATUS_CODE_SUCCESS)
+      .send(
+        handleSuccess(
+          STATUS_CODE_SUCCESS,
+          MESSAGE_GET_COUNTRIES_SUCCESS,
+          countries
+        )
+      );
+  },
 
-module.exports.UpdateCountry = async (req, res, next) => {
-  // Extract the `countryCode`, `name`, `iso2`, and `iso3` properties from the request body.
-  const { countryCode, name, iso2, iso3 } = req.body;
+  /**
+   * Retrieves a country by its unique country code.
+   *
+   * @param {Object} req - Express request object
+   * @param {Object} res - Express response object
+   * @param {Function} next - Express next middleware function
+   */
+  GetCountryByCode: async (req, res, next) => {
+    // Extract the country code from the request body
+    const { countryCode } = req.body;
 
-  // Use the `countryCode` to search for an existing country document in the `countries` collection.
-  const existingCountry = await Country.findOne({
-    countryCode,
-  });
+    // Find the country by its unique code
+    const country = await findCountryByCode(countryCode);
 
-  // If no document is found, return an error response indicating the country was not found.
-  if (!existingCountry) {
-    return next(
-      new ExpressResponse(
-        STATUS_ERROR,
-        STATUS_CODE_CONFLICT,
-        MESSAGE_COUNTRY_NOT_FOUND
-      )
-    );
-  }
+    // Return the country details if found, else return an error
+    return country
+      ? res
+          .status(STATUS_CODE_SUCCESS)
+          .send(
+            handleSuccess(
+              STATUS_CODE_SUCCESS,
+              MESSAGE_GET_COUNTRY_SUCCESS,
+              country
+            )
+          )
+      : handleError(next, STATUS_CODE_BAD_REQUEST, MESSAGE_COUNTRY_NOT_FOUND);
+  },
 
-  // Search for any other countries with the same `name`, `iso2`, or `iso3` (excluding the current `countryCode`).
-  const otherCountries = await Country.find({
-    countryCode: { $ne: countryCode },
-    $or: [
-      { name: toCapitalize(name) },
-      { iso2: iso2.toUpperCase() },
-      { iso3: iso3.toUpperCase() },
-    ],
-  });
+  /**
+   * Creates a new country in the database.
+   *
+   * @param {Object} req - Express request object
+   * @param {Object} res - Express response object
+   * @param {Function} next - Express next middleware function
+   */
+  CreateCountry: async (req, res, next) => {
+    // Extract country details from the request body
+    const { name, iso2, iso3 } = req.body;
+    const formattedName = toCapitalize(name);
 
-  // If any other countries with the same `name`, `iso2`, or `iso3` are found, return an error response.
-  if (otherCountries?.length > 0) {
-    return next(
-      new ExpressResponse(
-        STATUS_ERROR,
-        STATUS_CODE_CONFLICT,
-        MESSAGE_COUNTRY_TAKEN
-      )
-    );
-  }
+    // Check if a country with the same name or ISO codes already exists
+    const existingCountry = await Country.findOne({
+      $or: [
+        { name: formattedName },
+        { iso2: iso2.toUpperCase() },
+        { iso3: iso3.toUpperCase() },
+      ],
+    });
 
-  // Retrieve the current country document before the update (excluding `__v` and `_id`).
-  const countryBeforeUpdate = await Country.findOne(
-    { countryCode },
-    hiddenFieldsDefault
-  );
+    // Return error if duplicate country exists
+    if (existingCountry)
+      return handleError(next, STATUS_CODE_CONFLICT, MESSAGE_COUNTRY_EXIST);
 
-  // Update the country document with the new data (`name`, `iso2`, `iso3`) and the current timestamp.
-  const country = await Country.findOneAndUpdate(
-    { countryCode },
-    {
-      name: toCapitalize(name),
+    // Create a new country document
+    const newCountry = new Country({
+      countryCode: generateCountryCode(),
+      name: formattedName,
       iso2: iso2.toUpperCase(),
       iso3: iso3.toUpperCase(),
-      updatedAt: moment().valueOf(),
-    }
-  );
+    });
+    await newCountry.save();
 
-  // Save the updated country document to the database.
-  await country.save();
-
-  // Retrieve the updated country document (excluding `__v` and `_id`).
-  const updatedCountry = await Country.findOne(
-    { countryCode },
-    hiddenFieldsDefault
-  );
-
-  // Use the logged-in user's `userCode` to query and retrieve their details.
-  const currentUser = await User.findOne(
-    { userCode: req.user.userCode },
-    hiddenFieldsUser
-  ).populate({
-    path: "role",
-    select: hiddenFieldsDefault,
-    populate: {
-      path: "rolePermissions",
-      select: hiddenFieldsDefault,
-    },
-  });
-
-  // Create an audit log for the update action.
-  await logAudit(
-    generateAuditCode(),
-    auditActions?.UPDATE,
-    auditCollections?.COUNTRIES,
-    updatedCountry?.countryCode,
-    auditChanges?.UPDATE_COUNTRY,
-    countryBeforeUpdate?.toObject(),
-    updatedCountry?.toObject(),
-    currentUser?.toObject()
-  );
-
-  // Return a success response with the updated country details.
-  res
-    .status(STATUS_CODE_SUCCESS)
-    .send(
-      new ExpressResponse(
-        STATUS_SUCCESS,
-        STATUS_CODE_SUCCESS,
-        MESSAGE_UPDATE_COUNTRY_SUCCESS,
-        updatedCountry
-      )
+    // Log the audit for the creation
+    const createdCountry = await findCountryByCode(newCountry.countryCode);
+    const currentUser = await findUserByCode(req.user.userCode);
+    await logAudit(
+      generateAuditCode(),
+      auditActions.CREATE,
+      auditCollections.COUNTRIES,
+      createdCountry.countryCode,
+      auditChanges.CREATE_COUNTRY,
+      null,
+      createdCountry.toObject(),
+      currentUser.toObject()
     );
-};
 
-module.exports.DeleteCountry = async (req, res, next) => {
-  // Extract the `countryCode` property from the request body.
-  const { countryCode } = req.body;
+    // Send the created country as response
+    res
+      .status(STATUS_CODE_SUCCESS)
+      .send(
+        handleSuccess(
+          STATUS_CODE_SUCCESS,
+          MESSAGE_CREATE_COUNTRY_SUCCESS,
+          createdCountry
+        )
+      );
+  },
 
-  // Query the database to find a country document matching the `countryCode`.
-  const existingCountry = await Country.findOne({
-    countryCode,
-  });
+  /**
+   * Updates an existing country in the database.
+   *
+   * @param {Object} req - Express request object
+   * @param {Object} res - Express response object
+   * @param {Function} next - Express next middleware function
+   */
+  UpdateCountry: async (req, res, next) => {
+    // Extract country details from the request body
+    const { countryCode, name, iso2, iso3 } = req.body;
+    const formattedName = toCapitalize(name);
 
-  // If no country document is found, return an error response.
-  if (!existingCountry) {
-    return next(
-      new ExpressResponse(
-        STATUS_ERROR,
-        STATUS_CODE_CONFLICT,
-        MESSAGE_COUNTRY_NOT_FOUND
-      )
+    // Find the existing country by code
+    const existingCountry = await findCountryByCode(countryCode);
+
+    // Return error if country does not exist
+    if (!existingCountry)
+      return handleError(next, STATUS_CODE_CONFLICT, MESSAGE_COUNTRY_NOT_FOUND);
+
+    // Check for duplicate country details
+    const duplicateCountry = await Country.findOne({
+      countryCode: { $ne: countryCode },
+      $or: [
+        { name: formattedName },
+        { iso2: iso2.toUpperCase() },
+        { iso3: iso3.toUpperCase() },
+      ],
+    });
+
+    if (duplicateCountry)
+      return handleError(next, STATUS_CODE_CONFLICT, MESSAGE_COUNTRY_TAKEN);
+
+    // Update the country details
+    const previousData = existingCountry.toObject();
+    await Country.findOneAndUpdate(
+      { countryCode },
+      {
+        name: formattedName,
+        iso2: iso2.toUpperCase(),
+        iso3: iso3.toUpperCase(),
+        updatedAt: moment().valueOf(),
+      }
     );
-  }
 
-  // Check if the country is being referenced in any other part of the database.
-  const { isReferenced } = await IsObjectIdReferenced(existingCountry._id);
+    // Log the update audit
+    const updatedCountry = await findCountryByCode(countryCode);
+    const currentUser = await findUserByCode(req.user.userCode);
+    await logAudit(
+      generateAuditCode(),
+      auditActions.UPDATE,
+      auditCollections.COUNTRIES,
+      countryCode,
+      auditChanges.UPDATE_COUNTRY,
+      previousData,
+      updatedCountry.toObject(),
+      currentUser.toObject()
+    );
 
-  // If the country is referenced, return an error response indicating it cannot be deleted.
-  if (isReferenced) {
-    return next(
-      new ExpressResponse(
-        STATUS_ERROR,
+    // Send the updated country as response
+    res
+      .status(STATUS_CODE_SUCCESS)
+      .send(
+        handleSuccess(
+          STATUS_CODE_SUCCESS,
+          MESSAGE_UPDATE_COUNTRY_SUCCESS,
+          updatedCountry
+        )
+      );
+  },
+
+  /**
+   * Deletes a country from the database.
+   *
+   * @param {Object} req - Express request object
+   * @param {Object} res - Express response object
+   * @param {Function} next - Express next middleware function
+   */
+  DeleteCountry: async (req, res, next) => {
+    // Extract country code from the request body
+    const { countryCode } = req.body;
+
+    // Find the country by code
+    const existingCountry = await findCountryByCode(countryCode);
+
+    // Return error if country not found
+    if (!existingCountry)
+      return handleError(next, STATUS_CODE_CONFLICT, MESSAGE_COUNTRY_NOT_FOUND);
+
+    // Check if the country is referenced elsewhere
+    const { isReferenced } = await IsObjectIdReferenced(existingCountry._id);
+    if (isReferenced)
+      return handleError(
+        next,
         STATUS_CODE_CONFLICT,
         MESSAGE_COUNTRY_NOT_ALLOWED_DELETE_REFERENCE_EXIST
-      )
-    );
-  }
+      );
 
-  // Retrieve the country document before deletion (excluding `__v` and `_id`).
-  const countryBeforeDelete = await Country.findOne(
-    { countryCode },
-    hiddenFieldsDefault
-  );
+    // Delete the country from the database
+    const previousData = existingCountry.toObject();
+    const deletionResult = await Country.deleteOne({ countryCode });
 
-  // Attempt to delete the country document with the given `countryCode`.
-  const country = await Country.deleteOne({
-    countryCode,
-  });
-
-  // If the document is not deleted (i.e., `deletedCount` is 0), return an error response.
-  if (country?.deletedCount === 0) {
-    return next(
-      new ExpressResponse(
-        STATUS_ERROR,
+    if (deletionResult.deletedCount === 0)
+      return handleError(
+        next,
         STATUS_CODE_INTERNAL_SERVER_ERROR,
         MESSAGE_DELETE_COUNTRY_ERROR
-      )
+      );
+
+    // Log the deletion audit
+    const currentUser = await findUserByCode(req.user.userCode);
+    await logAudit(
+      generateAuditCode(),
+      auditActions.DELETE,
+      auditCollections.COUNTRIES,
+      countryCode,
+      auditChanges.DELETE_COUNTRY,
+      previousData,
+      null,
+      currentUser.toObject()
     );
-  }
 
-  // Query the database for the current user's details using `userCode`.
-  const currentUser = await User.findOne(
-    { userCode: req.user.userCode },
-    hiddenFieldsUser
-  ).populate({
-    path: "role",
-    select: hiddenFieldsDefault,
-    populate: {
-      path: "rolePermissions",
-      select: hiddenFieldsDefault,
-    },
-  });
-
-  // Create an audit log for the deletion action.
-  await logAudit(
-    generateAuditCode(),
-    auditActions?.DELETE,
-    auditCollections?.COUNTRIES,
-    countryBeforeDelete?.countryCode,
-    auditChanges?.DELETE_COUNTRY,
-    countryBeforeDelete?.toObject(),
-    null,
-    currentUser?.toObject()
-  );
-
-  // Return a success response indicating the country was successfully deleted.
-  res
-    .status(STATUS_CODE_SUCCESS)
-    .send(
-      new ExpressResponse(
-        STATUS_SUCCESS,
-        STATUS_CODE_SUCCESS,
-        MESSAGE_DELETE_COUNTRY_SUCCESS
-      )
-    );
+    // Send the deletion success response
+    res
+      .status(STATUS_CODE_SUCCESS)
+      .send(handleSuccess(STATUS_CODE_SUCCESS, MESSAGE_DELETE_COUNTRY_SUCCESS));
+  },
 };

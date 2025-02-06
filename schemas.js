@@ -151,14 +151,14 @@ module.exports.profileSchema = Joi.object({
     filename: Joi.string().required(),
   }).required(),
   dob: Joi.string().required().pattern(VALID_DATE),
-  gender: Joi.string().required(),
+  genderCode: Joi.string().required(),
   phoneNumber: Joi.string().required().pattern(VALID_PHONE),
   address: Joi.object({
     addressLineOne: Joi.string(),
     addressLineTwo: Joi.string(),
-    city: Joi.string().required(),
-    state: Joi.string().required(),
-    country: Joi.string().required(),
+    cityCode: Joi.string().required(),
+    stateCode: Joi.string().required(),
+    countryCode: Joi.string().required(),
     postalCode: Joi.string().required(),
   }).required(),
   social: Joi.object({
@@ -173,7 +173,7 @@ module.exports.profileSchema = Joi.object({
     sms: Joi.boolean().required(),
     push: Joi.boolean().required(),
   }).required(),
-  user: Joi.string().required(),
+  userCode: Joi.string().required(),
 });
 
 module.exports.updateProfileSchema = Joi.object({
@@ -185,14 +185,14 @@ module.exports.updateProfileSchema = Joi.object({
     filename: Joi.string().required(),
   }).required(),
   dob: Joi.string().required().pattern(VALID_DATE),
-  gender: Joi.string().required(),
+  genderCode: Joi.string().required(),
   phoneNumber: Joi.string().required().pattern(VALID_PHONE),
   address: Joi.object({
     addressLineOne: Joi.string(),
     addressLineTwo: Joi.string(),
-    city: Joi.string().required(),
-    state: Joi.string().required(),
-    country: Joi.string().required(),
+    cityCode: Joi.string().required(),
+    stateCode: Joi.string().required(),
+    countryCode: Joi.string().required(),
     postalCode: Joi.string().required(),
   }).required(),
   social: Joi.object({
@@ -207,7 +207,6 @@ module.exports.updateProfileSchema = Joi.object({
     sms: Joi.boolean().required(),
     push: Joi.boolean().required(),
   }).required(),
-  user: Joi.string().required(),
 });
 
 /**

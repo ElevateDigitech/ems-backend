@@ -2,12 +2,19 @@ const { v4: uuidv4 } = require("uuid");
 const Permission = require("../models/permission");
 const mongoose = require("mongoose");
 const Role = require("../models/role");
-const { referenceFields } = require("./referenceFields");
+const ExpressResponse = require("./ExpressResponse");
 const fsPromises = require("fs").promises;
+const { STATUS_SUCCESS, STATUS_ERROR } = require("./status");
+const { referenceFields } = require("./referenceFields");
 
 const hiddenFieldsDefault = { __v: 0, _id: 0, id: 0 };
 const hiddenFieldsUser = { __v: 0, _id: 0, salt: 0, hash: 0 };
 const removeIdsForSubSchemas = { _id: 0, id: 0 };
+
+const handleError = (next, status, message) =>
+  next(new ExpressResponse(STATUS_ERROR, status, message));
+const handleSuccess = (status, message, data = null) =>
+  new ExpressResponse(STATUS_SUCCESS, status, message, data);
 
 const trimAndTestRegex = (value, regex) =>
   value?.trim() && regex?.test(value.trim());
@@ -93,6 +100,8 @@ module.exports = {
   hiddenFieldsDefault,
   hiddenFieldsUser,
   removeIdsForSubSchemas,
+  handleError,
+  handleSuccess,
   trimAndTestRegex,
   generateAuditCode,
   generatePermissionCode,

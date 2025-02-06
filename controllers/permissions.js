@@ -1,7 +1,9 @@
 const Permission = require("../models/permission");
-const ExpressResponse = require("../utils/ExpressResponse");
-const { hiddenFieldsDefault } = require("../utils/helpers");
-const { STATUS_SUCCESS, STATUS_ERROR } = require("../utils/status");
+const {
+  hiddenFieldsDefault,
+  handleError,
+  handleSuccess,
+} = require("../utils/helpers");
 const {
   STATUS_CODE_SUCCESS,
   STATUS_CODE_BAD_REQUEST,
@@ -12,51 +14,66 @@ const {
   MESSAGE_GET_PERMISSION_SUCCESS,
 } = require("../utils/messages");
 
-module.exports.GetPermissions = async (req, res, next) => {
-  // Query the database to retrieve all documents from the `permissions` collection, excluding `__v` and `_id` fields.
-  const permissions = await Permission.find({}, hiddenFieldsDefault);
+// Permission Controller
+module.exports = {
+  /**
+   * Retrieves all permissions from the database.
+   *
+   * @param {Object} req - Express request object
+   * @param {Object} res - Express response object
+   */
+  GetPermissions: async (req, res) => {
+    // Query the database to retrieve all permission documents
+    const permissions = await Permission.find({}, hiddenFieldsDefault);
 
-  // Return a success response with the retrieved permissions.
-  res
-    .status(STATUS_CODE_SUCCESS)
-    .send(
-      new ExpressResponse(
-        STATUS_SUCCESS,
-        STATUS_CODE_SUCCESS,
-        MESSAGE_GET_PERMISSIONS_SUCCESS,
-        permissions
-      )
+    // Return a success response with the retrieved permissions
+    res
+      .status(STATUS_CODE_SUCCESS)
+      .send(
+        handleSuccess(
+          STATUS_CODE_SUCCESS,
+          MESSAGE_GET_PERMISSIONS_SUCCESS,
+          permissions
+        )
+      );
+  },
+
+  /**
+   * Retrieves a permission by its unique permission code.
+   *
+   * @param {Object} req - Express request object
+   * @param {Object} res - Express response object
+   * @param {Function} next - Express next middleware function
+   */
+  GetPermissionByCode: async (req, res, next) => {
+    // Extract the permissionCode from the request body
+    const { permissionCode } = req.body;
+
+    // Query the database to find the permission by its code
+    const permission = await Permission.findOne(
+      { permissionCode },
+      hiddenFieldsDefault
     );
-};
 
-module.exports.GetPermissionByCode = async (req, res, next) => {
-  // Extract `permissionCode` from the request body and query the database for a document in the `permissions` collection based on this code, excluding the `__v` and `_id` fields.
-  const { permissionCode } = req.body;
-  const permission = await Permission.findOne(
-    { permissionCode },
-    hiddenFieldsDefault
-  );
-
-  // Check if no document was found with the provided `permissionCode`. If not, return an error response.
-  if (!permission) {
-    return next(
-      new ExpressResponse(
-        STATUS_ERROR,
+    // Check if the permission exists
+    if (!permission) {
+      //  If not found, return an error response
+      return handleError(
+        next,
         STATUS_CODE_BAD_REQUEST,
         MESSAGE_PERMISSION_NOT_FOUND
-      )
-    );
-  }
+      );
+    }
 
-  // Return a success response with the retrieved permission document.
-  res
-    .status(STATUS_CODE_SUCCESS)
-    .send(
-      new ExpressResponse(
-        STATUS_SUCCESS,
-        STATUS_CODE_SUCCESS,
-        MESSAGE_GET_PERMISSION_SUCCESS,
-        permission
-      )
-    );
+    // If found, return a success response with the permission data
+    res
+      .status(STATUS_CODE_SUCCESS)
+      .send(
+        handleSuccess(
+          STATUS_CODE_SUCCESS,
+          MESSAGE_GET_PERMISSION_SUCCESS,
+          permission
+        )
+      );
+  },
 };

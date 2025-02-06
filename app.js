@@ -6,7 +6,6 @@ const express = require("express");
 const path = require("path");
 const mongoose = require("mongoose");
 const session = require("express-session");
-const ExpressResponse = require("./utils/ExpressResponse");
 const passport = require("passport");
 const localStrategy = require("passport-local");
 const User = require("./models/user");
@@ -28,10 +27,13 @@ const { classRoutes } = require("./routes/classes");
 const { sectionRoutes } = require("./routes/sections");
 const { subjectRoutes } = require("./routes/subjects");
 
-const { STATUS_ERROR } = require("./utils/status");
 const { MESSAGE_PAGE_NOT_FOUND } = require("./utils/messages");
 const { STATUS_CODE_PAGE_NOT_FOUND } = require("./utils/statusCodes");
-const { hiddenFieldsUser, hiddenFieldsDefault } = require("./utils/helpers");
+const {
+  hiddenFieldsUser,
+  hiddenFieldsDefault,
+  handleError,
+} = require("./utils/helpers");
 
 const dbUrl = process.env.DB_URL;
 
@@ -149,13 +151,7 @@ app.use("/", sectionRoutes);
 app.use("/", subjectRoutes);
 
 app.all("*", (req, res, next) => {
-  next(
-    new ExpressResponse(
-      STATUS_ERROR,
-      STATUS_CODE_PAGE_NOT_FOUND,
-      MESSAGE_PAGE_NOT_FOUND
-    )
-  );
+  return handleError(next, STATUS_CODE_PAGE_NOT_FOUND, MESSAGE_PAGE_NOT_FOUND);
 });
 
 app.use((err, req, res, next) => {
