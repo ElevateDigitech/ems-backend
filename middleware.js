@@ -25,11 +25,79 @@ const AuditLog = require("./models/auditLog");
  */
 const validateSchema = (passedSchema) =>
   catchAsync(async (req, res, next) => {
+    // Validate the request body using the provided schema
     const { error } = passedSchema.validate(req.body);
     if (error) {
+      // Extract error messages and throw a custom error response
       const msg = error.details.map((d) => d.message).join(", ");
       throw new ExpressResponse(STATUS_ERROR, STATUS_CODE_BAD_REQUEST, msg);
     }
+    // Proceed to the next middleware if validation passes
+    next();
+  });
+
+/**
+ * Middleware to handle file uploads using Multer.
+ * Catches Multer-specific errors and sends an appropriate response.
+ *
+ * @param {Function} upload - Multer upload function to process the file upload.
+ * @returns {Function} Middleware function to handle file uploads and errors.
+ */
+const handleUpload = (upload) => (req, res, next) => {
+  upload(req, res, (err) => {
+    if (err) {
+      const statusCode =
+        err instanceof MulterError
+          ? STATUS_CODE_BAD_REQUEST
+          : err?.statusCode ?? STATUS_CODE_BAD_REQUEST;
+
+      return res
+        .status(statusCode)
+        .send(
+          new ExpressResponse(
+            STATUS_ERROR,
+            statusCode,
+            err?.message ?? MESSAGE_INTERNAL_SERVER_ERROR
+          )
+        );
+    }
+    next();
+  });
+};
+
+/**
+ * Middleware for validating request bodies against a provided schema.
+ * Handles file uploads (e.g., profile pictures) and cleans up invalid files from Cloudinary if validation fails.
+ *
+ * @param {Object} passedSchema - Joi schema for validation.
+ * @returns {Function} Middleware function to validate request data.
+ */
+const validateProfileSchema = (passedSchema) =>
+  catchAsync(async (req, res, next) => {
+    // Construct file object from the uploaded file data
+    const file = {
+      url: req?.file?.path ?? "",
+      filename: req?.file?.filename ?? "",
+    };
+
+    // Add file data to the request body under the appropriate field name
+    req.body[req?.file?.fieldname ?? IMAGE_FIELD_PROFILE_PICTURE] = file;
+
+    // Validate the request body using the provided schema
+    const { error } = passedSchema.validate(req.body);
+
+    if (error) {
+      // If validation fails and a file was uploaded, delete the file from Cloudinary
+      if (file?.filename && file?.filename?.trim()?.length) {
+        await cloudinary.uploader.destroy(file.filename);
+      }
+
+      // Extract error messages and throw a custom error response
+      const msg = error.details.map((d) => d.message).join(", ");
+      throw new ExpressResponse(STATUS_ERROR, STATUS_CODE_BAD_REQUEST, msg);
+    }
+
+    // Proceed to the next middleware if validation passes
     next();
   });
 
@@ -173,48 +241,14 @@ module.exports = {
   /**
    * Middleware for validating and uploading profile pictures.
    */
-  validateProfilePicture(req, res, next) {
-    uploadProfilePicture(req, res, (err) => {
-      if (err) {
-        const statusCode =
-          err instanceof MulterError
-            ? STATUS_CODE_BAD_REQUEST
-            : err?.statusCode ?? STATUS_CODE_BAD_REQUEST;
-        return res
-          .status(statusCode)
-          .send(
-            new ExpressResponse(
-              STATUS_ERROR,
-              statusCode,
-              err?.message ?? MESSAGE_INTERNAL_SERVER_ERROR
-            )
-          );
-      }
-      next();
-    });
-  },
+  validateProfilePicture: handleUpload(uploadProfilePicture),
 
   /**
    * Middleware for validating profile schemas.
    */
   validateProfileCode: validateSchema(schemas.profileCodeSchema),
-  validateProfile: async (req, res, next) => {
-    const file = {
-      url: req?.file?.path ?? "",
-      filename: req?.file?.filename ?? "",
-    };
-    req.body[req?.file?.fieldname ?? IMAGE_FIELD_PROFILE_PICTURE] = file;
-    const { error } = schemas.profileSchema.validate(req.body);
-    if (error) {
-      if (file?.filename && file?.filename?.trim()?.length) {
-        await cloudinary.uploader.destroy(file.filename);
-      }
-      const msg = error.details.map((d) => d.message).join(", ");
-      throw new ExpressResponse(STATUS_ERROR, STATUS_CODE_BAD_REQUEST, msg);
-    }
-    next();
-  },
-  validateUpdateProfile: validateSchema(schemas.updateProfileSchema),
+  validateProfile: validateProfileSchema(schemas.profileSchema),
+  validateUpdateProfile: validateProfileSchema(schemas.updateProfileSchema),
 
   /**
    * Middleware for validating class schemas.

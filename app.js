@@ -27,13 +27,17 @@ const { classRoutes } = require("./routes/classes");
 const { sectionRoutes } = require("./routes/sections");
 const { subjectRoutes } = require("./routes/subjects");
 
-const { MESSAGE_PAGE_NOT_FOUND } = require("./utils/messages");
-const { STATUS_CODE_PAGE_NOT_FOUND } = require("./utils/statusCodes");
+const { hiddenFieldsUser, hiddenFieldsDefault } = require("./utils/helpers");
+const { STATUS_ERROR } = require("./utils/status");
 const {
-  hiddenFieldsUser,
-  hiddenFieldsDefault,
-  handleError,
-} = require("./utils/helpers");
+  STATUS_CODE_PAGE_NOT_FOUND,
+  STATUS_CODE_BAD_REQUEST,
+} = require("./utils/statusCodes");
+const {
+  MESSAGE_PAGE_NOT_FOUND,
+  MESSAGE_SCHEMA_VALIDATION_ERROR,
+} = require("./utils/messages");
+const ExpressResponse = require("./utils/ExpressResponse");
 
 const dbUrl = process.env.DB_URL;
 
@@ -151,15 +155,31 @@ app.use("/", sectionRoutes);
 app.use("/", subjectRoutes);
 
 app.all("*", (req, res, next) => {
-  return handleError(next, STATUS_CODE_PAGE_NOT_FOUND, MESSAGE_PAGE_NOT_FOUND);
+  return res
+    .status(STATUS_CODE_PAGE_NOT_FOUND)
+    .send(
+      new ExpressResponse(
+        STATUS_ERROR,
+        STATUS_CODE_PAGE_NOT_FOUND,
+        MESSAGE_PAGE_NOT_FOUND
+      )
+    );
 });
 
 app.use((err, req, res, next) => {
   const { statusCode = 500 } = err;
-  if (!err?.message) {
+  if (err instanceof mongoose.Error.ValidationError) {
+    const error = new ExpressResponse(
+      STATUS_ERROR,
+      STATUS_CODE_BAD_REQUEST,
+      Object.values(err.errors)
+        .map((e) => e.message)
+        .join(", ") ?? MESSAGE_SCHEMA_VALIDATION_ERROR
+    );
+    res.status(STATUS_CODE_BAD_REQUEST).send(error);
+  } else if (!err?.message) {
     err.message = "Something went wrong";
   }
-
   res.status(statusCode).send(err);
 });
 const port = process.env.PORT;

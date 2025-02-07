@@ -1,7 +1,6 @@
 const moment = require("moment-timezone");
 const Subject = require("../models/subject");
 const User = require("../models/user");
-const ExpressResponse = require("../utils/ExpressResponse");
 const { logAudit } = require("../middleware");
 const {
   auditActions,
@@ -11,29 +10,20 @@ const {
 const {
   hiddenFieldsDefault,
   hiddenFieldsUser,
+  handleSuccess,
+  handleError,
   toCapitalize,
-  generateCountryCode,
   IsObjectIdReferenced,
   generateAuditCode,
   generateSubjectCode,
 } = require("../utils/helpers");
-const { STATUS_ERROR, STATUS_SUCCESS } = require("../utils/status");
 const {
   STATUS_CODE_CONFLICT,
   STATUS_CODE_SUCCESS,
   STATUS_CODE_BAD_REQUEST,
+  STATUS_CODE_INTERNAL_SERVER_ERROR,
 } = require("../utils/statusCodes");
 const {
-  MESSAGE_COUNTRY_EXIST,
-  MESSAGE_CREATE_COUNTRY_SUCCESS,
-  MESSAGE_GET_COUNTRIES_SUCCESS,
-  MESSAGE_GET_COUNTRY_SUCCESS,
-  MESSAGE_COUNTRY_NOT_FOUND,
-  MESSAGE_UPDATE_COUNTRY_SUCCESS,
-  MESSAGE_COUNTRY_NOT_ALLOWED_DELETE_REFERENCE_EXIST,
-  MESSAGE_DELETE_COUNTRY_SUCCESS,
-  MESSAGE_DELETE_COUNTRY_ERROR,
-  MESSAGE_COUNTRY_TAKEN,
   MESSAGE_GET_SUBJECTS_SUCCESS,
   MESSAGE_SUBJECT_NOT_FOUND,
   MESSAGE_GET_SUBJECT_SUCCESS,
@@ -46,321 +36,270 @@ const {
   MESSAGE_DELETE_SUBJECT_SUCCESS,
 } = require("../utils/messages");
 
-module.exports.GetSubjects = async (req, res, next) => {
-  // Query the database to retrieve all documents from the `subjects` collection (excluding `__v` and `_id` fields).
-  const subjects = await Subject.find({}, hiddenFieldsDefault);
-
-  // Return a success response with the list of subjects.
-  res
-    .status(STATUS_CODE_SUCCESS)
-    .send(
-      new ExpressResponse(
-        STATUS_SUCCESS,
-        STATUS_CODE_SUCCESS,
-        MESSAGE_GET_SUBJECTS_SUCCESS,
-        subjects
-      )
-    );
+/**
+ * Retrieves the current user along with their role and permissions.
+ *
+ * @param {String} userCode - Unique identifier for the user
+ * @returns {Object} - User object with populated role and permissions
+ */
+const getCurrentUser = async (userCode) => {
+  // Find the user by userCode, hiding specific fields
+  return await User.findOne({ userCode }, hiddenFieldsUser).populate({
+    // Populate the role details
+    path: "role",
+    select: hiddenFieldsDefault,
+    populate: {
+      // Further populate the rolePermissions under role
+      path: "rolePermissions",
+      select: hiddenFieldsDefault,
+    },
+  });
 };
 
-module.exports.GetSubjectByCode = async (req, res, next) => {
-  // Extract the `subjectCode` from the request body and query the `subjects` collection for the matching document (excluding `__v` and `_id` fields).
-  const { subjectCode } = req.body;
-  const subject = await Subject.findOne(
-    {
-      subjectCode,
-    },
-    hiddenFieldsDefault
-  );
+module.exports = {
+  /**
+   * Retrieves all subjects from the database.
+   *
+   * @param {Object} req - Express request object
+   * @param {Object} res - Express response object
+   * @param {Function} next - Express next middleware function
+   */
+  GetSubjects: async (req, res, next) => {
+    // Fetch all subjects from the database, excluding hidden fields
+    const subjects = await Subject.find({}, hiddenFieldsDefault);
 
-  // Check if no document is found with the provided `subjectCode` in the request. If not, return an error response.
-  if (!subject) {
-    return next(
-      new ExpressResponse(
-        STATUS_ERROR,
+    // Send success response with the list of subjects
+    res
+      .status(STATUS_CODE_SUCCESS)
+      .send(
+        handleSuccess(
+          STATUS_CODE_SUCCESS,
+          MESSAGE_GET_SUBJECTS_SUCCESS,
+          subjects
+        )
+      );
+  },
+
+  /**
+   * Retrieves a subject by its code.
+   *
+   * @param {Object} req - Express request object
+   * @param {Object} res - Express response object
+   * @param {Function} next - Express next middleware function
+   */
+  GetSubjectByCode: async (req, res, next) => {
+    // Extract subject code from request body
+    const { subjectCode } = req.body;
+
+    // Find subject in the database using the subject code
+    const subject = await Subject.findOne({ subjectCode }, hiddenFieldsDefault);
+
+    // Handle case where subject is not found
+    if (!subject) {
+      return handleError(
+        next,
         STATUS_CODE_BAD_REQUEST,
         MESSAGE_SUBJECT_NOT_FOUND
-      )
-    );
-  }
-
-  // Return a success response with the found subject details.
-  res
-    .status(STATUS_CODE_SUCCESS)
-    .send(
-      new ExpressResponse(
-        STATUS_SUCCESS,
-        STATUS_CODE_SUCCESS,
-        MESSAGE_GET_SUBJECT_SUCCESS,
-        subject
-      )
-    );
-};
-
-module.exports.CreateSubject = async (req, res, next) => {
-  // Extract the `name` property from the request body.
-  const { name } = req.body;
-
-  // Capitalize the `name` and querying the database for a matching subject document.
-  const existingSubject = await Subject.findOne({
-    $or: [{ name: toCapitalize(name) }],
-  });
-
-  // Check if a subject with the same `name` already exists. If found, return a conflict error.
-  if (existingSubject) {
-    return next(
-      new ExpressResponse(
-        STATUS_ERROR,
-        STATUS_CODE_CONFLICT,
-        MESSAGE_SUBJECT_EXIST
-      )
-    );
-  }
-
-  // Generate a unique `subjectCode` for the new country.
-  const subjectCode = generateSubjectCode();
-
-  // Create a new `Country` model instance with the provided data.
-  const country = new Subject({
-    subjectCode,
-    name: toCapitalize(name),
-  });
-
-  // Save the newly created country to the database.
-  await country.save();
-
-  // Retrieve the newly created country document using the generated `subjectCode` (excluding `__v` and `_id` fields).
-  const createdCountry = await Subject.findOne(
-    { subjectCode },
-    hiddenFieldsDefault
-  );
-
-  // Query the database for the current user's details using their `userCode`.
-  const currentUser = await User.findOne(
-    { userCode: req.user.userCode },
-    hiddenFieldsUser
-  ).populate({
-    path: "role",
-    select: hiddenFieldsDefault,
-    populate: {
-      path: "rolePermissions",
-      select: hiddenFieldsDefault,
-    },
-  });
-
-  // Create an audit log for the country creation.
-  await logAudit(
-    generateAuditCode(),
-    auditActions?.CREATE,
-    auditCollections?.SUBJECTS,
-    createdCountry?.subjectCode,
-    auditChanges?.CREATE_SUBJECT,
-    null,
-    createdCountry?.toObject(),
-    currentUser?.toObject()
-  );
-
-  // Return a success response with the created country details.
-  res
-    .status(STATUS_CODE_SUCCESS)
-    .send(
-      new ExpressResponse(
-        STATUS_SUCCESS,
-        STATUS_CODE_SUCCESS,
-        MESSAGE_CREATE_SUBJECT_SUCCESS,
-        createdCountry
-      )
-    );
-};
-
-module.exports.UpdateSubject = async (req, res, next) => {
-  // Extract the `subjectCode` and `name` properties from the request body.
-  const { subjectCode, name } = req.body;
-
-  // Use the `subjectCode` to search for an existing subject document in the `subjects` collection.
-  const existingSubject = await Subject.findOne({
-    subjectCode,
-  });
-
-  // If no document is found, return an error response indicating the subject was not found.
-  if (!existingSubject) {
-    return next(
-      new ExpressResponse(
-        STATUS_ERROR,
-        STATUS_CODE_CONFLICT,
-        MESSAGE_SUBJECT_NOT_FOUND
-      )
-    );
-  }
-
-  // Search for any other subjects with the same `name` (excluding the current `subjectCode`).
-  const otherSubjects = await Subject.find({
-    subjectCode: { $ne: subjectCode },
-    $or: [{ name: toCapitalize(name) }],
-  });
-
-  // If any other subjects with the same `name` are found, return an error response.
-  if (otherSubjects?.length > 0) {
-    return next(
-      new ExpressResponse(
-        STATUS_ERROR,
-        STATUS_CODE_CONFLICT,
-        MESSAGE_SUBJECT_TAKEN
-      )
-    );
-  }
-
-  // Retrieve the current subject document before the update (excluding `__v` and `_id`).
-  const subjectBeforeUpdate = await Subject.findOne(
-    { subjectCode },
-    hiddenFieldsDefault
-  );
-
-  // Update the subject document with the new data (`name`) and the current timestamp.
-  const subject = await Subject.findOneAndUpdate(
-    { subjectCode },
-    {
-      name: toCapitalize(name),
-      updatedAt: moment().valueOf(),
+      );
     }
-  );
 
-  // Save the updated subject document to the database.
-  await subject.save();
+    // Send success response with the subject details
+    res
+      .status(STATUS_CODE_SUCCESS)
+      .send(
+        handleSuccess(STATUS_CODE_SUCCESS, MESSAGE_GET_SUBJECT_SUCCESS, subject)
+      );
+  },
 
-  // Retrieve the updated subject document (excluding `__v` and `_id`).
-  const updatedSubject = await Subject.findOne(
-    { subjectCode },
-    hiddenFieldsDefault
-  );
+  /**
+   * Creates a new subject in the database.
+   *
+   * @param {Object} req - Express request object
+   * @param {Object} res - Express response object
+   * @param {Function} next - Express next middleware function
+   */
+  CreateSubject: async (req, res, next) => {
+    // Extract and capitalize the subject name from the request body
+    const { name } = req.body;
+    const capitalizedName = toCapitalize(name);
 
-  // Use the logged-in user's `userCode` to query and retrieve their details.
-  const currentUser = await User.findOne(
-    { userCode: req.user.userCode },
-    hiddenFieldsUser
-  ).populate({
-    path: "role",
-    select: hiddenFieldsDefault,
-    populate: {
-      path: "rolePermissions",
-      select: hiddenFieldsDefault,
-    },
-  });
+    // Check if a subject with the same name already exists
+    const existingSubject = await Subject.findOne({ name: capitalizedName });
+    if (existingSubject) {
+      return handleError(next, STATUS_CODE_CONFLICT, MESSAGE_SUBJECT_EXIST);
+    }
 
-  // Create an audit log for the update action.
-  await logAudit(
-    generateAuditCode(),
-    auditActions?.UPDATE,
-    auditCollections?.SUBJECTS,
-    updatedSubject?.subjectCode,
-    auditChanges?.UPDATE_SUBJECT,
-    subjectBeforeUpdate?.toObject(),
-    updatedSubject?.toObject(),
-    currentUser?.toObject()
-  );
+    // Generate a new subject code and create the subject
+    const subjectCode = generateSubjectCode();
+    const subject = new Subject({ subjectCode, name: capitalizedName });
+    await subject.save();
 
-  // Return a success response with the updated country details.
-  res
-    .status(STATUS_CODE_SUCCESS)
-    .send(
-      new ExpressResponse(
-        STATUS_SUCCESS,
-        STATUS_CODE_SUCCESS,
-        MESSAGE_UPDATE_SUBJECT_SUCCESS,
-        updatedSubject
-      )
+    // Retrieve the newly created subject details
+    const createdSubject = await Subject.findOne(
+      { subjectCode },
+      hiddenFieldsDefault
     );
-};
 
-module.exports.DeleteSubject = async (req, res, next) => {
-  // Extract the `subjectCode` property from the request body.
-  const { subjectCode } = req.body;
+    // Get the current user information
+    const currentUser = await getCurrentUser(req.user.userCode);
 
-  // Query the database to find a subject document matching the `subjectCode`.
-  const existingSubject = await Subject.findOne({
-    subjectCode,
-  });
-
-  // If no subject document is found, return an error response.
-  if (!existingSubject) {
-    return next(
-      new ExpressResponse(
-        STATUS_ERROR,
-        STATUS_CODE_CONFLICT,
-        MESSAGE_SUBJECT_NOT_FOUND
-      )
+    // Log the audit details for subject creation
+    await logAudit(
+      generateAuditCode(),
+      auditActions.CREATE,
+      auditCollections.SUBJECTS,
+      createdSubject.subjectCode,
+      auditChanges.CREATE_SUBJECT,
+      null,
+      createdSubject.toObject(),
+      currentUser.toObject()
     );
-  }
 
-  // Check if the subject is being referenced in any other part of the database.
-  const { isReferenced } = await IsObjectIdReferenced(existingSubject._id);
+    // Send success response with the created subject details
+    res
+      .status(STATUS_CODE_SUCCESS)
+      .send(
+        handleSuccess(
+          STATUS_CODE_SUCCESS,
+          MESSAGE_CREATE_SUBJECT_SUCCESS,
+          createdSubject
+        )
+      );
+  },
 
-  // If the subject is referenced, return an error response indicating it cannot be deleted.
-  if (isReferenced) {
-    return next(
-      new ExpressResponse(
-        STATUS_ERROR,
+  /**
+   * Updates an existing subject in the database.
+   *
+   * @param {Object} req - Express request object
+   * @param {Object} res - Express response object
+   * @param {Function} next - Express next middleware function
+   */
+  UpdateSubject: async (req, res, next) => {
+    // Extract subject code and new name from request body
+    const { subjectCode, name } = req.body;
+    const capitalizedName = toCapitalize(name);
+
+    // Check if the subject exists in the database
+    const existingSubject = await Subject.findOne({ subjectCode });
+    if (!existingSubject) {
+      return handleError(next, STATUS_CODE_CONFLICT, MESSAGE_SUBJECT_NOT_FOUND);
+    }
+
+    // Ensure no other subject has the same new name
+    const duplicateSubjects = await Subject.find({
+      subjectCode: { $ne: subjectCode },
+      name: capitalizedName,
+    });
+    if (duplicateSubjects.length > 0) {
+      return handleError(next, STATUS_CODE_CONFLICT, MESSAGE_SUBJECT_TAKEN);
+    }
+
+    // Retrieve the subject before updating
+    const subjectBeforeUpdate = await Subject.findOne(
+      { subjectCode },
+      hiddenFieldsDefault
+    );
+
+    // Update the subject details in the database
+    await Subject.findOneAndUpdate(
+      { subjectCode },
+      { name: capitalizedName, updatedAt: moment().valueOf() }
+    );
+
+    // Retrieve the updated subject details
+    const updatedSubject = await Subject.findOne(
+      { subjectCode },
+      hiddenFieldsDefault
+    );
+
+    // Get current user information
+    const currentUser = await getCurrentUser(req.user.userCode);
+
+    // Log the audit details for subject update
+    await logAudit(
+      generateAuditCode(),
+      auditActions.UPDATE,
+      auditCollections.SUBJECTS,
+      updatedSubject.subjectCode,
+      auditChanges.UPDATE_SUBJECT,
+      subjectBeforeUpdate.toObject(),
+      updatedSubject.toObject(),
+      currentUser.toObject()
+    );
+
+    // Send success response with the updated subject details
+    res
+      .status(STATUS_CODE_SUCCESS)
+      .send(
+        handleSuccess(
+          STATUS_CODE_SUCCESS,
+          MESSAGE_UPDATE_SUBJECT_SUCCESS,
+          updatedSubject
+        )
+      );
+  },
+
+  /**
+   * Deletes a subject from the database.
+   *
+   * @param {Object} req - Express request object
+   * @param {Object} res - Express response object
+   * @param {Function} next - Express next middleware function
+   */
+  DeleteSubject: async (req, res, next) => {
+    // Extract subject code from request body
+    const { subjectCode } = req.body;
+
+    // Check if the subject exists in the database
+    const existingSubject = await Subject.findOne({ subjectCode });
+    if (!existingSubject) {
+      return handleError(next, STATUS_CODE_CONFLICT, MESSAGE_SUBJECT_NOT_FOUND);
+    }
+
+    // Verify if the subject is referenced elsewhere in the database
+    const { isReferenced } = await IsObjectIdReferenced(existingSubject._id);
+    if (isReferenced) {
+      return handleError(
+        next,
         STATUS_CODE_CONFLICT,
         MESSAGE_SUBJECT_NOT_ALLOWED_DELETE_REFERENCE_EXIST
-      )
+      );
+    }
+
+    // Retrieve subject details before deletion
+    const subjectBeforeDelete = await Subject.findOne(
+      { subjectCode },
+      hiddenFieldsDefault
     );
-  }
 
-  // Retrieve the subject document before deletion (excluding `__v` and `_id`).
-  const subjectBeforeDelete = await Subject.findOne(
-    { subjectCode },
-    hiddenFieldsDefault
-  );
-
-  // Attempt to delete the subject document with the given `subjectCode`.
-  const subject = await Subject.deleteOne({
-    subjectCode,
-  });
-
-  // If the document is not deleted (i.e., `deletedCount` is 0), return an error response.
-  if (subject?.deletedCount === 0) {
-    return next(
-      new ExpressResponse(
-        STATUS_ERROR,
+    // Delete the subject from the database
+    const subject = await Subject.deleteOne({ subjectCode });
+    if (subject.deletedCount === 0) {
+      return handleError(
+        next,
         STATUS_CODE_INTERNAL_SERVER_ERROR,
         MESSAGE_DELETE_SUBJECT_ERROR
-      )
+      );
+    }
+
+    // Get current user information
+    const currentUser = await getCurrentUser(req.user.userCode);
+
+    // Log the audit details for subject deletion
+    await logAudit(
+      generateAuditCode(),
+      auditActions.DELETE,
+      auditCollections.SUBJECTS,
+      subjectBeforeDelete.subjectCode,
+      auditChanges.DELETE_SUBJECT,
+      subjectBeforeDelete.toObject(),
+      null,
+      currentUser.toObject()
     );
-  }
 
-  // Query the database for the current user's details using `userCode`.
-  const currentUser = await User.findOne(
-    { userCode: req.user.userCode },
-    hiddenFieldsUser
-  ).populate({
-    path: "role",
-    select: hiddenFieldsDefault,
-    populate: {
-      path: "rolePermissions",
-      select: hiddenFieldsDefault,
-    },
-  });
-
-  // Create an audit log for the deletion action.
-  await logAudit(
-    generateAuditCode(),
-    auditActions?.DELETE,
-    auditCollections?.SUBJECTS,
-    subjectBeforeDelete?.subjectCode,
-    auditChanges?.DELETE_SUBJECT,
-    subjectBeforeDelete?.toObject(),
-    null,
-    currentUser?.toObject()
-  );
-
-  // Return a success response indicating the subject was successfully deleted.
-  res
-    .status(STATUS_CODE_SUCCESS)
-    .send(
-      new ExpressResponse(
-        STATUS_SUCCESS,
-        STATUS_CODE_SUCCESS,
-        MESSAGE_DELETE_SUBJECT_SUCCESS
-      )
-    );
+    // Send success response confirming deletion
+    res
+      .status(STATUS_CODE_SUCCESS)
+      .send(handleSuccess(STATUS_CODE_SUCCESS, MESSAGE_DELETE_SUBJECT_SUCCESS));
+  },
 };

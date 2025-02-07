@@ -1,3 +1,4 @@
+const moment = require("moment");
 const { v4: uuidv4 } = require("uuid");
 const Permission = require("../models/permission");
 const mongoose = require("mongoose");
@@ -31,6 +32,13 @@ const generateProfileCode = () => `PROFILE-${uuidv4()}`;
 const generateClassCode = () => `CLASS-${uuidv4()}`;
 const generateSectionCode = () => `SECTION-${uuidv4()}`;
 const generateSubjectCode = () => `SUBJECT-${uuidv4()}`;
+
+const validateDob = (value) => {
+  const dob = moment(new Date(value).setHours(0, 0, 0, 0)).valueOf();
+  const today = moment(new Date().setHours(0, 0, 0, 0)).valueOf();
+
+  return dob <= today;
+};
 
 const getInvalidPermissions = async (permissions) => {
   return await Promise.all(
@@ -115,6 +123,7 @@ module.exports = {
   generateClassCode,
   generateSectionCode,
   generateSubjectCode,
+  validateDob,
   getInvalidPermissions,
   getPermissionIds,
   IsObjectIdReferenced,

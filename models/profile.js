@@ -1,6 +1,6 @@
 const mongoose = require("mongoose");
 const moment = require("moment");
-const { removeIdsForSubSchemas } = require("../utils/helpers");
+const { removeIdsForSubSchemas, validateDob } = require("../utils/helpers");
 
 const Schema = mongoose.Schema;
 const timeNow = moment().valueOf();
@@ -162,7 +162,7 @@ const ProfileSchema = new Schema(
     dob: {
       type: Date,
       validate: {
-        validator: (value) => value <= Date.now(),
+        validator: validateDob,
         message: "Date of Birth cannot be a future date",
       },
       required: true,
@@ -183,6 +183,7 @@ const ProfileSchema = new Schema(
     },
     social: {
       type: SocialSchema,
+      default: () => ({}),
     },
     notification: {
       type: NotificationsSchema,
@@ -208,6 +209,10 @@ const ProfileSchema = new Schema(
 );
 
 /** Virtuals for Formatted Dates */
+ProfileSchema.virtual("dobEpochTimestamp").get(function () {
+  return moment(this.dob).valueOf();
+});
+
 ProfileSchema.virtual("createdAtEpochTimestamp").get(function () {
   return moment(this.createdAt).valueOf();
 });

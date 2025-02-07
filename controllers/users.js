@@ -1,6 +1,5 @@
 const passport = require("passport");
 const User = require("../models/user");
-const ExpressResponse = require("../utils/ExpressResponse");
 const allRegex = require("../utils/allRegex");
 const { logAudit } = require("../middleware");
 const {
@@ -11,6 +10,8 @@ const {
 const {
   hiddenFieldsDefault,
   hiddenFieldsUser,
+  handleError,
+  handleSuccess,
   trimAndTestRegex,
   getInvalidRole,
   getRoleId,
@@ -18,7 +19,6 @@ const {
   generateUserCode,
   generateAuditCode,
 } = require("../utils/helpers");
-const { STATUS_ERROR, STATUS_SUCCESS } = require("../utils/status");
 const {
   STATUS_CODE_BAD_REQUEST,
   STATUS_CODE_CONFLICT,
@@ -50,101 +50,13 @@ const {
   MESSAGE_ACCESS_DENIED_NO_PERMISSION,
 } = require("../utils/messages");
 
-module.exports.register = async (req, res, next) => {
-  // Extract relevant properties from the request body, setting `userAllowDeletion` to `true` by default.
-  const {
-    email,
-    username,
-    password,
-    userAllowDeletion = true,
-    roleCode,
-  } = req.body;
-
-  // Validate that required fields (email, username, and password) are not empty or contain only whitespace.
-  if (![email, username, password].every((field) => field?.trim()?.length)) {
-    return next(
-      new ExpressResponse(
-        STATUS_ERROR,
-        STATUS_CODE_BAD_REQUEST,
-        MESSAGE_MISSING_REQUIRED_FIELDS
-      )
-    );
-  }
-
-  // Verify if the provided email matches the required format using a regex pattern.
-  if (!trimAndTestRegex(email, allRegex?.VALID_EMAIL)) {
-    return next(
-      new ExpressResponse(
-        STATUS_ERROR,
-        STATUS_CODE_BAD_REQUEST,
-        MESSAGE_INVALID_EMAIL_FORMAT
-      )
-    );
-  }
-
-  // Validate if the password meets the required constraints defined by a regex pattern.
-  if (!trimAndTestRegex(password, allRegex?.VALID_PASSWORD)) {
-    return next(
-      new ExpressResponse(
-        STATUS_ERROR,
-        STATUS_CODE_BAD_REQUEST,
-        MESSAGE_PASSWORD_CONSTRAINTS_NOT_MET
-      )
-    );
-  }
-
-  // Check if a user with the same email or username already exists in the database.
-  const existingUser = await User.findOne({
-    $or: [{ email: email?.trim()?.toLowerCase() }, { username }],
-  });
-
-  // If a duplicate email or username is found, return a conflict error response.
-  if (existingUser) {
-    return next(
-      new ExpressResponse(
-        STATUS_ERROR,
-        STATUS_CODE_CONFLICT,
-        MESSAGE_EMAIL_USERNAME_EXIST
-      )
-    );
-  }
-
-  // Validate if the provided `roleCode` is valid.
-  const isRoleInvalid = await getInvalidRole(roleCode);
-  if (isRoleInvalid) {
-    return next(
-      new ExpressResponse(
-        STATUS_ERROR,
-        STATUS_CODE_CONFLICT,
-        MESSAGE_ROLE_NOT_FOUND
-      )
-    );
-  }
-
-  // Retrieve the role ID associated with the given `roleCode`.
-  const roleId = await getRoleId(roleCode);
-
-  // Generate a unique `userCode` for the new user.
-  const userCode = generateUserCode();
-
-  // Create a new `User` instance with the provided details.
-  const user = new User({
-    userCode,
-    email: email?.trim()?.toLowerCase(),
-    username,
-    userAllowDeletion,
-    role: roleId,
-  });
-
-  // Register the new user with the provided password.
-  const registeredUser = await User.register(user, password);
-
-  // Retrieve the newly created user from the database, excluding certain fields,
-  // and populate associated role and permission details.
-  const createdUser = await User.findOne(
-    { userCode },
-    hiddenFieldsUser
-  ).populate({
+/**
+ * Retrieves the current user based on userCode.
+ * @param {string} userCode - The unique code of the user.
+ * @returns {Object} User details with role and permissions populated.
+ */
+const getCurrentUser = async (userCode) => {
+  return User.findOne({ userCode }, hiddenFieldsUser).populate({
     path: "role",
     select: hiddenFieldsDefault,
     populate: {
@@ -152,116 +64,184 @@ module.exports.register = async (req, res, next) => {
       select: hiddenFieldsDefault,
     },
   });
-
-  // Retrieve the currently logged-in user's `_id` using their `userCode`.
-  const currentUser = await User.findOne(
-    { userCode: req.user.userCode },
-    hiddenFieldsUser
-  ).populate({
-    path: "role",
-    select: hiddenFieldsDefault,
-    populate: {
-      path: "rolePermissions",
-      select: hiddenFieldsDefault,
-    },
-  });
-
-  // Log the creation of a new user in the audit system.
-  await logAudit(
-    generateAuditCode(),
-    auditActions?.CREATE,
-    auditCollections?.USERS,
-    createdUser?.userCode,
-    auditChanges?.CREATE_USER,
-    null,
-    createdUser?.toObject(),
-    currentUser?.toObject()
-  );
-
-  // Send a success response with the newly registered user details.
-  res
-    .status(STATUS_CODE_SUCCESS)
-    .send(
-      new ExpressResponse(
-        STATUS_SUCCESS,
-        STATUS_CODE_SUCCESS,
-        MESSAGE_USER_REGISTER_SUCCESS,
-        createdUser
-      )
-    );
 };
 
-module.exports.login = async (req, res, next) => {
-  try {
-    // Authenticate the user using the provided `username` and `password` from the request body.
+/**
+ * Validates if all required fields are present and not empty.
+ * @param {Array} fields - Array of fields to validate.
+ * @returns {boolean} True if all fields are valid, false otherwise.
+ */
+const validateRequiredFields = (fields) => {
+  return fields.every((field) => field?.trim()?.length);
+};
+
+module.exports = {
+  /**
+   * Registers a new user in the system.
+   *
+   * @param {Object} req - Express request object
+   * @param {Object} res - Express response object
+   * @param {Function} next - Express next middleware function
+   */
+  register: async (req, res, next) => {
+    const {
+      email,
+      username,
+      password,
+      userAllowDeletion = true,
+      roleCode,
+    } = req.body; // Extracting required fields from the request body
+
+    // Validate required fields
+    if (!validateRequiredFields([email, username, password])) {
+      return handleError(
+        next,
+        STATUS_CODE_BAD_REQUEST,
+        MESSAGE_MISSING_REQUIRED_FIELDS
+      ); // Return error if required fields are missing
+    }
+
+    // Validate email format
+    if (!trimAndTestRegex(email, allRegex?.VALID_EMAIL)) {
+      return handleError(
+        next,
+        STATUS_CODE_BAD_REQUEST,
+        MESSAGE_INVALID_EMAIL_FORMAT
+      ); // Return error if email format is invalid
+    }
+
+    // Validate password constraints
+    if (!trimAndTestRegex(password, allRegex?.VALID_PASSWORD)) {
+      return handleError(
+        next,
+        STATUS_CODE_BAD_REQUEST,
+        MESSAGE_PASSWORD_CONSTRAINTS_NOT_MET
+      ); // Return error if password does not meet constraints
+    }
+
+    // Check if the user already exists
+    const existingUser = await User.findOne({
+      $or: [{ email: email.trim().toLowerCase() }, { username }],
+    });
+
+    if (existingUser) {
+      return handleError(
+        next,
+        STATUS_CODE_CONFLICT,
+        MESSAGE_EMAIL_USERNAME_EXIST
+      ); // Return error if email or username already exists
+    }
+
+    // Validate role code
+    const isRoleInvalid = await getInvalidRole(roleCode);
+    if (isRoleInvalid) {
+      return handleError(next, STATUS_CODE_CONFLICT, MESSAGE_ROLE_NOT_FOUND); // Return error if role is invalid
+    }
+
+    // Retrieve role ID based on role code
+    const roleId = await getRoleId(roleCode);
+
+    // Create new user object
+    const user = new User({
+      userCode: generateUserCode(), // Generate unique user code
+      email: email.trim().toLowerCase(), // Normalize email
+      username, // Set username
+      userAllowDeletion, // Set deletion permission
+      role: roleId, // Assign role ID
+    });
+
+    // Register the user with the provided password
+    await User.register(user, password);
+
+    // Retrieve the newly created user
+    const createdUser = await getCurrentUser(user.userCode);
+
+    //: Retrieve the current user performing the registration
+    const currentUser = await getCurrentUser(req.user.userCode);
+
+    //: Log the audit for user creation
+    await logAudit(
+      generateAuditCode(), // Generate audit code
+      auditActions.CREATE, // Specify audit action
+      auditCollections.USERS, // Specify audit collection
+      createdUser.userCode, // Reference created user's code
+      auditChanges.CREATE_USER, // Specify change type
+      null, // No old data for creation
+      createdUser.toObject(), // New user data
+      currentUser.toObject() // Current user data
+    );
+
+    //: Send success response with created user details
+    res
+      .status(STATUS_CODE_SUCCESS)
+      .send(
+        handleSuccess(
+          STATUS_CODE_SUCCESS,
+          MESSAGE_USER_REGISTER_SUCCESS,
+          createdUser
+        )
+      );
+  },
+
+  /**
+   * Handles user login using Passport.js local strategy.
+   *
+   * @param {Object} req - Express request object
+   * @param {Object} res - Express response object
+   * @param {Function} next - Express next middleware function
+   */
+  login: async (req, res, next) => {
+    // Authenticate the user using the local strategy
     passport.authenticate("local", async (err, user, info) => {
-      // Handle any errors that occur during the authentication process.
+      // Handle any server errors that occur during authentication
       if (err) {
-        return next(
-          new ExpressResponse(
-            STATUS_ERROR,
-            STATUS_CODE_INTERNAL_SERVER_ERROR,
-            info?.message ?? MESSAGE_INTERNAL_SERVER_ERROR
-          )
+        return handleError(
+          next,
+          STATUS_CODE_INTERNAL_SERVER_ERROR,
+          info?.message ?? MESSAGE_INTERNAL_SERVER_ERROR
         );
       }
 
-      // If authentication fails and no user object is returned, send an unauthenticated response.
+      // If authentication fails and no user is found, return an unauthenticated error
       if (!user) {
-        return next(
-          new ExpressResponse(
-            STATUS_ERROR,
-            STATUS_CODE_UNAUTHENTICATED,
-            MESSAGE_UNAUTHENTICATED
-          )
+        return handleError(
+          next,
+          STATUS_CODE_UNAUTHENTICATED,
+          MESSAGE_UNAUTHENTICATED
         );
       }
 
-      // Retrieve the authenticated user's details from the database, excluding certain fields,
-      // and populate role and permission information.
-      const currentUser = await User.findOne(
-        { userCode: user.userCode },
-        hiddenFieldsUser
-      ).populate({
-        path: "role",
-        select: hiddenFieldsDefault,
-        populate: {
-          path: "rolePermissions",
-          select: hiddenFieldsDefault,
-        },
-      });
-
-      // Attempt to log the user in.
+      // Log in the authenticated user
       req.login(user, async (err) => {
-        // If an error occurs during login, return an internal server error response.
+        // Handle any errors that occur during the login process
         if (err) {
-          return next(
-            new ExpressResponse(
-              STATUS_ERROR,
-              STATUS_CODE_INTERNAL_SERVER_ERROR,
-              err?.message ?? MESSAGE_INTERNAL_SERVER_ERROR
-            )
+          return handleError(
+            next,
+            STATUS_CODE_INTERNAL_SERVER_ERROR,
+            err?.message ?? MESSAGE_INTERNAL_SERVER_ERROR
           );
         }
 
-        // Log the successful login action in the audit system.
+        // Retrieve the current user details using the user code
+        const currentUser = await getCurrentUser(user.userCode);
+
+        // Log the login action in the audit log
         await logAudit(
-          generateAuditCode(),
-          auditActions?.LOGIN,
-          auditCollections?.USERS,
-          currentUser?.userCode,
-          auditChanges?.LOGIN_USER,
-          null,
-          null,
-          currentUser?.toObject()
+          generateAuditCode(), // Generate a unique audit code
+          auditActions.LOGIN, // Specify the login action
+          auditCollections.USERS, // Specify the collection being audited
+          currentUser.userCode, // Include the current user's code
+          auditChanges.LOGIN_USER, // Specify the change type (user login)
+          null, // No old value for login action
+          null, // No new value for login action
+          currentUser.toObject() // Include the current user's details
         );
 
-        // Send a success response with the logged-in user's details.
+        // Send a successful login response with the current user's information
         res
           .status(STATUS_CODE_SUCCESS)
           .send(
-            new ExpressResponse(
-              STATUS_SUCCESS,
+            handleSuccess(
               STATUS_CODE_SUCCESS,
               MESSAGE_USER_LOGIN_SUCCESS,
               currentUser
@@ -269,511 +249,345 @@ module.exports.login = async (req, res, next) => {
           );
       });
     })(req, res, next);
-  } catch (e) {
-    // Handle any unexpected errors and return an internal server error response.
-    next(
-      new ExpressResponse(
-        STATUS_ERROR,
-        STATUS_CODE_INTERNAL_SERVER_ERROR,
-        e?.message ?? MESSAGE_INTERNAL_SERVER_ERROR
-      )
-    );
-  }
-};
+  },
 
-module.exports.logout = (req, res, next) => {
-  const currentUserCode = req?.user?.userCode;
+  /**
+   * Handles user logout process.
+   *
+   * @param {Object} req - Express request object containing user session information
+   * @param {Object} res - Express response object to send the response back to the client
+   * @param {Function} next - Express next middleware function to handle errors
+   */
+  logout: async (req, res, next) => {
+    try {
+      // Retrieve the current user using the user code from the request object
+      const currentUser = await getCurrentUser(req.user.userCode);
 
-  try {
-    // Attempt to log the user out.
-    req.logout(async function (err) {
-      // If an error occurs during logout, return an internal server error response.
-      if (err) {
-        return next(
-          new ExpressResponse(
-            STATUS_ERROR,
-            STATUS_CODE_INTERNAL_SERVER_ERROR,
-            err?.message ?? MESSAGE_INTERNAL_SERVER_ERROR
-          )
+      // Call the logout function provided by the session handler (like Passport.js)
+      req.logout(async (err) => {
+        // Handle any errors that occur during the logout process
+        if (err) {
+          return handleError(
+            next, // Middleware error handler
+            STATUS_CODE_INTERNAL_SERVER_ERROR, // HTTP status code for internal server errors
+            err?.message ?? MESSAGE_INTERNAL_SERVER_ERROR // Error message to be sent
+          );
+        }
+
+        // Log the logout event for audit purposes
+        await logAudit(
+          generateAuditCode(), // Generate a unique code for the audit log
+          auditActions.LOGOUT, // Define the action as LOGOUT
+          auditCollections.USERS, // Specify the collection related to the audit (USERS)
+          currentUser.userCode, // Include the user code in the audit log
+          auditChanges.LOGOUT_USER, // Detail the specific change (logout)
+          null, // No old value required for logout
+          null, // No new value required for logout
+          currentUser.toObject() // Convert user data to plain object for logging
         );
-      }
 
-      // Retrieve the current user's details from the database, excluding certain fields,
-      // and populate role and permission information.
-      const currentUser = await User.findOne(
-        { userCode: currentUserCode },
-        hiddenFieldsUser
-      ).populate({
-        path: "role",
-        select: hiddenFieldsDefault,
-        populate: {
-          path: "rolePermissions",
-          select: hiddenFieldsDefault,
-        },
+        // Send a success response to the client confirming successful logout
+        res
+          .status(STATUS_CODE_SUCCESS) // HTTP status code for success
+          .send(
+            handleSuccess(STATUS_CODE_SUCCESS, MESSAGE_USER_LOGOUT_SUCCESS)
+          ); // Send success message
       });
-
-      // Log the successful logout action in the audit system.
-      await logAudit(
-        generateAuditCode(),
-        auditActions?.LOGOUT,
-        auditCollections?.USERS,
-        currentUser?.userCode,
-        auditChanges?.LOGOUT_USER,
-        null,
-        null,
-        currentUser?.toObject()
-      );
-
-      // Send a success response indicating the user has been logged out.
-      res
-        .status(STATUS_CODE_SUCCESS)
-        .send(
-          new ExpressResponse(
-            STATUS_SUCCESS,
-            STATUS_CODE_SUCCESS,
-            MESSAGE_USER_LOGOUT_SUCCESS
-          )
-        );
-    });
-  } catch (e) {
-    // Handle any unexpected errors and return an internal server error response.
-    next(
-      new ExpressResponse(
-        STATUS_ERROR,
+    } catch (error) {
+      // Catch any unexpected errors and pass them to the error handler
+      return handleError(
+        next,
         STATUS_CODE_INTERNAL_SERVER_ERROR,
-        e?.message ?? MESSAGE_INTERNAL_SERVER_ERROR
-      )
-    );
-  }
-};
+        error.message
+      );
+    }
+  },
 
-module.exports.changePassword = async (req, res, next) => {
-  try {
-    // Extract relevant fields from the request body.
+  /**
+   * Handles the password change request for a user.
+   *
+   * @param {Object} req - Express request object containing email/username, oldPassword, and newPassword.
+   * @param {Object} res - Express response object for sending responses.
+   * @param {Function} next - Express next middleware function for error handling.
+   */
+  changePassword: async (req, res, next) => {
     const { email, username, oldPassword, newPassword } = req.body;
 
-    // Validate that either email or username, along with oldPassword and newPassword, are provided and not empty.
+    // Validate that all required fields are provided
     if (
-      ![email, oldPassword, newPassword].every(
-        (field) => field?.trim()?.length
-      ) &&
-      ![username, oldPassword, newPassword].every(
-        (field) => field?.trim()?.length
-      )
+      !validateRequiredFields([email, oldPassword, newPassword]) &&
+      !validateRequiredFields([username, oldPassword, newPassword])
     ) {
-      return next(
-        new ExpressResponse(
-          STATUS_ERROR,
-          STATUS_CODE_BAD_REQUEST,
-          MESSAGE_MISSING_REQUIRED_FIELDS
-        )
+      return handleError(
+        next,
+        STATUS_CODE_BAD_REQUEST,
+        MESSAGE_MISSING_REQUIRED_FIELDS
       );
     }
 
-    // Search the database for a user with the provided email or username.
+    // Find the existing user using either email or username
     const existingUser = await User.findOne({
       $or: [{ email: email?.trim()?.toLowerCase() }, { username }],
     });
 
-    // If no matching user is found, return an error response.
+    // Handle case where user does not exist
     if (!existingUser) {
-      return next(
-        new ExpressResponse(
-          STATUS_ERROR,
-          STATUS_CODE_CONFLICT,
-          MESSAGE_EMAIL_USERNAME_NOT_EXIST
-        )
+      return handleError(
+        next,
+        STATUS_CODE_CONFLICT,
+        MESSAGE_EMAIL_USERNAME_NOT_EXIST
       );
     }
 
-    // Authenticate the user using the provided old password.
+    // Authenticate the user with the provided old password
     const isAuthenticated = await existingUser.authenticate(oldPassword);
 
-    // If authentication fails, return an error response.
-    if (!isAuthenticated.user) {
-      return next(
-        new ExpressResponse(
-          STATUS_ERROR,
-          STATUS_CODE_CONFLICT,
-          MESSAGE_OLD_PASSWORD_ERROR
-        )
+    // Handle case where old password does not match
+    if (!isAuthenticated?.user) {
+      return handleError(
+        next,
+        STATUS_CODE_CONFLICT,
+        MESSAGE_OLD_PASSWORD_ERROR
       );
     }
 
-    // Update the user's password with the new password.
+    // Set the new password for the user
     await existingUser.setPassword(newPassword);
 
-    // Save the updated user information in the database.
+    // Save the updated user information to the database
     await existingUser.save();
 
-    // Retrieve the current logged-in user's details, including role and permissions.
-    const currentUser = await User.findOne(
-      { userCode: req.user.userCode },
-      hiddenFieldsUser
-    ).populate({
-      path: "role",
-      select: hiddenFieldsDefault,
-      populate: {
-        path: "rolePermissions",
-        select: hiddenFieldsDefault,
-      },
-    });
+    // Retrieve the current user information for auditing purposes
+    const currentUser = await getCurrentUser(req.user.userCode);
 
-    // Log the password change action for auditing purposes.
+    // Log the password change action in the audit logs
     await logAudit(
       generateAuditCode(),
-      auditActions?.CHANGE,
-      auditCollections?.USERS,
-      currentUser?.userCode,
-      auditChanges?.CHANGE_PASSWORD,
+      auditActions.CHANGE,
+      auditCollections.USERS,
+      currentUser.userCode,
+      auditChanges.CHANGE_PASSWORD,
       null,
       null,
-      currentUser?.toObject()
+      currentUser.toObject()
     );
 
-    // Send a success response indicating that the password has been changed.
+    //: Send a success response indicating password change was successful
     res
       .status(STATUS_CODE_SUCCESS)
       .send(
-        new ExpressResponse(
-          STATUS_SUCCESS,
-          STATUS_CODE_SUCCESS,
-          MESSAGE_PASSWORD_CHANGE_SUCCESS
-        )
+        handleSuccess(STATUS_CODE_SUCCESS, MESSAGE_PASSWORD_CHANGE_SUCCESS)
       );
-  } catch (error) {
-    // Handle any errors and return an internal server error response.
-    next(
-      new ExpressResponse(
-        STATUS_ERROR,
-        STATUS_CODE_INTERNAL_SERVER_ERROR,
-        error?.message ?? MESSAGE_INTERNAL_SERVER_ERROR
-      )
-    );
-  }
-};
+  },
 
-module.exports.changeOwnPassword = async (req, res, next) => {
-  try {
-    // Extract email, username, old password, and new password from the request body.
+  /**
+   * Changes the password for an existing user.
+   *
+   * @param {Object} req - Express request object containing email/username, oldPassword, and newPassword.
+   * @param {Object} res - Express response object to send the result of the operation.
+   * @param {Function} next - Express next middleware function to handle errors.
+   */
+  changeOwnPassword: async (req, res, next) => {
     const { email, username, oldPassword, newPassword } = req.body;
 
-    // Validate that either email or username is provided along with old and new passwords.
+    // Validate that all required fields are provided.
     if (
-      ![email, oldPassword, newPassword].every(
-        (field) => field?.trim()?.length
-      ) &&
-      ![username, oldPassword, newPassword].every(
-        (field) => field?.trim()?.length
-      )
+      !validateRequiredFields([email, oldPassword, newPassword]) &&
+      !validateRequiredFields([username, oldPassword, newPassword])
     ) {
-      return next(
-        new ExpressResponse(
-          STATUS_ERROR,
-          STATUS_CODE_BAD_REQUEST,
-          MESSAGE_MISSING_REQUIRED_FIELDS
-        )
+      return handleError(
+        next,
+        STATUS_CODE_BAD_REQUEST,
+        MESSAGE_MISSING_REQUIRED_FIELDS
       );
     }
 
-    // Search for a user in the database by email or username.
+    // Check if the user exists in the database using email or username.
     const existingUser = await User.findOne({
       $or: [{ email: email?.trim()?.toLowerCase() }, { username }],
     });
 
-    // If no user is found, return an error response.
     if (!existingUser) {
-      return next(
-        new ExpressResponse(
-          STATUS_ERROR,
-          STATUS_CODE_CONFLICT,
-          MESSAGE_EMAIL_USERNAME_NOT_EXIST
-        )
+      return handleError(
+        next,
+        STATUS_CODE_CONFLICT,
+        MESSAGE_EMAIL_USERNAME_NOT_EXIST
       );
     }
 
-    // Check if the logged-in user's userCode matches the target user's userCode.
+    // Verify if the requesting user has permission to change the password.
     if (req.user?.userCode && req.user?.userCode !== existingUser.userCode) {
-      return next(
-        new ExpressResponse(
-          STATUS_ERROR,
-          STATUS_CODE_CONFLICT,
-          MESSAGE_ACCESS_DENIED_NO_PERMISSION
-        )
+      return handleError(
+        next,
+        STATUS_CODE_CONFLICT,
+        MESSAGE_ACCESS_DENIED_NO_PERMISSION
       );
     }
 
-    // Authenticate the user using the provided old password.
+    // Authenticate the old password.
     const isAuthenticated = await existingUser.authenticate(oldPassword);
-
-    // If authentication fails, return an error response.
-    if (!isAuthenticated.user) {
-      return next(
-        new ExpressResponse(
-          STATUS_ERROR,
-          STATUS_CODE_CONFLICT,
-          MESSAGE_OLD_PASSWORD_ERROR
-        )
+    if (!isAuthenticated?.user) {
+      return handleError(
+        next,
+        STATUS_CODE_CONFLICT,
+        MESSAGE_OLD_PASSWORD_ERROR
       );
     }
 
-    // Set and save the new password for the user.
+    // Set the new password for the user and save the changes to the database.
     await existingUser.setPassword(newPassword);
     await existingUser.save();
 
-    // Retrieve the currently logged-in user details, including role and permissions.
-    const currentUser = await User.findOne(
-      { userCode: req.user.userCode },
-      hiddenFieldsUser
-    ).populate({
-      path: "role",
-      select: hiddenFieldsDefault,
-      populate: {
-        path: "rolePermissions",
-        select: hiddenFieldsDefault,
-      },
-    });
-
-    // Log the password change event for auditing.
+    // Log the password change event for auditing purposes.
+    const currentUser = await getCurrentUser(req.user.userCode);
     await logAudit(
       generateAuditCode(),
-      auditActions?.CHANGE,
-      auditCollections?.USERS,
-      currentUser?.userCode,
-      auditChanges?.CHANGE_PASSWORD,
+      auditActions.CHANGE,
+      auditCollections.USERS,
+      currentUser.userCode,
+      auditChanges.CHANGE_PASSWORD,
       null,
       null,
-      currentUser?.toObject()
+      currentUser.toObject()
     );
 
-    // Respond with a success message indicating the password change was successful.
+    // Send a success response to the client.
     res
       .status(STATUS_CODE_SUCCESS)
       .send(
-        new ExpressResponse(
-          STATUS_SUCCESS,
-          STATUS_CODE_SUCCESS,
-          MESSAGE_PASSWORD_CHANGE_SUCCESS
-        )
+        handleSuccess(STATUS_CODE_SUCCESS, MESSAGE_PASSWORD_CHANGE_SUCCESS)
       );
-  } catch (error) {
-    // Handle any errors and return an internal server error response.
-    next(
-      new ExpressResponse(
-        STATUS_ERROR,
-        STATUS_CODE_INTERNAL_SERVER_ERROR,
-        error?.message ?? MESSAGE_INTERNAL_SERVER_ERROR
-      )
-    );
-  }
-};
+  },
 
-module.exports.GetUsers = async (req, res, next) => {
-  try {
-    // Retrieve all users from the database, excluding specified fields.
-    // Populate each user's role and associated role permissions while excluding unnecessary fields.
+  /**
+   * Retrieves all users from the database along with their roles and permissions.
+   *
+   * @param {Object} req - Express request object
+   * @param {Object} res - Express response object
+   * @param {Function} next - Express next middleware function
+   */
+  GetUsers: async (req, res, next) => {
+    // Fetch all users from the User collection, excluding hidden fields
     const allUsers = await User.find({}, hiddenFieldsUser).populate({
-      path: "role",
-      select: hiddenFieldsDefault,
+      path: "role", // Populate the 'role' field in the user documents
+      select: hiddenFieldsDefault, // Exclude hidden fields from the role
       populate: {
-        path: "rolePermissions",
-        select: hiddenFieldsDefault,
+        path: "rolePermissions", // Further populate 'rolePermissions' within each role
+        select: hiddenFieldsDefault, // Exclude hidden fields from role permissions
       },
     });
 
-    // Respond with a success message and the retrieved user data.
+    // Send a success response with the retrieved users
     res
       .status(STATUS_CODE_SUCCESS)
       .send(
-        new ExpressResponse(
-          STATUS_SUCCESS,
-          STATUS_CODE_SUCCESS,
-          MESSAGE_GET_USERS_SUCCESS,
-          allUsers
-        )
+        handleSuccess(STATUS_CODE_SUCCESS, MESSAGE_GET_USERS_SUCCESS, allUsers)
       );
-  } catch (error) {
-    // Handle any errors that occur and return an internal server error response.
-    next(
-      new ExpressResponse(
-        STATUS_ERROR,
-        STATUS_CODE_INTERNAL_SERVER_ERROR,
-        error?.message ?? MESSAGE_INTERNAL_SERVER_ERROR
-      )
-    );
-  }
-};
+  },
 
-module.exports.GetOwnUser = async (req, res, next) => {
-  try {
-    // Send a success response with the currently logged-in user object.
+  /**
+   * Retrieves the authenticated user's own information.
+   *
+   * @param {Object} req - Express request object containing the authenticated user
+   * @param {Object} res - Express response object
+   * @param {Function} next - Express next middleware function
+   */
+  GetOwnUser: (req, res, next) => {
+    // Send a success response with the authenticated user's information
     res
       .status(STATUS_CODE_SUCCESS)
       .send(
-        new ExpressResponse(
-          STATUS_SUCCESS,
-          STATUS_CODE_SUCCESS,
-          MESSAGE_GET_USERS_SUCCESS,
-          req.user
-        )
+        handleSuccess(STATUS_CODE_SUCCESS, MESSAGE_GET_USERS_SUCCESS, req.user)
       );
-  } catch (error) {
-    // Handle any errors that occur and return an internal server error response.
-    next(
-      new ExpressResponse(
-        STATUS_ERROR,
-        STATUS_CODE_INTERNAL_SERVER_ERROR,
-        error?.message ?? MESSAGE_INTERNAL_SERVER_ERROR
-      )
-    );
-  }
-};
+  },
 
-module.exports.GetUserById = async (req, res, next) => {
-  try {
-    // Extract the `userCode` property from the request body.
-    const { userCode } = req.body;
+  /**
+   * Retrieves a specific user by their unique user code.
+   *
+   * @param {Object} req - Express request object containing the user code in the body
+   * @param {Object} res - Express response object
+   * @param {Function} next - Express next middleware function
+   */
+  GetUserById: async (req, res, next) => {
+    const { userCode } = req.body; // Extract user code from the request body
 
-    // Validate that `userCode` is provided and is not empty or just whitespace.
-    // If invalid, return an error response.
+    // Validate if the user code is provided
     if (!userCode?.trim()) {
-      return next(
-        new ExpressResponse(
-          STATUS_ERROR,
-          STATUS_CODE_BAD_REQUEST,
-          MESSAGE_MISSING_REQUIRED_FIELDS
-        )
+      return handleError(
+        next,
+        STATUS_CODE_BAD_REQUEST,
+        MESSAGE_MISSING_REQUIRED_FIELDS
       );
     }
 
-    // Query the database to find a user matching the provided `userCode`,
-    // while excluding specific fields (`__v`, `_id`, `salt`, `hash`).
-    // Populate the associated role and its permissions, excluding certain fields.
-    const requestedUser = await User.findOne(
-      { userCode },
-      hiddenFieldsUser
-    ).populate({
-      path: "role",
-      select: hiddenFieldsDefault,
-      populate: {
-        path: "rolePermissions",
-        select: hiddenFieldsDefault,
-      },
-    });
+    // Retrieve the user based on the provided user code
+    const requestedUser = await getCurrentUser(userCode);
 
-    // If no user is found, return an error response.
+    // Check if the user exists
     if (!requestedUser) {
-      return next(
-        new ExpressResponse(
-          STATUS_ERROR,
-          STATUS_CODE_CONFLICT,
-          MESSAGE_USER_NOT_FOUND
-        )
-      );
+      return handleError(next, STATUS_CODE_CONFLICT, MESSAGE_USER_NOT_FOUND);
     }
 
-    // Respond with success, returning the retrieved user data.
+    // Send a success response with the retrieved user's information
     res
       .status(STATUS_CODE_SUCCESS)
       .send(
-        new ExpressResponse(
-          STATUS_SUCCESS,
+        handleSuccess(
           STATUS_CODE_SUCCESS,
           MESSAGE_GET_USERS_SUCCESS,
           requestedUser
         )
       );
-  } catch (error) {
-    // Handle any errors that occur, returning an error response.
-    next(
-      new ExpressResponse(
-        STATUS_ERROR,
-        STATUS_CODE_INTERNAL_SERVER_ERROR,
-        error?.message ?? MESSAGE_INTERNAL_SERVER_ERROR
-      )
-    );
-  }
-};
+  },
 
-module.exports.UpdateUser = async (req, res, next) => {
-  try {
-    /* Extract the `userCode`, `email`, and `username` 
-    properties from the request body. */
+  /**
+   * Updates a user's information in the database.
+   *
+   * @param {Object} req - Express request object
+   * @param {Object} res - Express response object
+   * @param {Function} next - Express next middleware function
+   */
+  UpdateUser: async (req, res, next) => {
     const { userCode, email, username } = req.body;
 
-    /* Validate that none of the required fields are empty or
-    contain only whitespace characters. If any are missing, 
-    return an error response using `next`. */
-    if (![userCode, email, username].every((field) => field?.trim()?.length)) {
-      return next(
-        new ExpressResponse(
-          STATUS_ERROR,
-          STATUS_CODE_BAD_REQUEST,
-          MESSAGE_MISSING_REQUIRED_FIELDS
-        )
+    // Validate required fields
+    if (!validateRequiredFields([userCode, email, username])) {
+      return handleError(
+        next,
+        STATUS_CODE_BAD_REQUEST,
+        MESSAGE_MISSING_REQUIRED_FIELDS
       );
     }
 
-    /* Query the database for a user document matching the `userCode`. */
-    const existingUser = await User.findOne({
-      userCode,
-    });
-
-    /* If no user is found, return an error response using `next`. */
+    // Check if the user exists in the database
+    const existingUser = await User.findOne({ userCode });
     if (!existingUser) {
-      return next(
-        new ExpressResponse(
-          STATUS_ERROR,
-          STATUS_CODE_CONFLICT,
-          MESSAGE_USER_NOT_FOUND
-        )
-      );
+      return handleError(next, STATUS_CODE_CONFLICT, MESSAGE_USER_NOT_FOUND);
     }
 
-    /* Check if another user exists with the same `email` or `username`,
-    but a different `userCode`. */
-    const otherUsers = await User.find({
+    // Check for duplicate email or username (excluding the current user)
+    const duplicateUser = await User.findOne({
       userCode: { $ne: userCode },
-      $or: [{ email: email?.trim()?.toLowerCase() }, { username }],
+      $or: [{ email: email.trim().toLowerCase() }, { username }],
     });
-
-    /* If such a user exists, return an error response. */
-    if (otherUsers?.length > 0) {
-      return next(
-        new ExpressResponse(
-          STATUS_ERROR,
-          STATUS_CODE_CONFLICT,
-          MESSAGE_EMAIL_USERNAME_EXIST
-        )
+    if (duplicateUser) {
+      return handleError(
+        next,
+        STATUS_CODE_CONFLICT,
+        MESSAGE_EMAIL_USERNAME_EXIST
       );
     }
 
-    /* Retrieve the current user details along with role information. */
-    const userBeforeUpdate = await User.findOne(
-      { userCode },
-      hiddenFieldsUser
-    ).populate({
-      path: "role",
-      select: hiddenFieldsDefault,
-      populate: {
-        path: "rolePermissions",
-        select: hiddenFieldsDefault,
-      },
-    });
+    // Retrieve current user data before the update for audit logging
+    const userBeforeUpdate = await getCurrentUser(userCode);
 
-    /* Update the user document with the provided `username` and `email`. */
-    const user = await User.findOneAndUpdate(
+    // Update the user's email and username
+    await User.findOneAndUpdate(
       { userCode },
-      {
-        username,
-        email: email?.trim()?.toLowerCase(),
-      }
+      { username, email: email.trim().toLowerCase() }
     );
 
-    /* Save the updated user object to the database. */
-    await user.save();
-
-    /* Retrieve the updated user details and populate role and permission information. */
+    // Retrieve the updated user data
     const updatedUser = await User.findOne(
       { userCode },
       hiddenFieldsUser
@@ -786,180 +600,113 @@ module.exports.UpdateUser = async (req, res, next) => {
       },
     });
 
-    /* Query the database for the current logged-in user's `_id`. */
-    const currentUser = await User.findOne(
-      { userCode: req.user.userCode },
-      hiddenFieldsUser
-    ).populate({
-      path: "role",
-      select: hiddenFieldsDefault,
-      populate: {
-        path: "rolePermissions",
-        select: hiddenFieldsDefault,
-      },
-    });
+    if (!updatedUser) {
+      return handleError(next, STATUS_CODE_CONFLICT, MESSAGE_USER_NOT_FOUND);
+    }
 
-    /* Create an audit log for the update action. */
+    // Retrieve current user information for audit logging
+    const currentUser = await getCurrentUser(req.user.userCode);
+
+    // Log the update action in the audit log
     await logAudit(
       generateAuditCode(),
-      auditActions?.UPDATE,
-      auditCollections?.USERS,
-      updatedUser?.userCode,
-      auditChanges?.UPDATE_USER,
-      userBeforeUpdate?.toObject(),
-      updatedUser?.toObject(),
-      currentUser?.toObject()
+      auditActions.UPDATE,
+      auditCollections.USERS,
+      updatedUser.userCode,
+      auditChanges.UPDATE_USER,
+      userBeforeUpdate.toObject(),
+      updatedUser.toObject(),
+      currentUser.toObject()
     );
 
-    /* Send a success response with the updated user data. */
+    // Send a success response with the updated user data
     res
       .status(STATUS_CODE_SUCCESS)
       .send(
-        new ExpressResponse(
-          STATUS_SUCCESS,
+        handleSuccess(
           STATUS_CODE_SUCCESS,
           MESSAGE_UPDATE_USER_SUCCESS,
           updatedUser
         )
       );
-  } catch (error) {
-    /* Catch any errors that occur during execution and return an error response. */
-    next(
-      new ExpressResponse(
-        STATUS_ERROR,
-        STATUS_CODE_INTERNAL_SERVER_ERROR,
-        error?.message ?? MESSAGE_INTERNAL_SERVER_ERROR
-      )
-    );
-  }
-};
+  },
 
-module.exports.DeleteUser = async (req, res, next) => {
-  try {
-    /* Extract the `userCode` property from the request body. */
+  /**
+   * Deletes a user from the database.
+   *
+   * @param {Object} req - Express request object
+   * @param {Object} res - Express response object
+   * @param {Function} next - Express next middleware function
+   */
+  DeleteUser: async (req, res, next) => {
+    // Extracting userCode from the request body
     const { userCode } = req.body;
 
-    /* Validate that `userCode` is provided and not just empty or whitespace. 
-    If validation fails, return an error response. */
-    if (!userCode || userCode?.trim()?.length === 0) {
-      return next(
-        new ExpressResponse(
-          STATUS_ERROR,
-          STATUS_CODE_BAD_REQUEST,
-          MESSAGE_MISSING_REQUIRED_FIELDS
-        )
+    // Validate the userCode
+    if (!userCode?.trim()) {
+      return handleError(
+        next,
+        STATUS_CODE_BAD_REQUEST,
+        MESSAGE_MISSING_REQUIRED_FIELDS
       );
     }
 
-    /* Query the database for a user document matching the `userCode`. */
+    // Check if the user exists in the database
     const existingUser = await User.findOne({ userCode });
-
-    /* If no user is found, return an error response indicating the user doesn't exist. */
     if (!existingUser) {
-      return next(
-        new ExpressResponse(
-          STATUS_ERROR,
-          STATUS_CODE_CONFLICT,
-          MESSAGE_USER_NOT_FOUND
-        )
+      return handleError(next, STATUS_CODE_CONFLICT, MESSAGE_USER_NOT_FOUND);
+    }
+
+    // Verify if the user is allowed to be deleted
+    if (!existingUser.userAllowDeletion) {
+      return handleError(
+        next,
+        STATUS_CODE_CONFLICT,
+        MESSAGE_USER_NOT_ALLOWED_DELETE
       );
     }
 
-    /* Check if the user is allowed to be deleted. If not, return an error response. */
-    if (!existingUser?.userAllowDeletion) {
-      return next(
-        new ExpressResponse(
-          STATUS_ERROR,
-          STATUS_CODE_CONFLICT,
-          MESSAGE_USER_NOT_ALLOWED_DELETE
-        )
-      );
-    }
-
-    /* Check if the user is referenced anywhere else in the database. */
+    // Check if the user is referenced elsewhere in the system
     const { isReferenced } = await IsObjectIdReferenced(existingUser._id);
-
-    /* If the user is in use, return an error response. */
     if (isReferenced) {
-      return next(
-        new ExpressResponse(
-          STATUS_ERROR,
-          STATUS_CODE_CONFLICT,
-          MESSAGE_USER_NOT_ALLOWED_DELETE_REFERENCE_EXIST
-        )
+      return handleError(
+        next,
+        STATUS_CODE_CONFLICT,
+        MESSAGE_USER_NOT_ALLOWED_DELETE_REFERENCE_EXIST
       );
     }
 
-    /* Retrieve the current user details, including their role and permissions. */
-    const userBeforeDelete = await User.findOne(
-      { userCode },
-      hiddenFieldsUser
-    ).populate({
-      path: "role",
-      select: hiddenFieldsDefault,
-      populate: {
-        path: "rolePermissions",
-        select: hiddenFieldsDefault,
-      },
-    });
+    // Retrieve user details before deletion for audit purposes
+    const userBeforeDelete = await getCurrentUser(userCode);
 
-    /* Perform the deletion of the user from the database. */
+    // Attempt to delete the user
     const userDeletionResult = await User.deleteOne({ userCode });
-
-    /* If no document was deleted, return an error response. */
     if (userDeletionResult?.deletedCount === 0) {
-      return next(
-        new ExpressResponse(
-          STATUS_ERROR,
-          STATUS_CODE_INTERNAL_SERVER_ERROR,
-          MESSAGE_DELETE_USER_ERROR
-        )
+      return handleError(
+        next,
+        STATUS_CODE_INTERNAL_SERVER_ERROR,
+        MESSAGE_DELETE_USER_ERROR
       );
     }
 
-    /* Retrieve the current logged-in user details. */
-    const currentUser = await User.findOne(
-      { userCode: req.user.userCode },
-      hiddenFieldsUser
-    ).populate({
-      path: "role",
-      select: hiddenFieldsDefault,
-      populate: {
-        path: "rolePermissions",
-        select: hiddenFieldsDefault,
-      },
-    });
+    // Retrieve the current user performing the deletion for audit logging
+    const currentUser = await getCurrentUser(req.user.userCode);
 
-    /* Create an audit log for the user deletion. */
+    // Log the deletion action in the audit logs
     await logAudit(
       generateAuditCode(),
-      auditActions?.DELETE,
-      auditCollections?.USERS,
+      auditActions.DELETE,
+      auditCollections.USERS,
       userCode,
-      auditChanges?.DELETE_USER,
-      userBeforeDelete?.toObject(),
+      auditChanges.DELETE_USER,
+      userBeforeDelete.toObject(),
       null,
-      currentUser?.toObject()
+      currentUser.toObject()
     );
 
-    /* Return a success response confirming the user deletion. */
+    // Send a success response to the client
     res
       .status(STATUS_CODE_SUCCESS)
-      .send(
-        new ExpressResponse(
-          STATUS_SUCCESS,
-          STATUS_CODE_SUCCESS,
-          MESSAGE_DELETE_USER_SUCCESS
-        )
-      );
-  } catch (error) {
-    /* Catch any errors during execution and return an error response. */
-    next(
-      new ExpressResponse(
-        STATUS_ERROR,
-        STATUS_CODE_INTERNAL_SERVER_ERROR,
-        error?.message ?? MESSAGE_INTERNAL_SERVER_ERROR
-      )
-    );
-  }
+      .send(handleSuccess(STATUS_CODE_SUCCESS, MESSAGE_DELETE_USER_SUCCESS));
+  },
 };

@@ -23,7 +23,7 @@ router.get(
   "/GetOwnProfile",
   isLoggedIn,
   checkPermission(allPermissions?.VIEW_OWN_PROFILE_ONLY),
-  profiles.GetOwnProfile
+  catchAsync(profiles.GetOwnProfile)
 );
 
 router.get(
@@ -31,14 +31,14 @@ router.get(
   isLoggedIn,
   checkPermission(allPermissions?.VIEW_PROFILES),
   validateProfileCode,
-  profiles.GetProfileByCode
+  catchAsync(profiles.GetProfileByCode)
 );
 
 router.get(
   "/GetProfileByUserCode",
   isLoggedIn,
   checkPermission(allPermissions?.VIEW_PROFILES),
-  profiles.GetProfileByUserCode
+  catchAsync(profiles.GetProfileByUserCode)
 );
 
 router.post(
@@ -47,7 +47,7 @@ router.post(
   checkPermission(allPermissions?.CREATE_PROFILE),
   validateProfilePicture,
   validateProfile,
-  profiles.CreateProfile
+  catchAsync(profiles.CreateProfile)
 );
 
 router.post(
@@ -56,7 +56,7 @@ router.post(
   checkPermission(allPermissions?.UPDATE_PROFILE),
   validateProfilePicture,
   validateUpdateProfile,
-  profiles.UpdateProfile
+  catchAsync(profiles.UpdateProfile)
 );
 
 router.post(

@@ -1,8 +1,13 @@
 const moment = require("moment-timezone");
 const Class = require("../models/class");
 const Section = require("../models/section");
-const ExpressResponse = require("../utils/ExpressResponse");
-const { STATUS_ERROR, STATUS_SUCCESS } = require("../utils/status");
+const User = require("../models/user");
+const { logAudit } = require("../middleware");
+const {
+  auditActions,
+  auditCollections,
+  auditChanges,
+} = require("../utils/audit");
 const {
   STATUS_CODE_CONFLICT,
   STATUS_CODE_SUCCESS,
@@ -11,10 +16,12 @@ const {
 } = require("../utils/statusCodes");
 const {
   hiddenFieldsDefault,
+  hiddenFieldsUser,
+  handleError,
+  handleSuccess,
   toCapitalize,
   IsObjectIdReferenced,
   generateSectionCode,
-  hiddenFieldsUser,
   generateAuditCode,
 } = require("../utils/helpers");
 const {
@@ -32,418 +39,318 @@ const {
   MESSAGE_DELETE_SECTION_ERROR,
   MESSAGE_DELETE_SECTION_SUCCESS,
 } = require("../utils/messages");
-const User = require("../models/user");
-const { logAudit } = require("../middleware");
-const {
-  auditActions,
-  auditCollections,
-  auditChanges,
-} = require("../utils/audit");
 
-module.exports.GetSections = async (req, res, next) => {
-  // Query the `sections` collection to retrieve all documents, excluding `__v` and `_id` fields,
-  // and populate the linked documents from the `classes` collection, excluding their `__v` and `_id` fields.
-  const sections = await Section.find({}, hiddenFieldsDefault).populate(
-    "class",
-    hiddenFieldsDefault
-  );
+// Function to find a user along with their role and role permissions
+const findUserWithRole = async (userCode) => {
+  return await User.findOne({ userCode }, hiddenFieldsUser) // Find a user by userCode, excluding hidden fields
+    .populate({
+      // Populate the 'role' field with role details
+      path: "role", // Path to the 'role' field in the User model
+      select: hiddenFieldsDefault, // Exclude hidden fields in the role
+      populate: {
+        // Further populate the 'rolePermissions' field inside the role
+        path: "rolePermissions", // Path to 'rolePermissions' within the role
+        select: hiddenFieldsDefault, // Exclude hidden fields in the rolePermissions
+      },
+    });
+};
 
-  // Return a success response with the retrieved sections data.
-  res
-    .status(STATUS_CODE_SUCCESS)
-    .send(
-      new ExpressResponse(
-        STATUS_SUCCESS,
-        STATUS_CODE_SUCCESS,
-        MESSAGE_GET_SECTIONS_SUCCESS,
-        sections
-      )
+// Function to find multiple sections and populate the related class information
+const populateSections = async (query) => {
+  return await Section.find(query, hiddenFieldsDefault) // Find sections matching the query, excluding hidden fields
+    .populate(
+      "class", // Populate the 'class' field in each section
+      hiddenFieldsDefault // Exclude hidden fields in the class
     );
 };
 
-module.exports.GetSectionByCode = async (req, res, next) => {
-  // Extract the `sectionCode` from the request body and use it to query the `sections` collection for the document.
-  // Exclude `__v` and `_id` fields, and populate the linked documents from the `classes` collection, excluding their `__v` and `_id` fields.
-  const { sectionCode } = req.body;
-  const section = await Section.findOne(
-    { sectionCode },
-    hiddenFieldsDefault
-  ).populate("class", hiddenFieldsDefault);
+// Function to find a single section and populate the related class information
+const populateSection = async (query) => {
+  return await Section.findOne(query, hiddenFieldsDefault) // Find a single section matching the query, excluding hidden fields
+    .populate(
+      "class", // Populate the 'class' field in the section
+      hiddenFieldsDefault // Exclude hidden fields in the class
+    );
+};
 
-  // Check if no matching section is found in the database. If so, return an error response.
-  if (!section) {
-    return next(
-      new ExpressResponse(
-        STATUS_ERROR,
+module.exports = {
+  /**
+   * Retrieves all sections from the database.
+   *
+   * @param {Object} req - Express request object
+   * @param {Object} res - Express response object
+   * @param {Function} next - Express next middleware function
+   */
+  GetSections: async (req, res, next) => {
+    // Fetch all sections from the database
+    const sections = await populateSections({});
+
+    // Send a success response with the fetched sections
+    res
+      .status(STATUS_CODE_SUCCESS)
+      .send(
+        handleSuccess(
+          STATUS_CODE_SUCCESS,
+          MESSAGE_GET_SECTIONS_SUCCESS,
+          sections
+        )
+      );
+  },
+
+  /**
+   * Retrieves a section by its code.
+   *
+   * @param {Object} req - Express request object
+   * @param {Object} res - Express response object
+   * @param {Function} next - Express next middleware function
+   */
+  GetSectionByCode: async (req, res, next) => {
+    // Extract sectionCode from the request body
+    const { sectionCode } = req.body;
+
+    // Find the section in the database using sectionCode
+    const section = await populateSection({ sectionCode });
+
+    // Handle error if section is not found
+    if (!section) {
+      return handleError(
+        next,
         STATUS_CODE_BAD_REQUEST,
         MESSAGE_SECTION_NOT_FOUND
-      )
-    );
-  }
+      );
+    }
 
-  // Return a success response with the retrieved section data.
-  res
-    .status(STATUS_CODE_SUCCESS)
-    .send(
-      new ExpressResponse(
-        STATUS_SUCCESS,
-        STATUS_CODE_SUCCESS,
-        MESSAGE_GET_SECTION_SUCCESS,
-        section
-      )
-    );
-};
+    // Send success response with the retrieved section
+    res
+      .status(STATUS_CODE_SUCCESS)
+      .send(
+        handleSuccess(STATUS_CODE_SUCCESS, MESSAGE_GET_SECTION_SUCCESS, section)
+      );
+  },
 
-module.exports.GetSectionsByClassCode = async (req, res, next) => {
-  // Extract the `classCode` from the request body.
-  const { classCode } = req.body;
+  /**
+   * Retrieves sections associated with a specific class code.
+   *
+   * @param {Object} req - Express request object
+   * @param {Object} res - Express response object
+   * @param {Function} next - Express next middleware function
+   */
+  GetSectionsByClassCode: async (req, res, next) => {
+    // Extract classCode from the request body
+    const { classCode } = req.body;
 
-  // Use the `classCode` to search for a matching document in the `classes` collection.
-  const foundClass = await Class.findOne({ classCode });
+    // Find the class in the database using classCode
+    const foundClass = await Class.findOne({ classCode });
 
-  // Check if no class was found with the provided `classCode`. If not, return an error response.
-  if (!foundClass) {
-    return next(
-      new ExpressResponse(
-        STATUS_ERROR,
+    // Handle error if class is not found
+    if (!foundClass)
+      return handleError(
+        next,
         STATUS_CODE_BAD_REQUEST,
         MESSAGE_CLASS_NOT_FOUND
-      )
-    );
-  }
+      );
 
-  // Use the `foundClass._id` to query the `sections` collection for all sections linked to the class.
-  const sections = await Section.find(
-    { class: foundClass?._id },
-    hiddenFieldsDefault
-  ).populate("Class", hiddenFieldsDefault);
+    // Fetch all sections associated with the class
+    const sections = await populateSections({ class: foundClass._id });
 
-  // Check if no sections were found for the specified class. If none are found, return an error response.
-  if (!sections || !Array.isArray(sections) || sections?.length === 0) {
-    return next(
-      new ExpressResponse(
-        STATUS_ERROR,
+    // Handle error if no sections are found
+    if (!sections.length) {
+      return handleError(
+        next,
         STATUS_CODE_BAD_REQUEST,
         MESSAGE_SECTIONS_NOT_FOUND
-      )
-    );
-  }
-
-  // Return a success response with the found sections data.
-  res
-    .status(STATUS_CODE_SUCCESS)
-    .send(
-      new ExpressResponse(
-        STATUS_SUCCESS,
-        STATUS_CODE_SUCCESS,
-        MESSAGE_GET_STATE_SUCCESS,
-        sections
-      )
-    );
-};
-
-module.exports.CreateSection = async (req, res, next) => {
-  /* Extract the `name` and `classCode` properties from the request body. */
-  const { name, classCode } = req.body;
-
-  /* Capitalize the `name` and query the database to check for 
-   an existing section with the same name in the `sections` collection. */
-  const existingSection = await Section.findOne({
-    name: toCapitalize(name),
-  });
-
-  /* If a section with the same `name` exists, return an error response. */
-  if (existingSection) {
-    return next(
-      new ExpressResponse(
-        STATUS_ERROR,
-        STATUS_CODE_CONFLICT,
-        MESSAGE_SECTION_EXIST
-      )
-    );
-  }
-
-  /* Use the provided `classCode` to query the database for an existing class. */
-  const existingClass = await Class.findOne({
-    classCode,
-  });
-
-  /* If no class is found with the given `classCode`, return an error response. */
-  if (!existingClass) {
-    return next(
-      new ExpressResponse(
-        STATUS_ERROR,
-        STATUS_CODE_CONFLICT,
-        MESSAGE_CLASS_NOT_FOUND
-      )
-    );
-  }
-
-  /* Generate a unique `sectionCode` for the new section. */
-  const sectionCode = generateSectionCode();
-
-  /* Create a new `Section` instance with the provided data. */
-  const section = new Section({
-    sectionCode,
-    name: toCapitalize(name),
-    class: existingClass?._id,
-  });
-
-  /* Save the newly created section to the database. */
-  await section.save();
-
-  /* Retrieve the newly created section from the database, excluding 
-   `__v` and `_id`, and populate the linked `class` document. */
-  const createdSection = await Section.findOne(
-    { sectionCode },
-    hiddenFieldsDefault
-  ).populate("class", hiddenFieldsDefault);
-
-  // Fetch the current logged-in user's data using their `userCode`.
-  const currentUser = await User.findOne(
-    { userCode: req.user.userCode },
-    hiddenFieldsUser
-  ).populate({
-    path: "role",
-    select: hiddenFieldsDefault,
-    populate: {
-      path: "rolePermissions",
-      select: hiddenFieldsDefault,
-    },
-  });
-
-  // Log the action in the audit log.
-  await logAudit(
-    generateAuditCode(),
-    auditActions?.CREATE,
-    auditCollections?.SECTIONS,
-    createdSection?.sectionCode,
-    auditChanges?.CREATE_SECTION,
-    null,
-    createdSection?.toObject(),
-    currentUser?.toObject()
-  );
-
-  /* Return a success response with the newly created section. */
-  res
-    .status(STATUS_CODE_SUCCESS)
-    .send(
-      new ExpressResponse(
-        STATUS_SUCCESS,
-        STATUS_CODE_SUCCESS,
-        MESSAGE_CREATE_SECTION_SUCCESS,
-        createdSection
-      )
-    );
-};
-
-module.exports.UpdateSection = async (req, res, next) => {
-  /* Extract `sectionCode`, `name`, and `classCode` from the request body. */
-  const { sectionCode, name, classCode } = req.body;
-
-  /* Query the database to find a section document by the provided `sectionCode`. */
-  const existingSection = await Section.findOne({
-    sectionCode,
-  });
-
-  /* If no section is found with the given `sectionCode`, return an error response. */
-  if (!existingSection) {
-    return next(
-      new ExpressResponse(
-        STATUS_ERROR,
-        STATUS_CODE_CONFLICT,
-        MESSAGE_SECTION_NOT_FOUND
-      )
-    );
-  }
-
-  /* Query the database to find a class document using the provided `classCode`. */
-  const existingClass = await Class.findOne({
-    classCode,
-  });
-
-  /* If no class is found with the given `classCode`, return an error response. */
-  if (!existingClass) {
-    return next(
-      new ExpressResponse(
-        STATUS_ERROR,
-        STATUS_CODE_CONFLICT,
-        MESSAGE_CLASS_NOT_FOUND
-      )
-    );
-  }
-
-  /* Query the database to check if any section with the given `name` 
-   (other than the one with the provided `sectionCode`) exists. */
-  const otherSections = await Section.find({
-    sectionCode: { $ne: sectionCode },
-    name: toCapitalize(name),
-  });
-
-  /* If another section with the same `name` is found, return an error response. */
-  if (otherSections?.length > 0) {
-    return next(
-      new ExpressResponse(
-        STATUS_ERROR,
-        STATUS_CODE_CONFLICT,
-        MESSAGE_SECTION_TAKEN
-      )
-    );
-  }
-
-  /* Retrieve the section data before updating. */
-  const sectionBeforeUpdate = await Section.findOne(
-    { sectionCode },
-    hiddenFieldsDefault
-  );
-
-  /* Update the section document with the new data. */
-  const section = await Section.findOneAndUpdate(
-    { sectionCode },
-    {
-      name: toCapitalize(name),
-      class: existingClass?._id,
-      updatedAt: moment().valueOf(),
+      );
     }
-  );
 
-  /* Save the updated section document to the database. */
-  await section.save();
+    // Send success response with the fetched sections
+    res
+      .status(STATUS_CODE_SUCCESS)
+      .send(
+        handleSuccess(STATUS_CODE_SUCCESS, MESSAGE_GET_STATE_SUCCESS, sections)
+      );
+  },
 
-  /* Retrieve the updated section document (excluding `__v` and `_id`) 
-   and populate the linked `class` document. */
-  const updatedSection = await Section.findOne(
-    { sectionCode },
-    hiddenFieldsDefault
-  ).populate("class", hiddenFieldsDefault);
+  /**
+   * Creates a new section in the database.
+   *
+   * @param {Object} req - Express request object
+   * @param {Object} res - Express response object
+   * @param {Function} next - Express next middleware function
+   */
+  CreateSection: async (req, res, next) => {
+    // Extract name and classCode from the request body
+    const { name, classCode } = req.body;
+    const capitalizedName = toCapitalize(name);
 
-  /* Find the current logged-in user's `_id` using their `userCode`. */
-  const currentUser = await User.findOne(
-    { userCode: req.user.userCode },
-    hiddenFieldsUser
-  ).populate({
-    path: "role",
-    select: hiddenFieldsDefault,
-    populate: {
-      path: "rolePermissions",
-      select: hiddenFieldsDefault,
-    },
-  });
+    // Check if a section with the same name already exists
+    const existingSection = await populateSection({ name: capitalizedName });
+    if (existingSection) {
+      return handleError(next, STATUS_CODE_CONFLICT, MESSAGE_SECTION_EXIST);
+    }
 
-  /* Log the update action in the audit log. */
-  await logAudit(
-    generateAuditCode(),
-    auditActions?.UPDATE,
-    auditCollections?.SECTIONS,
-    updatedSection?.sectionCode,
-    auditChanges?.UPDATE_SECTION,
-    sectionBeforeUpdate?.toObject(),
-    updatedSection?.toObject(),
-    currentUser?.toObject()
-  );
+    // Find the class in the database using classCode
+    const existingClass = await Class.findOne({ classCode });
+    if (!existingClass)
+      return handleError(next, STATUS_CODE_CONFLICT, MESSAGE_CLASS_NOT_FOUND);
 
-  /* Return a success response with the updated section data. */
-  res
-    .status(STATUS_CODE_SUCCESS)
-    .send(
-      new ExpressResponse(
-        STATUS_SUCCESS,
-        STATUS_CODE_SUCCESS,
-        MESSAGE_UPDATE_SECTION_SUCCESS,
-        updatedSection
-      )
+    // Create a new section with the provided data
+    const section = new Section({
+      sectionCode: generateSectionCode(),
+      name: capitalizedName,
+      class: existingClass._id,
+    });
+
+    // Save the new section to the database
+    await section.save();
+
+    // Fetch the created section for confirmation
+    const createdSection = await populateSection({
+      sectionCode: section.sectionCode,
+    });
+
+    // Find the current user and log the creation action
+    const currentUser = await findUserWithRole(req.user.userCode);
+    await logAudit(
+      generateAuditCode(),
+      auditActions.CREATE,
+      auditCollections.SECTIONS,
+      createdSection.sectionCode,
+      auditChanges.CREATE_SECTION,
+      null,
+      createdSection.toObject(),
+      currentUser.toObject()
     );
-};
 
-module.exports.DeleteSection = async (req, res, next) => {
-  /* Extract the `sectionCode` from the request body. */
-  const { sectionCode } = req.body;
+    // Send success response with the created section
+    res
+      .status(STATUS_CODE_SUCCESS)
+      .send(
+        handleSuccess(
+          STATUS_CODE_SUCCESS,
+          MESSAGE_CREATE_SECTION_SUCCESS,
+          createdSection
+        )
+      );
+  },
 
-  /* Query the database to find a section document with the provided `sectionCode`. */
-  const existingSection = await Section.findOne({
-    sectionCode,
-  });
+  /**
+   * Updates an existing section's details.
+   *
+   * @param {Object} req - Express request object
+   * @param {Object} res - Express response object
+   * @param {Function} next - Express next middleware function
+   */
+  UpdateSection: async (req, res, next) => {
+    // Extract sectionCode, name, and classCode from the request body
+    const { sectionCode, name, classCode } = req.body;
 
-  /* If no section is found with the given `sectionCode`, return an error response. */
-  if (!existingSection) {
-    return next(
-      new ExpressResponse(
-        STATUS_ERROR,
-        STATUS_CODE_CONFLICT,
-        MESSAGE_SECTION_NOT_FOUND
-      )
+    // Find the existing section in the database
+    const existingSection = await populateSection({ sectionCode });
+    if (!existingSection)
+      return handleError(next, STATUS_CODE_CONFLICT, MESSAGE_SECTION_NOT_FOUND);
+
+    // Find the class in the database using classCode
+    const existingClass = await Class.findOne({ classCode });
+    if (!existingClass)
+      return handleError(next, STATUS_CODE_CONFLICT, MESSAGE_CLASS_NOT_FOUND);
+
+    // Check for name conflicts with other sections
+    const nameConflict = await populateSection({
+      name: toCapitalize(name),
+      sectionCode: { $ne: sectionCode },
+    });
+    if (nameConflict)
+      return handleError(next, STATUS_CODE_CONFLICT, MESSAGE_SECTION_TAKEN);
+
+    // Update the section with the new data
+    await Section.findOneAndUpdate(
+      { sectionCode },
+      {
+        name: toCapitalize(name),
+        class: existingClass._id,
+        updatedAt: moment().valueOf(),
+      }
     );
-  }
 
-  /* Check if the section is being referenced anywhere in the database. */
-  const { isReferenced } = await IsObjectIdReferenced(existingSection._id);
+    // Fetch the updated section for confirmation
+    const updatedSection = await populateSection({ sectionCode });
 
-  /* If the section is referenced, return an error response indicating it cannot be deleted. */
-  if (isReferenced) {
-    return next(
-      new ExpressResponse(
-        STATUS_ERROR,
+    // Find the current user and log the update action
+    const currentUser = await findUserWithRole(req.user.userCode);
+    await logAudit(
+      generateAuditCode(),
+      auditActions.UPDATE,
+      auditCollections.SECTIONS,
+      sectionCode,
+      auditChanges.UPDATE_SECTION,
+      existingSection.toObject(),
+      updatedSection.toObject(),
+      currentUser.toObject()
+    );
+
+    // Send success response with the updated section
+    res
+      .status(STATUS_CODE_SUCCESS)
+      .send(
+        handleSuccess(
+          STATUS_CODE_SUCCESS,
+          MESSAGE_UPDATE_SECTION_SUCCESS,
+          updatedSection
+        )
+      );
+  },
+
+  /**
+   * Deletes a section from the database.
+   *
+   * @param {Object} req - Express request object
+   * @param {Object} res - Express response object
+   * @param {Function} next - Express next middleware function
+   */
+  DeleteSection: async (req, res, next) => {
+    // Extract sectionCode from the request body
+    const { sectionCode } = req.body;
+
+    // Find the existing section in the database
+    const existingSection = await Section.findOne({ sectionCode });
+    if (!existingSection)
+      return handleError(next, STATUS_CODE_CONFLICT, MESSAGE_SECTION_NOT_FOUND);
+
+    // Check if the section is referenced elsewhere
+    const { isReferenced } = await IsObjectIdReferenced(existingSection._id);
+    if (isReferenced)
+      return handleError(
+        next,
         STATUS_CODE_CONFLICT,
         MESSAGE_SECTION_NOT_ALLOWED_DELETE_REFERENCE_EXIST
-      )
-    );
-  }
+      );
 
-  /* Retrieve the section document before deletion, excluding `__v` and `_id` fields. */
-  const sectionBeforeDelete = await Section.findOne(
-    { sectionCode },
-    hiddenFieldsDefault
-  );
-
-  /* Attempt to delete the section document by its `sectionCode`. */
-  const section = await Section.deleteOne({
-    sectionCode,
-  });
-
-  /* If the section was not deleted (i.e., `deletedCount` is 0), return an error response. */
-  if (section?.deletedCount === 0) {
-    return next(
-      new ExpressResponse(
-        STATUS_ERROR,
+    // Delete the section from the database
+    const deletionResult = await Section.deleteOne({ sectionCode });
+    if (deletionResult.deletedCount === 0) {
+      return handleError(
+        next,
         STATUS_CODE_INTERNAL_SERVER_ERROR,
         MESSAGE_DELETE_SECTION_ERROR
-      )
+      );
+    }
+
+    // Find the current user and log the deletion action
+    const currentUser = await findUserWithRole(req.user.userCode);
+    await logAudit(
+      generateAuditCode(),
+      auditActions.DELETE,
+      auditCollections.SECTIONS,
+      sectionCode,
+      auditChanges.DELETE_SECTION,
+      existingSection.toObject(),
+      null,
+      currentUser.toObject()
     );
-  }
 
-  /* Retrieve the current logged-in user's data by their `userCode`. */
-  const currentUser = await User.findOne(
-    { userCode: req.user.userCode },
-    hiddenFieldsUser
-  ).populate({
-    path: "role",
-    select: hiddenFieldsDefault,
-    populate: {
-      path: "rolePermissions",
-      select: hiddenFieldsDefault,
-    },
-  });
-
-  /* Create an audit log for the section deletion action. */
-  await logAudit(
-    generateAuditCode(),
-    auditActions?.DELETE,
-    auditCollections?.SECTIONS,
-    sectionBeforeDelete?.sectionCode,
-    auditChanges?.DELETE_SECTION,
-    sectionBeforeDelete?.toObject(),
-    null,
-    currentUser?.toObject()
-  );
-
-  /* Return a success response indicating the section was deleted. */
-  res
-    .status(STATUS_CODE_SUCCESS)
-    .send(
-      new ExpressResponse(
-        STATUS_SUCCESS,
-        STATUS_CODE_SUCCESS,
-        MESSAGE_DELETE_SECTION_SUCCESS
-      )
-    );
+    // Send success response confirming the deletion
+    res
+      .status(STATUS_CODE_SUCCESS)
+      .send(handleSuccess(STATUS_CODE_SUCCESS, MESSAGE_DELETE_SECTION_SUCCESS));
+  },
 };

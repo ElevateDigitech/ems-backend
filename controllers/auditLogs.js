@@ -55,8 +55,10 @@ module.exports = {
 
     // If no audit log is found, pass an error response to the next middleware
     if (!auditLog) {
-      return next(
-        handleError(STATUS_CODE_BAD_REQUEST, MESSAGE_AUDIT_NOT_FOUND)
+      return handleError(
+        next,
+        STATUS_CODE_BAD_REQUEST,
+        MESSAGE_AUDIT_NOT_FOUND
       );
     }
 

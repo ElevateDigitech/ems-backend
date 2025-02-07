@@ -12,57 +12,57 @@ router
     catchAsync(users.register)
   );
 
-router.route("/login").post(storeReturnTo, users.login);
+router.route("/login").post(storeReturnTo, catchAsync(users.login));
 
-router.get("/logout", isLoggedIn, users.logout);
+router.get("/logout", isLoggedIn, catchAsync(users.logout));
 
 router.post(
   "/changePassword",
   isLoggedIn,
   checkPermission(allPermissions?.CHANGE_PASSWORDS),
-  users.changePassword
+  catchAsync(users.changePassword)
 );
 
 router.post(
   "/changeOwnPassword",
   isLoggedIn,
   checkPermission(allPermissions?.CHANGE_OWN_PASSWORD),
-  users.changeOwnPassword
+  catchAsync(users.changeOwnPassword)
 );
 
 router.get(
   "/Getusers",
   isLoggedIn,
   checkPermission(allPermissions?.VIEW_USERS),
-  users.GetUsers
+  catchAsync(users.GetUsers)
 );
 
 router.get(
   "/GetOwnUser",
   isLoggedIn,
   checkPermission(allPermissions?.VIEW_OWN_USER_ONLY),
-  users.GetOwnUser
+  catchAsync(users.GetOwnUser)
 );
 
 router.get(
   "/GetUserById",
   isLoggedIn,
   checkPermission(allPermissions?.VIEW_USERS),
-  users.GetUserById
+  catchAsync(users.GetUserById)
 );
 
 router.post(
   "/UpdateUser",
   isLoggedIn,
   checkPermission(allPermissions?.UPDATE_USER),
-  users.UpdateUser
+  catchAsync(users.UpdateUser)
 );
 
 router.post(
   "/DeleteUser",
   isLoggedIn,
   checkPermission(allPermissions?.DELETE_USER),
-  users.DeleteUser
+  catchAsync(users.DeleteUser)
 );
 
 module.exports.usersRoutes = router;

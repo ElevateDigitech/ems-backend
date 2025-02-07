@@ -2,6 +2,7 @@ const MESSAGE_ACCESS_DENIED_NO_ROLES = "Access denied. No role assigned.";
 const MESSAGE_ACCESS_DENIED_NO_PERMISSION =
   "Access denied. Permission required.";
 
+const MESSAGE_SCHEMA_VALIDATION_ERROR = "Validation error";
 const MESSAGE_INTERNAL_SERVER_ERROR = "Internal server error";
 const MESSAGE_PAGE_NOT_FOUND = "Page Not Found";
 
@@ -128,6 +129,8 @@ const MESSAGE_PROFILE_NOT_FOUND = "The selected profile could not be found";
 const MESSAGE_PROFILE_NOT_FOUND_UNDER_USER =
   "There is no profile found under the selected user";
 const MESSAGE_UPDATE_PROFILE_SUCCESS = "Profile Updated Successfully";
+const MESSAGE_PROFILE_NOT_ALLOWED_DELETE_REFERENCE_EXIST =
+  "The selected profile is in use and not allowed to be deleted.";
 const MESSAGE_DELETE_PROFILE_SUCCESS = "Profile deleted successfully";
 const MESSAGE_DELETE_PROFILE_ERROR = "Couldn't delete the profile";
 const MESSAGE_PROFILE_TAKEN =
@@ -187,6 +190,7 @@ module.exports = {
   MESSAGE_EMAIL_USERNAME_NOT_EXIST,
   MESSAGE_OLD_PASSWORD_ERROR,
   MESSAGE_PASSWORD_CHANGE_SUCCESS,
+  MESSAGE_SCHEMA_VALIDATION_ERROR,
   MESSAGE_INTERNAL_SERVER_ERROR,
   MESSAGE_NOT_LOGGED_IN_YET,
   MESSAGE_NOT_AUTHORIZED,
@@ -264,6 +268,7 @@ module.exports = {
   MESSAGE_OWN_PROFILE_NOT_FOUND,
   MESSAGE_PROFILE_NOT_FOUND_UNDER_USER,
   MESSAGE_UPDATE_PROFILE_SUCCESS,
+  MESSAGE_PROFILE_NOT_ALLOWED_DELETE_REFERENCE_EXIST,
   MESSAGE_DELETE_PROFILE_SUCCESS,
   MESSAGE_DELETE_PROFILE_ERROR,
   MESSAGE_PROFILE_TAKEN,
