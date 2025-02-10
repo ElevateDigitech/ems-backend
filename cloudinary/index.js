@@ -13,7 +13,7 @@ const storage = new CloudinaryStorage({
   cloudinary: cloudinary,
   params: {
     folder: process.env.CLOUDINARY_FOLDER,
-    allowedFormats: allowedFormats,
+    allowed_formats: allowedFormats,
   },
 });
 
