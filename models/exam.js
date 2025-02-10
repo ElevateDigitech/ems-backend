@@ -8,9 +8,9 @@ const defaultOptions = {
   id: false,
 };
 
-const ExamTypeSchema = new Schema(
+const ExamSchema = new Schema(
   {
-    examTypeCode: {
+    examCode: {
       type: String,
       required: true,
       unique: true,
@@ -37,20 +37,20 @@ const ExamTypeSchema = new Schema(
 );
 
 // Virtuals for timestamps
-ExamTypeSchema.virtual("createdAtEpochTimestamp").get(function () {
+ExamSchema.virtual("createdAtEpochTimestamp").get(function () {
   return moment(this.createdAt).valueOf();
 });
 
-ExamTypeSchema.virtual("updatedAtEpochTimestamp").get(function () {
+ExamSchema.virtual("updatedAtEpochTimestamp").get(function () {
   return moment(this.updatedAt).valueOf();
 });
 
 // Pre-find middleware to sort results by _id descending
-ExamTypeSchema.pre(/^find/, function (next) {
+ExamSchema.pre(/^find/, function (next) {
   this.sort({ _id: -1 });
   next();
 });
 
 // Create and export the model
-const ExamType = mongoose.model("ExamType", ExamTypeSchema);
-module.exports = ExamType;
+const Exam = mongoose.model("Exam", ExamSchema);
+module.exports = Exam;

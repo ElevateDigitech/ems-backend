@@ -1,53 +1,53 @@
 const express = require("express");
 const router = express.Router({ mergeParams: true });
-const examTypes = require("../controllers/examTypes");
+const exams = require("../controllers/exams");
 const catchAsync = require("../utils/catchAsync");
 const {
   isLoggedIn,
   checkPermission,
-  validateExamTypeCode,
-  validateExamType,
-  validateUpdateExamType,
+  validateExamCode,
+  validateExam,
+  validateUpdateExam,
 } = require("../middleware");
 const { allPermissions } = require("../seeds/basePermissions");
 
 router.get(
-  "/GetExamTypes",
+  "/GetExams",
   isLoggedIn,
   checkPermission(allPermissions?.VIEW_EXAM_TYPES),
-  catchAsync(examTypes.GetExamTypes)
+  catchAsync(exams.GetExams)
 );
 
 router.get(
-  "/GetExamTypeByCode",
+  "/GetExamByCode",
   isLoggedIn,
   checkPermission(allPermissions?.VIEW_EXAM_TYPES),
-  validateExamTypeCode,
-  catchAsync(examTypes.GetExamTypeByCode)
+  validateExamCode,
+  catchAsync(exams.GetExamByCode)
 );
 
 router.post(
-  "/CreateExamType",
+  "/CreateExam",
   isLoggedIn,
   checkPermission(allPermissions?.CREATE_EXAM_TYPE),
-  validateExamType,
-  catchAsync(examTypes.CreateExamType)
+  validateExam,
+  catchAsync(exams.CreateExam)
 );
 
 router.post(
-  "/UpdateExamType",
+  "/UpdateExam",
   isLoggedIn,
   checkPermission(allPermissions?.UPDATE_EXAM_TYPE),
-  validateUpdateExamType,
-  catchAsync(examTypes.UpdateExamType)
+  validateUpdateExam,
+  catchAsync(exams.UpdateExam)
 );
 
 router.post(
-  "/DeleteExamType",
+  "/DeleteExam",
   isLoggedIn,
   checkPermission(allPermissions?.DELETE_EXAM_TYPE),
-  validateExamTypeCode,
-  catchAsync(examTypes.DeleteExamType)
+  validateExamCode,
+  catchAsync(exams.DeleteExam)
 );
 
-module.exports.examTypeRoutes = router;
+module.exports.examRoutes = router;

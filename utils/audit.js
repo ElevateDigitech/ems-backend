@@ -19,7 +19,7 @@ const auditCollections = {
   SECTIONS: "SECTIONS",
   SUBJECTS: "SUBJECTS",
   STUDENTS: "STUDENTS",
-  EXAMTYPES: "EXAMTYPES",
+  examS: "examS",
 };
 
 const auditChanges = {

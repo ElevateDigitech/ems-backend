@@ -27,6 +27,11 @@ const MarkSchema = new Schema(
       required: true,
       trim: true,
     },
+    exam: {
+      type: Schema.Types.ObjectId,
+      ref: "Student",
+      required: true,
+    },
     student: {
       type: Schema.Types.ObjectId,
       ref: "Student",

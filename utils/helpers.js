@@ -33,7 +33,7 @@ const generateClassCode = () => `CLASS-${uuidv4()}`;
 const generateSectionCode = () => `SECTION-${uuidv4()}`;
 const generateSubjectCode = () => `SUBJECT-${uuidv4()}`;
 const generateStudentCode = () => `STUDENT-${uuidv4()}`;
-const generateExamTypeCode = () => `EXAM-TYPE-${uuidv4()}`;
+const generateexamCode = () => `EXAM-TYPE-${uuidv4()}`;
 
 const validateDob = (value) => {
   const dob = moment(new Date(value).setHours(0, 0, 0, 0)).valueOf();
@@ -126,7 +126,7 @@ module.exports = {
   generateSectionCode,
   generateSubjectCode,
   generateStudentCode,
-  generateExamTypeCode,
+  generateexamCode,
   validateDob,
   getInvalidPermissions,
   getPermissionIds,
