@@ -1,9 +1,5 @@
-const AuditLog = require("../models/auditLog");
-const {
-  hiddenFieldsDefault,
-  handleSuccess,
-  handleError,
-} = require("../utils/helpers");
+const { findAuditLogs, findAuditLog } = require("../queries/auditLogs");
+const { handleSuccess, handleError } = require("../utils/helpers");
 const {
   STATUS_CODE_SUCCESS,
   STATUS_CODE_BAD_REQUEST,
@@ -24,26 +20,20 @@ module.exports = {
    * @param {Function} next - Express next middleware function
    */
   GetAudits: async (req, res, next) => {
-    // Destructure 'entries' from the query parameters, defaulting to 100 if not provided
-    const { entries = 100 } = req.query;
-    // Fetch audit logs from the database
-    // - {}: No filter applied, meaning all documents will be retrieved
-    // - hiddenFieldsDefault: Specifies which fields to exclude (projection)
-    // - .limit(entries): Limits the number of returned documents to 'entries' (default 100)
-    const auditLogs = await AuditLog.find({}, hiddenFieldsDefault).limit(
-      entries
-    );
+    // Step 1: Destructure 'start' and 'end' from the query parameters, defaulting to 1 and 10 if not provided
+    const { start = 1, end = 10 } = req.query;
 
-    // Send a successful response with the retrieved audit logs
-    res
-      .status(STATUS_CODE_SUCCESS)
-      .send(
-        handleSuccess(
-          STATUS_CODE_SUCCESS,
-          MESSAGE_GET_AUDITS_SUCCESS,
-          auditLogs
-        )
-      );
+    // Step 2: Fetch audit logs from the database using the provided start and end range
+    const auditLogs = await findAuditLogs({ start, end });
+
+    // Step 3: Send a successful HTTP response with the retrieved audit logs
+    res.status(STATUS_CODE_SUCCESS).send(
+      handleSuccess(
+        STATUS_CODE_SUCCESS, // HTTP status code for success
+        MESSAGE_GET_AUDITS_SUCCESS, // Success message
+        auditLogs // Data containing the audit logs
+      )
+    );
   },
 
   /**
@@ -54,26 +44,29 @@ module.exports = {
    * @param {Function} next - Express next middleware function
    */
   GetAuditByCode: async (req, res, next) => {
-    // Extract auditCode from the request body
+    // Step 1: Extract 'auditCode' from the request body
     const { auditCode } = req.body;
 
-    // Find a single audit log that matches the provided audit code
-    const auditLog = await AuditLog.findOne({ auditCode }, hiddenFieldsDefault);
+    // Step 2: Find a single audit log that matches the provided audit code
+    const auditLog = await findAuditLog({ query: { auditCode } });
 
-    // If no audit log is found, pass an error response to the next middleware
+    // Step 3: Check if the audit log exists in the database
     if (!auditLog) {
+      // Step 4: If the audit log is not found, send an error response
       return handleError(
-        next,
-        STATUS_CODE_BAD_REQUEST,
-        MESSAGE_AUDIT_NOT_FOUND
+        next, // Pass the next middleware function to handle the error
+        STATUS_CODE_BAD_REQUEST, // HTTP status code for a bad request
+        MESSAGE_AUDIT_NOT_FOUND // Error message indicating audit log not found
       );
     }
 
-    // Send a successful response with the retrieved audit log
-    res
-      .status(STATUS_CODE_SUCCESS)
-      .send(
-        handleSuccess(STATUS_CODE_SUCCESS, MESSAGE_GET_AUDIT_SUCCESS, auditLog)
-      );
+    // Step 5: Send a successful HTTP response with the retrieved audit log
+    res.status(STATUS_CODE_SUCCESS).send(
+      handleSuccess(
+        STATUS_CODE_SUCCESS, // HTTP status code for success
+        MESSAGE_GET_AUDIT_SUCCESS, // Success message
+        auditLog // Data containing the specific audit log
+      )
+    );
   },
 };
