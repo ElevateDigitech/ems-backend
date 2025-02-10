@@ -280,7 +280,7 @@ module.exports.updateStudentSchema = Joi.object({
 });
 
 /**
- * Exam Type schemas.
+ * EXAM schemas.
  */
 module.exports.examCodeSchema = Joi.object({
   examCode: Joi.string().required(),
@@ -293,4 +293,28 @@ module.exports.examSchema = Joi.object({
 module.exports.updateExamSchema = Joi.object({
   examCode: Joi.string().required(),
   title: Joi.string().required(),
+});
+
+/**
+ * Mark schemas.
+ */
+module.exports.markCodeSchema = Joi.object({
+  markCode: Joi.string().required(),
+});
+
+module.exports.markSchema = Joi.object({
+  markEarned: Joi.number().required(),
+  markTotal: Joi.number().required(),
+  examCode: Joi.string().required(),
+  studentCode: Joi.string().required(),
+  subjectCode: Joi.string().required(),
+});
+
+module.exports.updateMarkSchema = Joi.object({
+  markCode: Joi.string().required(),
+  markEarned: Joi.number().required(),
+  markTotal: Joi.number().required(),
+  examCode: Joi.string().required(),
+  studentCode: Joi.string().required(),
+  subjectCode: Joi.string().required(),
 });

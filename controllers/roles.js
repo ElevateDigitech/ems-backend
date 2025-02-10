@@ -273,7 +273,7 @@ module.exports = {
     const { roleCode } = req.body;
 
     // Find the role to be deleted
-    const existingRole = await findRole({ roleCode });
+    const existingRole = await Role.findOne({ roleCode });
     if (!existingRole)
       return handleError(next, STATUS_CODE_BAD_REQUEST, MESSAGE_ROLE_NOT_FOUND);
 
@@ -295,7 +295,7 @@ module.exports = {
       );
 
     // Save the current role state for audit logging
-    const roleBeforeDelete = await findRole({ roleCode });
+    const previousData = await findRole({ roleCode });
 
     // Delete the role from the database
     const deletionResult = await Role.deleteOne({ roleCode });
@@ -318,7 +318,7 @@ module.exports = {
       auditCollections.ROLES,
       roleCode,
       auditChanges.DELETE_ROLE,
-      roleBeforeDelete.toObject(),
+      previousData.toObject(),
       null,
       currentUser.toObject()
     );

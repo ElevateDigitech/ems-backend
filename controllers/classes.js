@@ -224,7 +224,7 @@ module.exports = {
     const { classCode } = req.body;
 
     // Validate if the class exists
-    const existingClass = await findClassByQuery({ classCode });
+    const existingClass = await Class.findOne({ classCode });
     if (!existingClass)
       return handleError(next, STATUS_CODE_CONFLICT, MESSAGE_CLASS_NOT_FOUND);
 
@@ -238,6 +238,7 @@ module.exports = {
       );
 
     // Delete the class
+    const previousData = await findClassByQuery({ classCode });
     const deletionResult = await Class.deleteOne({ classCode });
     if (deletionResult.deletedCount === 0)
       return handleError(
@@ -254,7 +255,7 @@ module.exports = {
       auditCollections.CLASSES,
       classCode,
       auditChanges.DELETE_CLASS,
-      existingClass.toObject(),
+      previousData.toObject(),
       null,
       currentUser.toObject()
     );

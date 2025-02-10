@@ -599,7 +599,7 @@ module.exports = {
       );
 
     // Convert the existing profile document to a plain JavaScript object for audit logging
-    const previousData = existingProfile.toObject();
+    const previousData = await findProfileByQuery({ profileCode });
 
     // Attempt to delete the profile from the database
     const deletionResult = await existingProfile.deleteOne();
@@ -623,7 +623,7 @@ module.exports = {
       auditCollections.PROFILES,
       existingProfile.profileCode,
       auditChanges.DELETE_PROFILE,
-      previousData,
+      previousData.toObject(),
       null,
       currentUser.toObject()
     );

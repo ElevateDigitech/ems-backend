@@ -212,7 +212,7 @@ module.exports = {
    */
   DeleteGender: async (req, res, next) => {
     const { genderCode } = req.body;
-    const existingGender = await findGenderByCode(genderCode);
+    const existingGender = await Gender.findOne({ genderCode });
 
     // Validate gender existence
     if (!existingGender)
@@ -228,7 +228,7 @@ module.exports = {
       );
 
     // Delete gender
-    const previousData = existingGender.toObject();
+    const previousData = await findGenderByCode(genderCode);
     const deletionResult = await Gender.deleteOne({ genderCode });
 
     // Validate deletion
@@ -247,7 +247,7 @@ module.exports = {
       auditCollections.GENDERS,
       genderCode,
       auditChanges.DELETE_GENDER,
-      previousData,
+      previousData.toObject(),
       null,
       currentUser.toObject()
     );

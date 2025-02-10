@@ -20,6 +20,7 @@ const auditCollections = {
   SUBJECTS: "SUBJECTS",
   STUDENTS: "STUDENTS",
   EXAMS: "EXAMS",
+  MARKS: "MARKS",
 };
 
 const auditChanges = {
@@ -59,9 +60,12 @@ const auditChanges = {
   CREATE_STUDENT: "A Student Created",
   UPDATE_STUDENT: "A Student Updated",
   DELETE_STUDENT: "A Student Deleted",
-  CREATE_EXAM_TYPE: "A Exam Type Created",
-  UPDATE_EXAM_TYPE: "A Exam Type Updated",
-  DELETE_EXAM_TYPE: "A Exam Type Deleted",
+  CREATE_EXAM: "A EXAM Created",
+  UPDATE_EXAM: "A EXAM Updated",
+  DELETE_EXAM: "A EXAM Deleted",
+  CREATE_MARK: "A MARKS Created",
+  UPDATE_MARK: "A MARKS Updated",
+  DELETE_MARK: "A MARKS Deleted",
 };
 
 module.exports = { auditActions, auditCollections, auditChanges };

@@ -681,7 +681,7 @@ module.exports = {
     }
 
     // Retrieve user details before deletion for audit purposes
-    const userBeforeDelete = await getCurrentUser(userCode);
+    const previousData = await getCurrentUser(userCode);
 
     // Attempt to delete the user
     const userDeletionResult = await User.deleteOne({ userCode });
@@ -703,7 +703,7 @@ module.exports = {
       auditCollections.USERS,
       userCode,
       auditChanges.DELETE_USER,
-      userBeforeDelete.toObject(),
+      previousData.toObject(),
       null,
       currentUser.toObject()
     );

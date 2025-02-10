@@ -13,7 +13,7 @@ const {
   handleError,
   handleSuccess,
   IsObjectIdReferenced,
-  generateexamCode,
+  generateExamCode,
   generateAuditCode,
 } = require("../utils/helpers");
 const {
@@ -107,7 +107,7 @@ module.exports = {
 
     // Create new exam
     const newExam = new Exam({
-      examCode: generateexamCode(),
+      examCode: generateExamCode(),
       title: formattedName,
     });
     await newExam.save();
@@ -120,7 +120,7 @@ module.exports = {
       auditActions.CREATE,
       auditCollections.examS,
       createdExam.examCode,
-      auditChanges.CREATE_EXAM_TYPE,
+      auditChanges.CREATE_EXAM,
       null,
       createdExam.toObject(),
       currentUser.toObject()
@@ -181,7 +181,7 @@ module.exports = {
       auditActions.UPDATE,
       auditCollections.examS,
       examCode,
-      auditChanges.UPDATE_EXAM_TYPE,
+      auditChanges.UPDATE_EXAM,
       previousData,
       updatedExam.toObject(),
       currentUser.toObject()
@@ -208,7 +208,7 @@ module.exports = {
    */
   DeleteExam: async (req, res, next) => {
     const { examCode } = req.body;
-    const existingExam = await findExamByCode(examCode);
+    const existingExam = await Exam.findOne({ examCode });
 
     // Validate exam existence
     if (!existingExam)
@@ -224,7 +224,7 @@ module.exports = {
       );
 
     // Delete exam
-    const previousData = existingExam.toObject();
+    const previousData = await findExamByCode(examCode);
     const deletionResult = await Exam.deleteOne({ examCode });
 
     // Validate deletion
@@ -242,8 +242,8 @@ module.exports = {
       auditActions.DELETE,
       auditCollections.examS,
       examCode,
-      auditChanges.DELETE_EXAM_TYPE,
-      previousData,
+      auditChanges.DELETE_EXAM,
+      previousData.toObject(),
       null,
       currentUser.toObject()
     );

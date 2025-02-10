@@ -320,7 +320,7 @@ module.exports = {
       );
 
     // Retrieve state before deletion (for audit)
-    const stateBeforeDelete = await findState({ stateCode });
+    const previousData = await findState({ stateCode });
 
     // Delete the state
     const deleteResult = await State.deleteOne({ stateCode });
@@ -337,9 +337,9 @@ module.exports = {
       generateAuditCode(),
       auditActions.DELETE,
       auditCollections.STATES,
-      stateBeforeDelete.stateCode,
+      previousData.stateCode,
       auditChanges.DELETE_STATE,
-      stateBeforeDelete.toObject(),
+      previousData.toObject(),
       null,
       currentUser.toObject()
     );

@@ -244,7 +244,7 @@ module.exports = {
     const { countryCode } = req.body;
 
     // Find the country by code
-    const existingCountry = await findCountryByCode(countryCode);
+    const existingCountry = await Country.findOne(countryCode);
 
     // Return error if country not found
     if (!existingCountry)
@@ -260,7 +260,7 @@ module.exports = {
       );
 
     // Delete the country from the database
-    const previousData = existingCountry.toObject();
+    const previousData = await findCountryByCode({ countryCode });
     const deletionResult = await Country.deleteOne({ countryCode });
 
     if (deletionResult.deletedCount === 0)
@@ -278,7 +278,7 @@ module.exports = {
       auditCollections.COUNTRIES,
       countryCode,
       auditChanges.DELETE_COUNTRY,
-      previousData,
+      previousData.toObject(),
       null,
       currentUser.toObject()
     );

@@ -331,6 +331,7 @@ module.exports = {
       );
 
     // Delete the section from the database
+    const previousData = await populateSection({ sectionCode });
     const deletionResult = await Section.deleteOne({ sectionCode });
     if (deletionResult.deletedCount === 0) {
       return handleError(
@@ -348,7 +349,7 @@ module.exports = {
       auditCollections.SECTIONS,
       sectionCode,
       auditChanges.DELETE_SECTION,
-      existingSection.toObject(),
+      previousData.toObject(),
       null,
       currentUser.toObject()
     );

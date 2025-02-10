@@ -284,4 +284,11 @@ module.exports = {
   validateExamCode: validateSchema(schemas.examCodeSchema),
   validateExam: validateSchema(schemas.examSchema),
   validateUpdateExam: validateSchema(schemas.updateExamSchema),
+
+  /**
+   * Middleware for validating mark schemas.
+   */
+  validateMarkCode: validateSchema(schemas.markCodeSchema),
+  validateMark: validateSchema(schemas.markSchema),
+  validateUpdateMark: validateSchema(schemas.updateMarkSchema),
 };

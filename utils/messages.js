@@ -212,6 +212,23 @@ const MESSAGE_EXAM_NOT_ALLOWED_DELETE_REFERENCE_EXIST =
 const MESSAGE_EXAM_TAKEN =
   "Exam name already taken. Please try a different one.";
 
+const MESSAGE_GET_MARKS_SUCCESS = "Marks retrieved successfully";
+const MESSAGE_GET_MARK_SUCCESS = "Mark retrieved successfully";
+const MESSAGE_MARK_EXIST = "Mark already entered. Please try a different one";
+const MESSAGE_CREATE_MARK_SUCCESS = "Mark created successfully";
+const MESSAGE_MARK_NOT_FOUND = "The selected mark could not be found";
+const MESSAGE_MARK_NOT_FOUND_UNDER_STATE =
+  "The selected mark could not be found in the selected state";
+const MESSAGE_MARKS_NOT_FOUND =
+  "There are no marks available under the given country";
+const MESSAGE_UPDATE_MARK_SUCCESS = "Mark updated successfully";
+const MESSAGE_MARK_NOT_ALLOWED_DELETE_REFERENCE_EXIST =
+  "The selected mark is in use and not allowed to be deleted.";
+const MESSAGE_DELETE_MARK_SUCCESS = "Mark deleted successfully";
+const MESSAGE_DELETE_MARK_ERROR = "Couldn't delete the mark";
+const MESSAGE_MARK_TAKEN =
+  "Mark name already taken. Please try a different one.";
+
 module.exports = {
   MESSAGE_MISSING_REQUIRED_FIELDS,
   MESSAGE_INVALID_EMAIL_FORMAT,
@@ -370,4 +387,17 @@ module.exports = {
   MESSAGE_DELETE_EXAMS_ERROR,
   MESSAGE_EXAM_NOT_ALLOWED_DELETE_REFERENCE_EXIST,
   MESSAGE_EXAM_TAKEN,
+
+  MESSAGE_GET_MARKS_SUCCESS,
+  MESSAGE_GET_MARK_SUCCESS,
+  MESSAGE_MARK_EXIST,
+  MESSAGE_CREATE_MARK_SUCCESS,
+  MESSAGE_MARK_NOT_FOUND,
+  MESSAGE_MARK_NOT_FOUND_UNDER_STATE,
+  MESSAGE_MARKS_NOT_FOUND,
+  MESSAGE_UPDATE_MARK_SUCCESS,
+  MESSAGE_MARK_NOT_ALLOWED_DELETE_REFERENCE_EXIST,
+  MESSAGE_DELETE_MARK_SUCCESS,
+  MESSAGE_DELETE_MARK_ERROR,
+  MESSAGE_MARK_TAKEN,
 };

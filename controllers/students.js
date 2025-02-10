@@ -336,7 +336,7 @@ module.exports = {
       );
 
     // Retrieve student before deletion (for audit)
-    const studentBeforeDelete = await findStudent({ studentCode });
+    const previousData = await findStudent({ studentCode });
 
     // Delete the student
     const deleteResult = await Student.deleteOne({ studentCode });
@@ -353,9 +353,9 @@ module.exports = {
       generateAuditCode(),
       auditActions.DELETE,
       auditCollections.STUDENTS,
-      studentBeforeDelete.studentCode,
+      previousData.studentCode,
       auditChanges.DELETE_STUDENT,
-      studentBeforeDelete.toObject(),
+      previousData.toObject(),
       null,
       currentUser.toObject()
     );

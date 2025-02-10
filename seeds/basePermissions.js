@@ -54,6 +54,10 @@ const allPermissions = {
   CREATE_EXAM: "CREATE EXAM",
   UPDATE_EXAM: "UPDATE EXAM",
   DELETE_EXAM: "DELETE EXAM",
+  VIEW_MARKS: "VIEW MARKS",
+  CREATE_MARK: "CREATE MARK",
+  UPDATE_MARK: "UPDATE MARK",
+  DELETE_MARK: "DELETE MARK",
 };
 
 const basePermissions = [
@@ -276,6 +280,22 @@ const basePermissions = [
   {
     permissionName: allPermissions?.DELETE_EXAM,
     permissionDescription: "can delete exam",
+  },
+  {
+    permissionName: allPermissions?.VIEW_MARKS,
+    permissionDescription: "can view marks",
+  },
+  {
+    permissionName: allPermissions?.CREATE_MARK,
+    permissionDescription: "can create mark",
+  },
+  {
+    permissionName: allPermissions?.UPDATE_MARK,
+    permissionDescription: "can update mark",
+  },
+  {
+    permissionName: allPermissions?.DELETE_MARK,
+    permissionDescription: "can delete mark",
   },
 ];
 

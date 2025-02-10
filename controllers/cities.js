@@ -331,7 +331,7 @@ module.exports = {
     const { cityCode } = req.body;
 
     // Validate the city
-    const city = await findCityByQuery({ cityCode });
+    const city = await City.findOne({ cityCode });
     if (!city)
       return handleError(next, STATUS_CODE_CONFLICT, MESSAGE_CITY_NOT_FOUND);
 
@@ -345,6 +345,7 @@ module.exports = {
       );
 
     // Delete the city
+    const previousData = await findCityByQuery({ cityCode });
     const deletionResult = await City.deleteOne({ cityCode: city.cityCode });
     if (deletionResult.deletedCount === 0)
       return next(
@@ -355,16 +356,16 @@ module.exports = {
       );
 
     // Log the audit
-    const user = await findUserByCode(req.user.userCode);
+    const currentUser = await findUserByCode(req.user.userCode);
     await logAudit(
       generateAuditCode(),
       auditActions.DELETE,
       auditCollections.CITIES,
       city.cityCode,
       auditChanges.DELETE_CITY,
-      city,
+      previousData.toObject(),
       null,
-      user
+      currentUser.toObject()
     );
 
     // Return the success message

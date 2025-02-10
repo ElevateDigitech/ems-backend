@@ -269,7 +269,7 @@ module.exports = {
     }
 
     // Retrieve subject details before deletion
-    const subjectBeforeDelete = await Subject.findOne(
+    const previousData = await Subject.findOne(
       { subjectCode },
       hiddenFieldsDefault
     );
@@ -292,9 +292,9 @@ module.exports = {
       generateAuditCode(),
       auditActions.DELETE,
       auditCollections.SUBJECTS,
-      subjectBeforeDelete.subjectCode,
+      previousData.subjectCode,
       auditChanges.DELETE_SUBJECT,
-      subjectBeforeDelete.toObject(),
+      previousData.toObject(),
       null,
       currentUser.toObject()
     );
