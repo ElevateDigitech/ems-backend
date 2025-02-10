@@ -24,8 +24,15 @@ module.exports = {
    * @param {Function} next - Express next middleware function
    */
   GetAudits: async (req, res, next) => {
-    // Fetch all audit logs, excluding hidden fields
-    const auditLogs = await AuditLog.find({}, hiddenFieldsDefault);
+    // Destructure 'entries' from the query parameters, defaulting to 100 if not provided
+    const { entries = 100 } = req.query;
+    // Fetch audit logs from the database
+    // - {}: No filter applied, meaning all documents will be retrieved
+    // - hiddenFieldsDefault: Specifies which fields to exclude (projection)
+    // - .limit(entries): Limits the number of returned documents to 'entries' (default 100)
+    const auditLogs = await AuditLog.find({}, hiddenFieldsDefault).limit(
+      entries
+    );
 
     // Send a successful response with the retrieved audit logs
     res

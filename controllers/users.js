@@ -467,15 +467,19 @@ module.exports = {
    * @param {Function} next - Express next middleware function
    */
   GetUsers: async (req, res, next) => {
+    // Destructure 'entries' from the query parameters, defaulting to 100 if not provided
+    const { entries = 100 } = req.query;
     // Fetch all users from the User collection, excluding hidden fields
-    const allUsers = await User.find({}, hiddenFieldsUser).populate({
-      path: "role", // Populate the 'role' field in the user documents
-      select: hiddenFieldsDefault, // Exclude hidden fields from the role
-      populate: {
-        path: "rolePermissions", // Further populate 'rolePermissions' within each role
-        select: hiddenFieldsDefault, // Exclude hidden fields from role permissions
-      },
-    });
+    const allUsers = await User.find({}, hiddenFieldsUser)
+      .populate({
+        path: "role", // Populate the 'role' field in the user documents
+        select: hiddenFieldsDefault, // Exclude hidden fields from the role
+        populate: {
+          path: "rolePermissions", // Further populate 'rolePermissions' within each role
+          select: hiddenFieldsDefault, // Exclude hidden fields from role permissions
+        },
+      })
+      .limit(entries);
 
     // Send a success response with the retrieved users
     res

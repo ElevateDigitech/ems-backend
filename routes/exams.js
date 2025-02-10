@@ -14,14 +14,14 @@ const { allPermissions } = require("../seeds/basePermissions");
 router.get(
   "/GetExams",
   isLoggedIn,
-  checkPermission(allPermissions?.VIEW_EXAM_TYPES),
+  checkPermission(allPermissions?.VIEW_EXAMS),
   catchAsync(exams.GetExams)
 );
 
 router.get(
   "/GetExamByCode",
   isLoggedIn,
-  checkPermission(allPermissions?.VIEW_EXAM_TYPES),
+  checkPermission(allPermissions?.VIEW_EXAMS),
   validateExamCode,
   catchAsync(exams.GetExamByCode)
 );
@@ -29,7 +29,7 @@ router.get(
 router.post(
   "/CreateExam",
   isLoggedIn,
-  checkPermission(allPermissions?.CREATE_EXAM_TYPE),
+  checkPermission(allPermissions?.CREATE_EXAM),
   validateExam,
   catchAsync(exams.CreateExam)
 );
@@ -37,7 +37,7 @@ router.post(
 router.post(
   "/UpdateExam",
   isLoggedIn,
-  checkPermission(allPermissions?.UPDATE_EXAM_TYPE),
+  checkPermission(allPermissions?.UPDATE_EXAM),
   validateUpdateExam,
   catchAsync(exams.UpdateExam)
 );
@@ -45,7 +45,7 @@ router.post(
 router.post(
   "/DeleteExam",
   isLoggedIn,
-  checkPermission(allPermissions?.DELETE_EXAM_TYPE),
+  checkPermission(allPermissions?.DELETE_EXAM),
   validateExamCode,
   catchAsync(exams.DeleteExam)
 );

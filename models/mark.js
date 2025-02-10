@@ -29,7 +29,7 @@ const MarkSchema = new Schema(
     },
     exam: {
       type: Schema.Types.ObjectId,
-      ref: "Student",
+      ref: "Exam",
       required: true,
     },
     student: {

@@ -23,8 +23,12 @@ module.exports = {
    * @param {Object} res - Express response object
    */
   GetPermissions: async (req, res) => {
+    // Destructure 'entries' from the query parameters, defaulting to 100 if not provided
+    const { entries = 100 } = req.query;
     // Query the database to retrieve all permission documents
-    const permissions = await Permission.find({}, hiddenFieldsDefault);
+    const permissions = await Permission.find({}, hiddenFieldsDefault).limit(
+      entries
+    );
 
     // Return a success response with the retrieved permissions
     res

@@ -47,7 +47,7 @@ const {
 } = require("../utils/messages");
 
 // Function to find multiple profiles based on a query
-const findProfilesByQuery = async (query) => {
+const findProfilesByQuery = async (query, limit) => {
   return Profile.find(query, hiddenFieldsDefault)
     .populate("gender", hiddenFieldsDefault) // Populating gender field
     .populate({
@@ -91,7 +91,8 @@ const findProfilesByQuery = async (query) => {
     .populate({
       path: "address.country", // Populating address.country field
       select: hiddenFieldsDefault,
-    });
+    })
+    .limit(limit);
 };
 
 // Function to find a single profile based on a query
@@ -162,8 +163,10 @@ module.exports = {
    * @param {Function} next - Express next middleware function
    */
   getProfiles: async (req, res, next) => {
+    // Destructure 'entries' from the query parameters, defaulting to 100 if not provided
+    const { entries = 100 } = req.query;
     // Retrieve all profiles from the database using an empty query object
-    const profiles = await findProfilesByQuery({});
+    const profiles = await findProfilesByQuery({}, entries);
 
     // Convert each profile object to a plain JSON object for easier handling
     const profilesJSON = profiles.map((profile) => profile.toJSON());

@@ -42,13 +42,28 @@ const {
 } = require("../utils/messages");
 
 // Utility functions for database queries
-const findCitiesByQuery = async (query) =>
+const findCitiesByQuery = async (query, limit) =>
   await City.find(query, hiddenFieldsDefault)
-    .populate("state", hiddenFieldsDefault)
-    .populate("country", hiddenFieldsDefault);
+    .populate({
+      path: "state",
+      select: hiddenFieldsDefault,
+      populate: {
+        path: "country",
+        select: hiddenFieldsDefault,
+      },
+    })
+    .populate("country", hiddenFieldsDefault)
+    .limit(limit);
 const findCityByQuery = async (query) =>
   await City.findOne(query, hiddenFieldsDefault)
-    .populate("state", hiddenFieldsDefault)
+    .populate({
+      path: "state",
+      select: hiddenFieldsDefault,
+      populate: {
+        path: "country",
+        select: hiddenFieldsDefault,
+      },
+    })
     .populate("country", hiddenFieldsDefault);
 const findStateByCode = async (stateCode) => await State.findOne({ stateCode });
 const findCountryByCode = async (countryCode) =>
@@ -72,8 +87,10 @@ module.exports = {
    * @param {Object} res - Express response object
    */
   GetCities: async (req, res) => {
+    // Destructure 'entries' from the query parameters, defaulting to 100 if not provided
+    const { entries = 100 } = req.query;
     // Retrieve all cities from the database
-    const cities = await findCitiesByQuery({});
+    const cities = await findCitiesByQuery({}, entries);
 
     // Send the retrieved cities in the response
     res
@@ -115,6 +132,8 @@ module.exports = {
    * @param {Function} next - Express next middleware function
    */
   GetCitiesByStateCode: async (req, res, next) => {
+    // Destructure 'entries' from the query parameters, defaulting to 100 if not provided
+    const { entries = 100 } = req.query;
     // Find the state by its code
     const state = await findStateByCode(req.body.stateCode);
     if (!state)
@@ -125,7 +144,7 @@ module.exports = {
       );
 
     // Find cities that belong to the state
-    const cities = await findCitiesByQuery({ state: state._id });
+    const cities = await findCitiesByQuery({ state: state._id }, entries);
 
     // Return the cities if found, else return an error
     return cities.length
@@ -145,6 +164,8 @@ module.exports = {
    * @param {Function} next - Express next middleware function
    */
   GetCitiesByCountryCode: async (req, res, next) => {
+    // Destructure 'entries' from the query parameters, defaulting to 100 if not provided
+    const { entries = 100 } = req.query;
     // Find the country by its code
     const country = await findCountryByCode(req.body.countryCode);
     if (!country)
@@ -155,7 +176,7 @@ module.exports = {
       );
 
     // Find cities that belong to the country
-    const cities = await findCitiesByQuery({ country: country._id });
+    const cities = await findCitiesByQuery({ country: country._id }, entries);
 
     // Return the cities if found, else return an error
     return cities.length

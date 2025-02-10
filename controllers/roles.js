@@ -60,11 +60,12 @@ module.exports = {
    * @param {Object} res - Express response object
    */
   GetRoles: async (req, res) => {
+    // Destructure 'entries' from the query parameters, defaulting to 100 if not provided
+    const { entries = 100 } = req.query;
     // Retrieve all roles from the database
-    const roles = await Role.find({}, hiddenFieldsDefault).populate(
-      "rolePermissions",
-      hiddenFieldsDefault
-    );
+    const roles = await Role.find({}, hiddenFieldsDefault)
+      .populate("rolePermissions", hiddenFieldsDefault)
+      .limit(entries);
 
     // Send the retrieved roles in the response
     res

@@ -56,12 +56,13 @@ const findUserWithRole = async (userCode) => {
 };
 
 // Function to find multiple sections and populate the related class information
-const populateSections = async (query) => {
+const populateSections = async (query, limit) => {
   return await Section.find(query, hiddenFieldsDefault) // Find sections matching the query, excluding hidden fields
     .populate(
       "class", // Populate the 'class' field in each section
       hiddenFieldsDefault // Exclude hidden fields in the class
-    );
+    )
+    .limit(limit);
 };
 
 // Function to find a single section and populate the related class information
@@ -82,8 +83,10 @@ module.exports = {
    * @param {Function} next - Express next middleware function
    */
   GetSections: async (req, res, next) => {
+    // Destructure 'entries' from the query parameters, defaulting to 100 if not provided
+    const { entries = 100 } = req.query;
     // Fetch all sections from the database
-    const sections = await populateSections({});
+    const sections = await populateSections({}, entries);
 
     // Send a success response with the fetched sections
     res
@@ -136,6 +139,8 @@ module.exports = {
    * @param {Function} next - Express next middleware function
    */
   GetSectionsByClassCode: async (req, res, next) => {
+    // Destructure 'entries' from the query parameters, defaulting to 100 if not provided
+    const { entries = 100 } = req.query;
     // Extract classCode from the request body
     const { classCode } = req.body;
 
@@ -151,7 +156,7 @@ module.exports = {
       );
 
     // Fetch all sections associated with the class
-    const sections = await populateSections({ class: foundClass._id });
+    const sections = await populateSections({ class: foundClass._id }, entries);
 
     // Handle error if no sections are found
     if (!sections.length) {

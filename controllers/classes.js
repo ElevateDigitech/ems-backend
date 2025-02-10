@@ -36,8 +36,8 @@ const {
 } = require("../utils/messages");
 
 // Utility Functions
-const findClassesByQuery = async (query) =>
-  await Class.find(query, hiddenFieldsDefault);
+const findClassesByQuery = async (query, limit) =>
+  await Class.find(query, hiddenFieldsDefault).limit(limit);
 const findClassByQuery = async (query) =>
   await Class.findOne(query, hiddenFieldsDefault);
 const findUserByCode = async (userCode) =>
@@ -56,8 +56,10 @@ module.exports = {
    * @param {Object} res - Express response object
    */
   GetClasses: async (req, res) => {
+    // Destructure 'entries' from the query parameters, defaulting to 100 if not provided
+    const { entries = 100 } = req.query;
     // Fetch all classes from the database
-    const classes = await findClassesByQuery({});
+    const classes = await findClassesByQuery({}, entries);
 
     // Send the retrieved classes in the response
     res

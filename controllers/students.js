@@ -67,11 +67,12 @@ const findStudent = async (criteria) =>
       },
     });
 
-const findStudents = async (criteria = {}) =>
+const findStudents = async (criteria = {}, limit) =>
   // Find all students that match the provided criteria (or all if none specified)
   await Student.find(criteria, hiddenFieldsDefault)
     // Populate the associated section information for each student
-    .populate("section", hiddenFieldsDefault);
+    .populate("section", hiddenFieldsDefault)
+    .limit(limit);
 
 module.exports = {
   /**
@@ -81,8 +82,10 @@ module.exports = {
    * @param {Object} res - Express response object
    */
   GetStudents: async (req, res) => {
+    // Destructure 'entries' from the query parameters, defaulting to 100 if not provided
+    const { entries = 100 } = req.query;
     // Retrieve all students from the database
-    const students = await findStudents();
+    const students = await findStudents({}, entries);
 
     // Send success response with the list of students
     res
@@ -134,6 +137,8 @@ module.exports = {
    * @param {Function} next - Express next middleware function
    */
   GetStudentsBySectionCode: async (req, res, next) => {
+    // Destructure 'entries' from the query parameters, defaulting to 100 if not provided
+    const { entries = 100 } = req.query;
     // Extract section code from request body
     const { sectionCode } = req.body;
 
@@ -149,7 +154,7 @@ module.exports = {
       );
 
     // Retrieve sections associated with the section
-    const sections = await findStudents({ section: section._id });
+    const sections = await findStudents({ section: section._id }, entries);
 
     // Handle case when no sections are found
     if (!sections?.length)

@@ -55,8 +55,12 @@ module.exports = {
    * @param {Object} res - Express response object
    */
   GetCountries: async (req, res) => {
+    // Destructure 'entries' from the query parameters, defaulting to 100 if not provided
+    const { entries = 100 } = req.query;
     // Fetch all countries from the database
-    const countries = await Country.find({}, hiddenFieldsDefault);
+    const countries = await Country.find({}, hiddenFieldsDefault).limit(
+      entries
+    );
 
     // Send the retrieved countries in the response
     res

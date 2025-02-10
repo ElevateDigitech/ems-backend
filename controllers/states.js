@@ -59,11 +59,12 @@ const findState = async (criteria) =>
     // Populate the associated country information for the state
     .populate("country", hiddenFieldsDefault);
 
-const findStates = async (criteria = {}) =>
+const findStates = async (criteria = {}, limit) =>
   // Find all states that match the provided criteria (or all if none specified)
   await State.find(criteria, hiddenFieldsDefault)
     // Populate the associated country information for each state
-    .populate("country", hiddenFieldsDefault);
+    .populate("country", hiddenFieldsDefault)
+    .limit(limit);
 
 module.exports = {
   /**
@@ -73,8 +74,10 @@ module.exports = {
    * @param {Object} res - Express response object
    */
   GetStates: async (req, res) => {
+    // Destructure 'entries' from the query parameters, defaulting to 100 if not provided
+    const { entries = 100 } = req.query;
     // Retrieve all states from the database
-    const states = await findStates();
+    const states = await findStates({}, entries);
 
     // Send success response with the list of states
     res
@@ -122,6 +125,8 @@ module.exports = {
    * @param {Function} next - Express next middleware function
    */
   GetStatesByCountryCode: async (req, res, next) => {
+    // Destructure 'entries' from the query parameters, defaulting to 100 if not provided
+    const { entries = 100 } = req.query;
     // Extract country code from request body
     const { countryCode } = req.body;
 
@@ -137,7 +142,7 @@ module.exports = {
       );
 
     // Retrieve states associated with the country
-    const states = await findStates({ country: country._id });
+    const states = await findStates({ country: country._id }, entries);
 
     // Handle case when no states are found
     if (!states?.length)

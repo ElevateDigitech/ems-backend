@@ -54,8 +54,10 @@ module.exports = {
    * @param {Object} res - Express response object
    */
   GetExams: async (req, res) => {
+    // Destructure 'entries' from the query parameters, defaulting to 100 if not provided
+    const { entries = 100 } = req.query;
     // Fetch all exam documents
-    const exams = await Exam.find({}, hiddenFieldsDefault);
+    const exams = await Exam.find({}, hiddenFieldsDefault).limit(entries);
 
     // Return success response with fetched data
     res

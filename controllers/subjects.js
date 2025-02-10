@@ -65,8 +65,10 @@ module.exports = {
    * @param {Function} next - Express next middleware function
    */
   GetSubjects: async (req, res, next) => {
+    // Destructure 'entries' from the query parameters, defaulting to 100 if not provided
+    const { entries = 100 } = req.query;
     // Fetch all subjects from the database, excluding hidden fields
-    const subjects = await Subject.find({}, hiddenFieldsDefault);
+    const subjects = await Subject.find({}, hiddenFieldsDefault).limit(entries);
 
     // Send success response with the list of subjects
     res
