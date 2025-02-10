@@ -19,6 +19,7 @@ const auditCollections = {
   SECTIONS: "SECTIONS",
   SUBJECTS: "SUBJECTS",
   STUDENTS: "STUDENTS",
+  EXAMTYPES: "EXAMTYPES",
 };
 
 const auditChanges = {
@@ -58,6 +59,9 @@ const auditChanges = {
   CREATE_STUDENT: "A Student Created",
   UPDATE_STUDENT: "A Student Updated",
   DELETE_STUDENT: "A Student Deleted",
+  CREATE_EXAM_TYPE: "A Exam Type Created",
+  UPDATE_EXAM_TYPE: "A Exam Type Updated",
+  DELETE_EXAM_TYPE: "A Exam Type Deleted",
 };
 
 module.exports = { auditActions, auditCollections, auditChanges };

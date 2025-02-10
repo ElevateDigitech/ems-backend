@@ -50,6 +50,10 @@ const allPermissions = {
   CREATE_STUDENT: "CREATE STUDENT",
   UPDATE_STUDENT: "UPDATE STUDENT",
   DELETE_STUDENT: "DELETE STUDENT",
+  VIEW_EXAM_TYPES: "VIEW EXAM TYPES",
+  CREATE_EXAM_TYPE: "CREATE EXAM TYPE",
+  UPDATE_EXAM_TYPE: "UPDATE EXAM TYPE",
+  DELETE_EXAM_TYPE: "DELETE EXAM TYPE",
 };
 
 const basePermissions = [
@@ -256,6 +260,22 @@ const basePermissions = [
   {
     permissionName: allPermissions?.DELETE_STUDENT,
     permissionDescription: "can delete student",
+  },
+  {
+    permissionName: allPermissions?.VIEW_EXAM_TYPES,
+    permissionDescription: "can view exam types",
+  },
+  {
+    permissionName: allPermissions?.CREATE_EXAM_TYPE,
+    permissionDescription: "can create exam type",
+  },
+  {
+    permissionName: allPermissions?.UPDATE_EXAM_TYPE,
+    permissionDescription: "can update exam type",
+  },
+  {
+    permissionName: allPermissions?.DELETE_EXAM_TYPE,
+    permissionDescription: "can delete exam type",
   },
 ];
 

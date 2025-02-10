@@ -199,6 +199,19 @@ const MESSAGE_DELETE_STUDENT_ERROR = "Couldn't delete the student";
 const MESSAGE_STUDENT_TAKEN =
   "Student roll number already taken. Please try a different one.";
 
+const MESSAGE_GET_EXAMTYPES_SUCCESS = "Exam types retrieved successfully";
+const MESSAGE_GET_EXAMTYPE_SUCCESS = "Exam type retrieved successfully";
+const MESSAGE_EXAMTYPE_NOT_FOUND = "The selected exam type could not be found";
+const MESSAGE_EXAMTYPE_EXIST =
+  "Exam type already exist. Please try a different one";
+const MESSAGE_CREATE_EXAMTYPES_SUCCESS = "Exam type created successfully";
+const MESSAGE_UPDATE_EXAMTYPES_SUCCESS = "Exam type updated successfully";
+const MESSAGE_DELETE_EXAMTYPES_SUCCESS = "Exam type deleted successfully";
+const MESSAGE_DELETE_EXAMTYPES_ERROR = "Couldn't delete the exam type";
+const MESSAGE_EXAMTYPE_NOT_ALLOWED_DELETE_REFERENCE_EXIST =
+  "The selected exam type is in use and not allowed to be deleted.";
+const MESSAGE_EXAMTYPE_TAKEN =
+  "Exam type name already taken. Please try a different one.";
 module.exports = {
   MESSAGE_MISSING_REQUIRED_FIELDS,
   MESSAGE_INVALID_EMAIL_FORMAT,
@@ -346,4 +359,15 @@ module.exports = {
   MESSAGE_DELETE_STUDENT_SUCCESS,
   MESSAGE_DELETE_STUDENT_ERROR,
   MESSAGE_STUDENT_TAKEN,
+
+  MESSAGE_GET_EXAMTYPES_SUCCESS,
+  MESSAGE_GET_EXAMTYPE_SUCCESS,
+  MESSAGE_EXAMTYPE_NOT_FOUND,
+  MESSAGE_EXAMTYPE_EXIST,
+  MESSAGE_CREATE_EXAMTYPES_SUCCESS,
+  MESSAGE_UPDATE_EXAMTYPES_SUCCESS,
+  MESSAGE_DELETE_EXAMTYPES_SUCCESS,
+  MESSAGE_DELETE_EXAMTYPES_ERROR,
+  MESSAGE_EXAMTYPE_NOT_ALLOWED_DELETE_REFERENCE_EXIST,
+  MESSAGE_EXAMTYPE_TAKEN,
 };

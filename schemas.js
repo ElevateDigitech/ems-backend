@@ -278,3 +278,19 @@ module.exports.updateStudentSchema = Joi.object({
   rollNumber: Joi.string().required(),
   sectionCode: Joi.string().required(),
 });
+
+/**
+ * Exam Type schemas.
+ */
+module.exports.examTypeCodeSchema = Joi.object({
+  examTypeCode: Joi.string().required(),
+});
+
+module.exports.examTypeSchema = Joi.object({
+  title: Joi.string().required(),
+});
+
+module.exports.updateExamTypeSchema = Joi.object({
+  examTypeCode: Joi.string().required(),
+  title: Joi.string().required(),
+});
