@@ -1,5 +1,6 @@
 const mongoose = require("mongoose");
 const moment = require("moment");
+const { required } = require("joi");
 
 const Schema = mongoose.Schema;
 const timeNow = moment().valueOf();
@@ -17,9 +18,15 @@ const StudentSchema = new Schema(
       trim: true,
       immutable: true,
     },
-    studentName: {
+    name: {
       type: String,
       required: true,
+      trim: true,
+    },
+    rollNumber: {
+      type: String,
+      required: true,
+      unique: true,
       trim: true,
     },
     section: {

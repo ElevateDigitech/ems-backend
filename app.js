@@ -26,6 +26,7 @@ const { profileRoutes } = require("./routes/profiles");
 const { classRoutes } = require("./routes/classes");
 const { sectionRoutes } = require("./routes/sections");
 const { subjectRoutes } = require("./routes/subjects");
+const { studentRoutes } = require("./routes/students");
 
 const { hiddenFieldsUser, hiddenFieldsDefault } = require("./utils/helpers");
 const { STATUS_ERROR } = require("./utils/status");
@@ -153,6 +154,7 @@ app.use("/", profileRoutes);
 app.use("/", classRoutes);
 app.use("/", sectionRoutes);
 app.use("/", subjectRoutes);
+app.use("/", studentRoutes);
 
 app.all("*", (req, res, next) => {
   return res

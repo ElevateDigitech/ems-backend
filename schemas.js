@@ -258,3 +258,23 @@ module.exports.updateSubjectSchema = Joi.object({
   subjectCode: Joi.string().required(),
   name: Joi.string().required(),
 });
+
+/**
+ * Student schemas.
+ */
+module.exports.studentCodeSchema = Joi.object({
+  studentCode: Joi.string().required(),
+});
+
+module.exports.studentSchema = Joi.object({
+  name: Joi.string().required(),
+  rollNumber: Joi.string().required(),
+  sectionCode: Joi.string().required(),
+});
+
+module.exports.updateStudentSchema = Joi.object({
+  studentCode: Joi.string().required(),
+  name: Joi.string().required(),
+  rollNumber: Joi.string().required(),
+  sectionCode: Joi.string().required(),
+});

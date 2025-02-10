@@ -32,6 +32,7 @@ const generateProfileCode = () => `PROFILE-${uuidv4()}`;
 const generateClassCode = () => `CLASS-${uuidv4()}`;
 const generateSectionCode = () => `SECTION-${uuidv4()}`;
 const generateSubjectCode = () => `SUBJECT-${uuidv4()}`;
+const generateStudentCode = () => `STUDENT-${uuidv4()}`;
 
 const validateDob = (value) => {
   const dob = moment(new Date(value).setHours(0, 0, 0, 0)).valueOf();
@@ -123,6 +124,7 @@ module.exports = {
   generateClassCode,
   generateSectionCode,
   generateSubjectCode,
+  generateStudentCode,
   validateDob,
   getInvalidPermissions,
   getPermissionIds,

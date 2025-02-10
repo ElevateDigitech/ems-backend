@@ -181,6 +181,24 @@ const MESSAGE_DELETE_SUBJECT_ERROR = "Couldn't delete the subject";
 const MESSAGE_SUBJECT_TAKEN =
   "Subject name already taken. Please try a different one.";
 
+const MESSAGE_GET_STUDENTS_SUCCESS = "Students retrieved successfully";
+const MESSAGE_GET_STUDENT_SUCCESS = "Student retrieved successfully";
+const MESSAGE_STUDENT_EXIST =
+  "Student already exist. Please try a different one";
+const MESSAGE_CREATE_STUDENT_SUCCESS = "Student created successfully";
+const MESSAGE_STUDENT_NOT_FOUND = "The selected student could not be found";
+const MESSAGE_STUDENT_NOT_FOUND_UNDER_SECTION =
+  "The selected student could not be found in the selected section";
+const MESSAGE_STUDENTS_NOT_FOUND =
+  "There are no students available under the given section";
+const MESSAGE_UPDATE_STUDENT_SUCCESS = "Student updated successfully";
+const MESSAGE_STUDENT_NOT_ALLOWED_DELETE_REFERENCE_EXIST =
+  "The selected student is in use and not allowed to be deleted.";
+const MESSAGE_DELETE_STUDENT_SUCCESS = "Student deleted successfully";
+const MESSAGE_DELETE_STUDENT_ERROR = "Couldn't delete the student";
+const MESSAGE_STUDENT_TAKEN =
+  "Student roll number already taken. Please try a different one.";
+
 module.exports = {
   MESSAGE_MISSING_REQUIRED_FIELDS,
   MESSAGE_INVALID_EMAIL_FORMAT,
@@ -315,4 +333,17 @@ module.exports = {
   MESSAGE_DELETE_SUBJECT_SUCCESS,
   MESSAGE_DELETE_SUBJECT_ERROR,
   MESSAGE_SUBJECT_TAKEN,
+
+  MESSAGE_GET_STUDENTS_SUCCESS,
+  MESSAGE_GET_STUDENT_SUCCESS,
+  MESSAGE_STUDENT_EXIST,
+  MESSAGE_CREATE_STUDENT_SUCCESS,
+  MESSAGE_STUDENT_NOT_FOUND,
+  MESSAGE_STUDENT_NOT_FOUND_UNDER_SECTION,
+  MESSAGE_STUDENTS_NOT_FOUND,
+  MESSAGE_UPDATE_STUDENT_SUCCESS,
+  MESSAGE_STUDENT_NOT_ALLOWED_DELETE_REFERENCE_EXIST,
+  MESSAGE_DELETE_STUDENT_SUCCESS,
+  MESSAGE_DELETE_STUDENT_ERROR,
+  MESSAGE_STUDENT_TAKEN,
 };

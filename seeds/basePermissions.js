@@ -46,6 +46,10 @@ const allPermissions = {
   CREATE_SUBJECT: "CREATE SUBJECT",
   UPDATE_SUBJECT: "UPDATE SUBJECT",
   DELETE_SUBJECT: "DELETE SUBJECT",
+  VIEW_STUDENTS: "VIEW STUDENTS",
+  CREATE_STUDENT: "CREATE STUDENT",
+  UPDATE_STUDENT: "UPDATE STUDENT",
+  DELETE_STUDENT: "DELETE STUDENT",
 };
 
 const basePermissions = [
@@ -236,6 +240,22 @@ const basePermissions = [
   {
     permissionName: allPermissions?.DELETE_SUBJECT,
     permissionDescription: "can delete subject",
+  },
+  {
+    permissionName: allPermissions?.VIEW_STUDENTS,
+    permissionDescription: "can view students",
+  },
+  {
+    permissionName: allPermissions?.CREATE_STUDENT,
+    permissionDescription: "can create student",
+  },
+  {
+    permissionName: allPermissions?.UPDATE_STUDENT,
+    permissionDescription: "can update student",
+  },
+  {
+    permissionName: allPermissions?.DELETE_STUDENT,
+    permissionDescription: "can delete student",
   },
 ];
 
