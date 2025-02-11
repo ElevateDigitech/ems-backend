@@ -1,20 +1,14 @@
-const moment = require("moment-timezone");
-const Class = require("../models/class");
-const User = require("../models/user");
-const { logAudit } = require("../middleware");
+const { logAudit } = require("../queries/auditLogs");
 const {
   auditActions,
   auditCollections,
   auditChanges,
 } = require("../utils/audit");
 const {
-  hiddenFieldsDefault,
-  hiddenFieldsUser,
   handleError,
   handleSuccess,
   IsObjectIdReferenced,
-  generateClassCode,
-  generateAuditCode,
+  getCurrentUser,
 } = require("../utils/helpers");
 const {
   STATUS_CODE_SUCCESS,
@@ -34,20 +28,15 @@ const {
   MESSAGE_DELETE_CLASSS_ERROR,
   MESSAGE_DELETE_CLASSS_SUCCESS,
 } = require("../utils/messages");
+const {
+  findClasses,
+  findClass,
+  formatClassName,
+  createClassObj,
+  updateClassObj,
+  deleteClassObj,
+} = require("../queries/classes");
 
-// Utility Functions
-const findClassesByQuery = async (query, limit) =>
-  await Class.find(query, hiddenFieldsDefault).limit(limit);
-const findClassByQuery = async (query) =>
-  await Class.findOne(query, hiddenFieldsDefault);
-const findUserByCode = async (userCode) =>
-  await User.findOne({ userCode }, hiddenFieldsUser).populate({
-    path: "role",
-    select: hiddenFieldsDefault,
-    populate: { path: "rolePermissions", select: hiddenFieldsDefault },
-  });
-
-// Class Controller
 module.exports = {
   /**
    * Retrieves all classes from the database.
@@ -56,12 +45,10 @@ module.exports = {
    * @param {Object} res - Express response object
    */
   GetClasses: async (req, res) => {
-    // Destructure 'entries' from the query parameters, defaulting to 100 if not provided
-    const { entries = 100 } = req.query;
-    // Fetch all classes from the database
-    const classes = await findClassesByQuery({}, entries);
+    const { start = 1, end = 10 } = req.query; // Step 1: Extract pagination parameters
+    const classes = await findClasses({ start, end, options: true }); // Step 2: Fetch classes from database
 
-    // Send the retrieved classes in the response
+    // Step 3: Send the retrieved classes in the response
     res
       .status(STATUS_CODE_SUCCESS)
       .send(
@@ -77,13 +64,13 @@ module.exports = {
    * @param {Function} next - Express next middleware function
    */
   GetClassByCode: async (req, res, next) => {
-    // Extract the class code from the request
-    const { classCode } = req.body;
+    const { classCode } = req.body; // Step 1: Extract class code from request
+    const classDetails = await findClass({
+      query: { classCode },
+      options: true,
+    }); // Step 2: Find class in database
 
-    // Find the class by its code
-    const classDetails = await findClassByQuery({ classCode });
-
-    // Return the class details if found, otherwise handle error
+    // Step 3: Return the class details if found, otherwise handle error
     return classDetails
       ? res
           .status(STATUS_CODE_SUCCESS)
@@ -105,28 +92,25 @@ module.exports = {
    * @param {Function} next - Express next middleware function
    */
   CreateClass: async (req, res, next) => {
-    // Extract and format the class name
-    const { name } = req.body;
-    const formattedName = name.trim().toUpperCase();
+    const { name } = req.body; // Step 1: Extract class name from request
+    const formattedName = formatClassName(name); // Step 2: Format class name
 
-    // Check if the class already exists
-    if (await Class.findOne({ name: formattedName }))
+    // Step 3: Check if the class already exists
+    const existingClass = await findClass({ query: { name: formattedName } });
+    if (existingClass)
       return handleError(next, STATUS_CODE_CONFLICT, MESSAGE_CLASS_EXIST);
 
-    // Create a new class object and save it
-    const newClass = new Class({
-      classCode: generateClassCode(),
-      name: formattedName,
-    });
+    // Step 4: Create and save the new class
+    const newClass = createClassObj({ name: formattedName });
     await newClass.save();
 
-    // Retrieve the newly created class and log the audit
-    const createdClass = await findClassByQuery({
-      classCode: newClass.classCode,
+    // Step 5: Log the creation in audit logs
+    const createdClass = await findClass({
+      query: { classCode: newClass.classCode },
+      options: true,
     });
-    const currentUser = await findUserByCode(req.user.userCode);
+    const currentUser = await getCurrentUser(req.user.userCode);
     await logAudit(
-      generateAuditCode(),
       auditActions.CREATE,
       auditCollections.CLASSES,
       createdClass.classCode,
@@ -136,7 +120,7 @@ module.exports = {
       currentUser.toObject()
     );
 
-    // Send the created class as the response
+    // Step 6: Send the created class as the response
     res
       .status(STATUS_CODE_SUCCESS)
       .send(
@@ -156,51 +140,47 @@ module.exports = {
    * @param {Function} next - Express next middleware function
    */
   UpdateClass: async (req, res, next) => {
-    // Extract class code and new name from request
-    const { classCode, name } = req.body;
-    const formattedName = name.trim().toUpperCase();
+    const { classCode, name } = req.body; // Step 1: Extract class code and new name
+    const formattedName = formatClassName(name); // Step 2: Format class name
 
-    // Validate if the class exists
-    const existingClass = await findClassByQuery({ classCode });
+    // Step 3: Validate if the class exists
+    const existingClass = await findClass({ query: { classCode } });
     if (!existingClass)
       return handleError(next, STATUS_CODE_CONFLICT, MESSAGE_CLASS_NOT_FOUND);
 
-    // Check for name conflicts with other classes
-    if (
-      await Class.findOne({
-        classCode: { $ne: classCode },
-        name: formattedName,
-      })
-    )
+    // Step 4: Check for name conflicts with other classes
+    const otherClasses = await findClass({
+      query: { classCode: { $ne: classCode }, name: formattedName },
+    });
+    if (otherClasses)
       return handleError(next, STATUS_CODE_CONFLICT, MESSAGE_CLASS_TAKEN);
 
-    // Class details before update
-    const classBeforeUpdate = existingClass.toObject();
+    // Step 5: Capture current class data before update
+    const previousData = await findClass({
+      query: { classCode },
+      options: true,
+    });
 
-    // Update the class details
-    await Class.findOneAndUpdate(
-      { classCode },
-      {
-        name: formattedName,
-        updatedAt: moment().valueOf(),
-      }
-    );
+    // Step 6: Update the class details
+    await updateClassObj({ classCode, name: formattedName });
 
-    // Log the update in the audit logs
-    const updatedClass = await findClassByQuery({ classCode });
-    const currentUser = await findUserByCode(req.user.userCode);
+    // Step 7: Log the update in the audit logs
+    const updatedClass = await findClass({
+      query: { classCode },
+      options: true,
+    });
+    const currentUser = await getCurrentUser(req.user.userCode);
     await logAudit(
-      generateAuditCode(),
       auditActions.UPDATE,
       auditCollections.CLASSES,
       classCode,
       auditChanges.UPDATE_CLASS,
-      classBeforeUpdate,
+      previousData.toObject(),
       updatedClass.toObject(),
       currentUser.toObject()
     );
 
-    // Send the updated class as the response
+    // Step 8: Send the updated class as the response
     res
       .status(STATUS_CODE_SUCCESS)
       .send(
@@ -220,15 +200,14 @@ module.exports = {
    * @param {Function} next - Express next middleware function
    */
   DeleteClass: async (req, res, next) => {
-    // Extract the class code from the request
-    const { classCode } = req.body;
+    const { classCode } = req.body; // Step 1: Extract class code from request
 
-    // Validate if the class exists
-    const existingClass = await Class.findOne({ classCode });
+    // Step 2: Validate if the class exists
+    const existingClass = await findClass({ query: { classCode } });
     if (!existingClass)
       return handleError(next, STATUS_CODE_CONFLICT, MESSAGE_CLASS_NOT_FOUND);
 
-    // Check if the class is referenced elsewhere in the database
+    // Step 3: Check if the class is referenced elsewhere
     const { isReferenced } = await IsObjectIdReferenced(existingClass._id);
     if (isReferenced)
       return handleError(
@@ -237,9 +216,12 @@ module.exports = {
         MESSAGE_CLASS_NOT_ALLOWED_DELETE_REFERENCE_EXIST
       );
 
-    // Delete the class
-    const previousData = await findClassByQuery({ classCode });
-    const deletionResult = await Class.deleteOne({ classCode });
+    // Step 4: Delete the class
+    const previousData = await findClass({
+      query: { classCode },
+      options: true,
+    });
+    const deletionResult = await deleteClassObj(classCode);
     if (deletionResult.deletedCount === 0)
       return handleError(
         next,
@@ -247,10 +229,9 @@ module.exports = {
         MESSAGE_DELETE_CLASSS_ERROR
       );
 
-    // Log the deletion in the audit logs
-    const currentUser = await findUserByCode(req.user.userCode);
+    // Step 5: Log the deletion in the audit logs
+    const currentUser = await getCurrentUser(req.user.userCode);
     await logAudit(
-      generateAuditCode(),
       auditActions.DELETE,
       auditCollections.CLASSES,
       classCode,
@@ -260,7 +241,7 @@ module.exports = {
       currentUser.toObject()
     );
 
-    // Send the deletion success message
+    // Step 6: Send deletion success message
     res
       .status(STATUS_CODE_SUCCESS)
       .send(handleSuccess(STATUS_CODE_SUCCESS, MESSAGE_DELETE_CLASSS_SUCCESS));

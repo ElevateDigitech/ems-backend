@@ -1,21 +1,14 @@
-const moment = require("moment-timezone");
-const Country = require("../models/country");
-const User = require("../models/user");
-const { logAudit } = require("../middleware");
+const { logAudit } = require("../queries/auditLogs");
 const {
   auditActions,
   auditCollections,
   auditChanges,
 } = require("../utils/audit");
 const {
-  hiddenFieldsDefault,
-  hiddenFieldsUser,
   handleError,
   handleSuccess,
-  toCapitalize,
-  generateCountryCode,
   IsObjectIdReferenced,
-  generateAuditCode,
+  getCurrentUser,
 } = require("../utils/helpers");
 const {
   STATUS_CODE_CONFLICT,
@@ -35,18 +28,15 @@ const {
   MESSAGE_DELETE_COUNTRY_ERROR,
   MESSAGE_COUNTRY_TAKEN,
 } = require("../utils/messages");
+const {
+  findCountries,
+  findCountry,
+  formatCountryFields,
+  createCountryObj,
+  updateCountryObj,
+  deleteCountryObj,
+} = require("../queries/countries");
 
-// Utility Functions
-const findCountryByCode = async (countryCode) =>
-  await Country.findOne({ countryCode }, hiddenFieldsDefault);
-const findUserByCode = async (userCode) =>
-  await User.findOne({ userCode }, hiddenFieldsUser).populate({
-    path: "role",
-    select: hiddenFieldsDefault,
-    populate: { path: "rolePermissions", select: hiddenFieldsDefault },
-  });
-
-// Country Controller
 module.exports = {
   /**
    * Retrieves all countries from the database.
@@ -55,14 +45,10 @@ module.exports = {
    * @param {Object} res - Express response object
    */
   GetCountries: async (req, res) => {
-    // Destructure 'entries' from the query parameters, defaulting to 100 if not provided
-    const { entries = 100 } = req.query;
-    // Fetch all countries from the database
-    const countries = await Country.find({}, hiddenFieldsDefault).limit(
-      entries
-    );
+    const { start = 1, end = 10 } = req.query; // Step 1: Extract pagination parameters
+    const countries = await findCountries({ start, end, options: true }); // Step 2: Fetch countries from database
 
-    // Send the retrieved countries in the response
+    // Step 3: Send the retrieved countries in the response
     res
       .status(STATUS_CODE_SUCCESS)
       .send(
@@ -82,13 +68,10 @@ module.exports = {
    * @param {Function} next - Express next middleware function
    */
   GetCountryByCode: async (req, res, next) => {
-    // Extract the country code from the request body
-    const { countryCode } = req.body;
+    const { countryCode } = req.body; // Step 1: Extract the country code from the request body
+    const country = await findCountry({ query: { countryCode } }); // Step 2: Find the country by its unique code
 
-    // Find the country by its unique code
-    const country = await findCountryByCode(countryCode);
-
-    // Return the country details if found, else return an error
+    // Step 3: Return the country details if found, else return an error
     return country
       ? res
           .status(STATUS_CODE_SUCCESS)
@@ -110,37 +93,37 @@ module.exports = {
    * @param {Function} next - Express next middleware function
    */
   CreateCountry: async (req, res, next) => {
-    // Extract country details from the request body
-    const { name, iso2, iso3 } = req.body;
-    const formattedName = toCapitalize(name);
+    const { name, iso2, iso3 } = req.body; // Step 1: Extract country details from the request body
+    const { formattedName, formattedISO2, formattedISO3 } = formatCountryFields(
+      { name, iso2, iso3 }
+    ); // Step 2: Format country fields
 
-    // Check if a country with the same name or ISO codes already exists
-    const existingCountry = await Country.findOne({
-      $or: [
-        { name: formattedName },
-        { iso2: iso2.toUpperCase() },
-        { iso3: iso3.toUpperCase() },
-      ],
-    });
+    const existingCountry = await findCountry({
+      query: {
+        $or: [
+          { name: formattedName },
+          { iso2: formattedISO2 },
+          { iso3: formattedISO3 },
+        ],
+      },
+    }); // Step 3: Check for existing country
 
-    // Return error if duplicate country exists
     if (existingCountry)
-      return handleError(next, STATUS_CODE_CONFLICT, MESSAGE_COUNTRY_EXIST);
+      return handleError(next, STATUS_CODE_CONFLICT, MESSAGE_COUNTRY_EXIST); // Step 4: Handle duplicate country error
 
-    // Create a new country document
-    const newCountry = new Country({
-      countryCode: generateCountryCode(),
+    const newCountry = await createCountryObj({
       name: formattedName,
-      iso2: iso2.toUpperCase(),
-      iso3: iso3.toUpperCase(),
-    });
-    await newCountry.save();
+      iso2: formattedISO2,
+      iso3: formattedISO3,
+    }); // Step 5: Create new country document
+    await newCountry.save(); // Step 6: Save the new country
 
-    // Log the audit for the creation
-    const createdCountry = await findCountryByCode(newCountry.countryCode);
-    const currentUser = await findUserByCode(req.user.userCode);
+    const createdCountry = await findCountry({
+      query: { countryCode: newCountry.countryCode },
+      options: true,
+    }); // Step 7: Retrieve the newly created country
+    const currentUser = await getCurrentUser(req.user.userCode);
     await logAudit(
-      generateAuditCode(),
       auditActions.CREATE,
       auditCollections.COUNTRIES,
       createdCountry.countryCode,
@@ -148,9 +131,8 @@ module.exports = {
       null,
       createdCountry.toObject(),
       currentUser.toObject()
-    );
+    ); // Step 8: Log the creation audit
 
-    // Send the created country as response
     res
       .status(STATUS_CODE_SUCCESS)
       .send(
@@ -159,7 +141,7 @@ module.exports = {
           MESSAGE_CREATE_COUNTRY_SUCCESS,
           createdCountry
         )
-      );
+      ); // Step 9: Send the created country as response
   },
 
   /**
@@ -170,57 +152,56 @@ module.exports = {
    * @param {Function} next - Express next middleware function
    */
   UpdateCountry: async (req, res, next) => {
-    // Extract country details from the request body
-    const { countryCode, name, iso2, iso3 } = req.body;
-    const formattedName = toCapitalize(name);
+    const { countryCode, name, iso2, iso3 } = req.body; // Step 1: Extract country details
+    const { formattedName, formattedISO2, formattedISO3 } = formatCountryFields(
+      { name, iso2, iso3 }
+    ); // Step 2: Format country fields
 
-    // Find the existing country by code
-    const existingCountry = await findCountryByCode(countryCode);
-
-    // Return error if country does not exist
+    const existingCountry = await findCountry({ query: { countryCode } }); // Step 3: Find the existing country
     if (!existingCountry)
-      return handleError(next, STATUS_CODE_CONFLICT, MESSAGE_COUNTRY_NOT_FOUND);
+      return handleError(next, STATUS_CODE_CONFLICT, MESSAGE_COUNTRY_NOT_FOUND); // Step 4: Handle not found error
 
-    // Check for duplicate country details
-    const duplicateCountry = await Country.findOne({
-      countryCode: { $ne: countryCode },
-      $or: [
-        { name: formattedName },
-        { iso2: iso2.toUpperCase() },
-        { iso3: iso3.toUpperCase() },
-      ],
-    });
+    const otherCountries = await findCountry({
+      query: {
+        countryCode: { $ne: countryCode },
+        $or: [
+          { name: formattedName },
+          { iso2: formattedISO2 },
+          { iso3: formattedISO3 },
+        ],
+      },
+    }); // Step 5: Check for duplicate country details
 
-    if (duplicateCountry)
-      return handleError(next, STATUS_CODE_CONFLICT, MESSAGE_COUNTRY_TAKEN);
+    if (otherCountries)
+      return handleError(next, STATUS_CODE_CONFLICT, MESSAGE_COUNTRY_TAKEN); // Step 6: Handle duplicate country error
 
-    // Update the country details
-    const previousData = existingCountry.toObject();
-    await Country.findOneAndUpdate(
-      { countryCode },
-      {
-        name: formattedName,
-        iso2: iso2.toUpperCase(),
-        iso3: iso3.toUpperCase(),
-        updatedAt: moment().valueOf(),
-      }
-    );
+    const previousData = await findCountry({
+      query: { countryCode },
+      options: true,
+    }); // Step 7: Capture previous data for audit
 
-    // Log the update audit
-    const updatedCountry = await findCountryByCode(countryCode);
-    const currentUser = await findUserByCode(req.user.userCode);
+    await updateCountryObj({
+      countryCode,
+      name: formattedName,
+      iso2: formattedISO2,
+      iso3: formattedISO3,
+    }); // Step 8: Update the country details
+
+    const updatedCountry = await findCountry({
+      query: { countryCode },
+      options: true,
+    }); // Step 9: Retrieve the updated country
+    const currentUser = await getCurrentUser(req.user.userCode);
     await logAudit(
-      generateAuditCode(),
       auditActions.UPDATE,
       auditCollections.COUNTRIES,
       countryCode,
       auditChanges.UPDATE_COUNTRY,
-      previousData,
+      previousData.toObject(),
       updatedCountry.toObject(),
       currentUser.toObject()
-    );
+    ); // Step 10: Log the update audit
 
-    // Send the updated country as response
     res
       .status(STATUS_CODE_SUCCESS)
       .send(
@@ -229,7 +210,7 @@ module.exports = {
           MESSAGE_UPDATE_COUNTRY_SUCCESS,
           updatedCountry
         )
-      );
+      ); // Step 11: Send the updated country as response
   },
 
   /**
@@ -240,40 +221,35 @@ module.exports = {
    * @param {Function} next - Express next middleware function
    */
   DeleteCountry: async (req, res, next) => {
-    // Extract country code from the request body
-    const { countryCode } = req.body;
+    const { countryCode } = req.body; // Step 1: Extract country code
+    const existingCountry = await findCountry({ query: { countryCode } }); // Step 2: Find the country
 
-    // Find the country by code
-    const existingCountry = await Country.findOne(countryCode);
-
-    // Return error if country not found
     if (!existingCountry)
-      return handleError(next, STATUS_CODE_CONFLICT, MESSAGE_COUNTRY_NOT_FOUND);
+      return handleError(next, STATUS_CODE_CONFLICT, MESSAGE_COUNTRY_NOT_FOUND); // Step 3: Handle not found error
 
-    // Check if the country is referenced elsewhere
-    const { isReferenced } = await IsObjectIdReferenced(existingCountry._id);
+    const { isReferenced } = await IsObjectIdReferenced(existingCountry._id); // Step 4: Check references
     if (isReferenced)
       return handleError(
         next,
         STATUS_CODE_CONFLICT,
         MESSAGE_COUNTRY_NOT_ALLOWED_DELETE_REFERENCE_EXIST
-      );
+      ); // Step 5: Handle reference error
 
-    // Delete the country from the database
-    const previousData = await findCountryByCode({ countryCode });
-    const deletionResult = await Country.deleteOne({ countryCode });
+    const previousData = await findCountry({
+      query: { countryCode },
+      options: true,
+    }); // Step 6: Capture previous data for audit
 
+    const deletionResult = await deleteCountryObj(countryCode); // Step 7: Delete the country
     if (deletionResult.deletedCount === 0)
       return handleError(
         next,
         STATUS_CODE_INTERNAL_SERVER_ERROR,
         MESSAGE_DELETE_COUNTRY_ERROR
-      );
+      ); // Step 8: Handle deletion error
 
-    // Log the deletion audit
-    const currentUser = await findUserByCode(req.user.userCode);
+    const currentUser = await getCurrentUser(req.user.userCode);
     await logAudit(
-      generateAuditCode(),
       auditActions.DELETE,
       auditCollections.COUNTRIES,
       countryCode,
@@ -281,11 +257,10 @@ module.exports = {
       previousData.toObject(),
       null,
       currentUser.toObject()
-    );
+    ); // Step 9: Log the deletion audit
 
-    // Send the deletion success response
     res
       .status(STATUS_CODE_SUCCESS)
-      .send(handleSuccess(STATUS_CODE_SUCCESS, MESSAGE_DELETE_COUNTRY_SUCCESS));
+      .send(handleSuccess(STATUS_CODE_SUCCESS, MESSAGE_DELETE_COUNTRY_SUCCESS)); // Step 10: Send the deletion success response
   },
 };

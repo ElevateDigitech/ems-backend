@@ -2,7 +2,7 @@ const moment = require("moment-timezone");
 const Section = require("../models/section");
 const Student = require("../models/student");
 const User = require("../models/user");
-const { logAudit } = require("../middleware");
+const { logAudit } = require("../queries/auditLogs");
 const {
   auditActions,
   auditCollections,
@@ -217,7 +217,6 @@ module.exports = {
     // Log the creation action for auditing
     const currentUser = await findUser(req.user.userCode);
     await logAudit(
-      generateAuditCode(),
       auditActions.CREATE,
       auditCollections.STUDENTS,
       createdStudent.studentCode,
@@ -288,7 +287,6 @@ module.exports = {
     // Log the update action for auditing
     const currentUser = await findUser(req.user.userCode);
     await logAudit(
-      generateAuditCode(),
       auditActions.UPDATE,
       auditCollections.STUDENTS,
       updatedStudent.studentCode,
@@ -350,7 +348,6 @@ module.exports = {
     // Log the deletion action for auditing
     const currentUser = await findUser(req.user.userCode);
     await logAudit(
-      generateAuditCode(),
       auditActions.DELETE,
       auditCollections.STUDENTS,
       previousData.studentCode,

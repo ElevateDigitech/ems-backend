@@ -16,7 +16,6 @@ const { IMAGE_FIELD_PROFILE_PICTURE } = require("./utils/imageFields");
 const { uploadProfilePicture } = require("./multer");
 const { MulterError } = require("multer");
 const catchAsync = require("./utils/catchAsync");
-const AuditLog = require("./models/auditLog");
 
 /**
  * Middleware for validating request bodies against a provided schema.
@@ -154,44 +153,6 @@ module.exports = {
       }
       next();
     }),
-
-  /**
-   * Function to log audit trail for actions performed.
-   * @param {string} auditCode - Unique audit identifier.
-   * @param {string} action - Action performed.
-   * @param {string} collection - Database collection involved.
-   * @param {string} document - Specific document ID.
-   * @param {Object} changes - Changes made.
-   * @param {Object} [before] - Previous state.
-   * @param {Object} [after] - New state.
-   * @param {Object} user - User performing the action.
-   */
-  async logAudit(
-    auditCode,
-    action,
-    collection,
-    document,
-    changes,
-    before = null,
-    after = null,
-    user
-  ) {
-    try {
-      const audit = new AuditLog({
-        auditCode,
-        action,
-        collection,
-        document,
-        changes,
-        before,
-        after,
-        user,
-      });
-      await audit.save();
-    } catch (error) {
-      console.error("Failed to log audit:", error);
-    }
-  },
 
   /**
    * Middleware for validating permission schemas.

@@ -4,7 +4,7 @@ const Country = require("../models/country");
 const State = require("../models/state");
 const City = require("../models/city");
 const User = require("../models/user");
-const { logAudit } = require("../middleware");
+const { logAudit } = require("../queries/auditLogs");
 const {
   auditActions,
   auditCollections,
@@ -420,7 +420,6 @@ module.exports = {
 
     // Log the creation action in the audit logs
     await logAudit(
-      generateAuditCode(),
       auditActions.CREATE,
       auditCollections.PROFILES,
       profile.profileCode,
@@ -550,7 +549,6 @@ module.exports = {
 
     // Log the profile update action for auditing purposes
     await logAudit(
-      generateAuditCode(),
       auditActions.UPDATE,
       auditCollections.PROFILES,
       existingProfile.profileCode,
@@ -618,7 +616,6 @@ module.exports = {
 
     // Log the deletion action for audit purposes
     await logAudit(
-      generateAuditCode(),
       auditActions.DELETE,
       auditCollections.PROFILES,
       existingProfile.profileCode,

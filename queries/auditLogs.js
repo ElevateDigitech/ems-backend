@@ -1,5 +1,5 @@
 const AuditLog = require("../models/auditLog");
-const { hiddenFieldsDefault } = require("../utils/helpers");
+const { hiddenFieldsDefault, generateAuditCode } = require("../utils/helpers");
 
 /**
  * Retrieves multiple audit logs from the database with pagination support.
@@ -13,15 +13,17 @@ const { hiddenFieldsDefault } = require("../utils/helpers");
  */
 const findAuditLogs = async ({
   query = {}, // MongoDB query object to filter audit logs
-  options = hiddenFieldsDefault, // Fields to include/exclude in the result
+  options = false, // Fields to include/exclude in the result
   start = 1, // Starting index for pagination (default is 1)
   end = 10, // Ending index for pagination (default is 10)
 }) => {
-  const limit = (end > 0 ? end : 10) - (start > 0 ? start : 1) + 1; // Calculate the number of entries to fetch
-  const skip = (start > 0 ? start : 1) - 1; // Calculate how many entries to skip
+  // Step 1: Calculate the limit and skip values for pagination
+  const { limit, skip } = getLimitAndSkip(start, end);
 
-  // Query the database with the provided filters, skipping and limiting as per pagination
-  return await AuditLog.find(query, options).skip(skip).limit(limit);
+  // Step 2: Query the database with provided filters, apply pagination (skip & limit)
+  return await AuditLog.find(query, options ? hiddenFieldsDefault : {})
+    .skip(skip) // Apply skip
+    .limit(limit); // Apply limit
 };
 
 /**
@@ -34,13 +36,54 @@ const findAuditLogs = async ({
  */
 const findAuditLog = async ({
   query = {}, // MongoDB query object to filter the audit log
-  options = hiddenFieldsDefault, // Fields to include/exclude in the result
+  options = false, // Fields to include/exclude in the result
 }) => {
-  // Query the database to find a single audit log that matches the query
-  return await AuditLog.findOne(query, options);
+  // Step 1: Query the database to find a single audit log that matches the query
+  return await AuditLog.findOne(query, options ? hiddenFieldsDefault : {});
+};
+
+/**
+ * Logs an audit trail for actions performed.
+ *
+ * @param {string} action - The action performed (e.g., CREATE, UPDATE, DELETE).
+ * @param {string} collection - The database collection involved.
+ * @param {string} document - The specific document ID related to the action.
+ * @param {Object} changes - A description of the changes made.
+ * @param {Object} [before=null] - The previous state of the document (if applicable).
+ * @param {Object} [after=null] - The new state of the document (if applicable).
+ * @param {Object} user - The user performing the action.
+ * @returns {Promise<void>} - A promise that resolves once the audit log is saved.
+ */
+const logAudit = async (
+  action, // The action performed
+  collection, // The database collection involved
+  document, // The specific document ID
+  changes, // Description of changes
+  before = null, // Previous state (optional)
+  after = null, // New state (optional)
+  user // User performing the action
+) => {
+  // Step 1: Generate a unique audit code for this audit log
+  const auditCode = generateAuditCode();
+  console.log("in audit");
+  // Step 2: Create a new audit log object with the provided details
+  const audit = new AuditLog({
+    auditCode, // Unique audit identifier
+    action, // Action performed
+    collection, // Collection affected
+    document, // Document ID involved
+    changes, // Description of changes
+    before, // Previous state
+    after, // New state
+    user, // User who performed the action
+  });
+
+  // Step 3: Save the audit log to the database
+  await audit.save();
 };
 
 module.exports = {
   findAuditLogs, // Export function to retrieve multiple audit logs
   findAuditLog, // Export function to retrieve a single audit log
+  logAudit, // Export function to log audit trails
 };

@@ -4,7 +4,7 @@ const Exam = require("../models/exam");
 const Student = require("../models/student");
 const Subject = require("../models/subject");
 const User = require("../models/user");
-const { logAudit } = require("../middleware");
+const { logAudit } = require("../queries/auditLogs");
 const {
   auditActions,
   auditCollections,
@@ -276,7 +276,6 @@ module.exports = {
     const createdMark = await findMarkByQuery({ markCode: mark.markCode });
     const user = await findUserByCode(req.user.userCode);
     await logAudit(
-      generateAuditCode(),
       auditActions.CREATE,
       auditCollections.MARKS,
       mark.markCode,
@@ -363,7 +362,6 @@ module.exports = {
     const updatedMark = await findMarkByQuery({ markCode });
     const user = await findUserByCode(req.user.userCode);
     await logAudit(
-      generateAuditCode(),
       auditActions.UPDATE,
       auditCollections.MARKS,
       markCode,
@@ -424,7 +422,6 @@ module.exports = {
     // Log the audit
     const user = await findUserByCode(req.user.userCode);
     await logAudit(
-      generateAuditCode(),
       auditActions.DELETE,
       auditCollections.MARKS,
       mark.markCode,

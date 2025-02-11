@@ -70,7 +70,7 @@ const MESSAGE_DELETE_GENDERS_ERROR = "Couldn't delete the gender";
 const MESSAGE_GENDER_NOT_ALLOWED_DELETE_REFERENCE_EXIST =
   "The selected gender is in use and not allowed to be deleted.";
 const MESSAGE_GENDER_TAKEN =
-  "Gander name already taken. Please try a different one.";
+  "Gender name already taken. Please try a different one.";
 
 const MESSAGE_GET_COUNTRIES_SUCCESS = "Countries retrieved successfully";
 const MESSAGE_GET_COUNTRY_SUCCESS = "Country retrieved successfully";

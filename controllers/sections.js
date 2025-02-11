@@ -2,7 +2,7 @@ const moment = require("moment-timezone");
 const Class = require("../models/class");
 const Section = require("../models/section");
 const User = require("../models/user");
-const { logAudit } = require("../middleware");
+const { logAudit } = require("../queries/auditLogs");
 const {
   auditActions,
   auditCollections,
@@ -216,7 +216,6 @@ module.exports = {
     // Find the current user and log the creation action
     const currentUser = await findUserWithRole(req.user.userCode);
     await logAudit(
-      generateAuditCode(),
       auditActions.CREATE,
       auditCollections.SECTIONS,
       createdSection.sectionCode,
@@ -283,7 +282,6 @@ module.exports = {
     // Find the current user and log the update action
     const currentUser = await findUserWithRole(req.user.userCode);
     await logAudit(
-      generateAuditCode(),
       auditActions.UPDATE,
       auditCollections.SECTIONS,
       sectionCode,
@@ -344,7 +342,6 @@ module.exports = {
     // Find the current user and log the deletion action
     const currentUser = await findUserWithRole(req.user.userCode);
     await logAudit(
-      generateAuditCode(),
       auditActions.DELETE,
       auditCollections.SECTIONS,
       sectionCode,

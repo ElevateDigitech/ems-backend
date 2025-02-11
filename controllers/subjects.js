@@ -1,7 +1,7 @@
 const moment = require("moment-timezone");
 const Subject = require("../models/subject");
 const User = require("../models/user");
-const { logAudit } = require("../middleware");
+const { logAudit } = require("../queries/auditLogs");
 const {
   auditActions,
   auditCollections,
@@ -147,7 +147,6 @@ module.exports = {
 
     // Log the audit details for subject creation
     await logAudit(
-      generateAuditCode(),
       auditActions.CREATE,
       auditCollections.SUBJECTS,
       createdSubject.subjectCode,
@@ -219,7 +218,6 @@ module.exports = {
 
     // Log the audit details for subject update
     await logAudit(
-      generateAuditCode(),
       auditActions.UPDATE,
       auditCollections.SUBJECTS,
       updatedSubject.subjectCode,
@@ -289,7 +287,6 @@ module.exports = {
 
     // Log the audit details for subject deletion
     await logAudit(
-      generateAuditCode(),
       auditActions.DELETE,
       auditCollections.SUBJECTS,
       previousData.subjectCode,

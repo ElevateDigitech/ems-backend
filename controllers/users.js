@@ -1,7 +1,7 @@
 const passport = require("passport");
 const User = require("../models/user");
 const allRegex = require("../utils/allRegex");
-const { logAudit } = require("../middleware");
+const { logAudit } = require("../queries/auditLogs");
 const {
   auditActions,
   auditCollections,
@@ -160,8 +160,7 @@ module.exports = {
     const currentUser = await getCurrentUser(req.user.userCode);
 
     //: Log the audit for user creation
-    await logAudit(
-      generateAuditCode(), // Generate audit code
+    await logAudit( // Generate audit code
       auditActions.CREATE, // Specify audit action
       auditCollections.USERS, // Specify audit collection
       createdUser.userCode, // Reference created user's code
@@ -362,7 +361,6 @@ module.exports = {
 
     // Log the password change action in the audit logs
     await logAudit(
-      generateAuditCode(),
       auditActions.CHANGE,
       auditCollections.USERS,
       currentUser.userCode,
@@ -441,7 +439,6 @@ module.exports = {
     // Log the password change event for auditing purposes.
     const currentUser = await getCurrentUser(req.user.userCode);
     await logAudit(
-      generateAuditCode(),
       auditActions.CHANGE,
       auditCollections.USERS,
       currentUser.userCode,
@@ -613,7 +610,6 @@ module.exports = {
 
     // Log the update action in the audit log
     await logAudit(
-      generateAuditCode(),
       auditActions.UPDATE,
       auditCollections.USERS,
       updatedUser.userCode,
@@ -698,7 +694,6 @@ module.exports = {
 
     // Log the deletion action in the audit logs
     await logAudit(
-      generateAuditCode(),
       auditActions.DELETE,
       auditCollections.USERS,
       userCode,

@@ -1,20 +1,14 @@
-const moment = require("moment-timezone");
-const Gender = require("../models/gender");
-const User = require("../models/user");
-const { logAudit } = require("../middleware");
+const { logAudit } = require("../queries/auditLogs");
 const {
   auditActions,
   auditCollections,
   auditChanges,
 } = require("../utils/audit");
 const {
-  hiddenFieldsDefault,
-  hiddenFieldsUser,
   handleError,
   handleSuccess,
   IsObjectIdReferenced,
-  generateGenderCode,
-  generateAuditCode,
+  getCurrentUser,
 } = require("../utils/helpers");
 const {
   STATUS_CODE_SUCCESS,
@@ -34,18 +28,15 @@ const {
   MESSAGE_GET_GENDERS_SUCCESS,
   MESSAGE_GENDER_TAKEN,
 } = require("../utils/messages");
+const {
+  findGenders,
+  findGender,
+  formatGenderName,
+  createGenderObj,
+  updateGenderObj,
+  deleteGenderObj,
+} = require("../queries/genders");
 
-// Utility functions
-const findGenderByCode = async (genderCode) =>
-  await Gender.findOne({ genderCode }, hiddenFieldsDefault);
-const findUserByCode = async (userCode) =>
-  await User.findOne({ userCode }, hiddenFieldsUser).populate({
-    path: "role",
-    select: hiddenFieldsDefault,
-    populate: { path: "rolePermissions", select: hiddenFieldsDefault },
-  });
-
-// Gender Controller
 module.exports = {
   /**
    * Retrieves all genders from the database.
@@ -54,17 +45,11 @@ module.exports = {
    * @param {Object} res - Express response object
    */
   GetGenders: async (req, res) => {
-    // Destructure 'entries' from the query parameters, defaulting to 100 if not provided
-    const { entries = 100 } = req.query;
-    // Fetch all gender documents
-    const genders = await Gender.find({}, hiddenFieldsDefault).limit(entries);
-
-    // Return success response with fetched data
-    res
-      .status(STATUS_CODE_SUCCESS)
-      .send(
-        handleSuccess(STATUS_CODE_SUCCESS, MESSAGE_GET_GENDERS_SUCCESS, genders)
-      );
+    const { start = 1, end = 10 } = req.query; // Step 1: Get pagination parameters
+    const genders = await findGenders({ start, end, options: true }); // Step 2: Fetch genders
+    res.status(STATUS_CODE_SUCCESS).send(
+      handleSuccess(STATUS_CODE_SUCCESS, MESSAGE_GET_GENDERS_SUCCESS, genders) // Step 3: Send success response
+    );
   },
 
   /**
@@ -75,23 +60,13 @@ module.exports = {
    * @param {Function} next - Express next middleware function
    */
   GetGenderByCode: async (req, res, next) => {
-    const { genderCode } = req.body;
-
-    // Fetch gender by provided genderCode
-    const gender = await findGenderByCode(genderCode);
-
-    // Return response based on gender existence
+    const { genderCode } = req.body; // Step 1: Extract genderCode from request
+    const gender = await findGender({ query: { genderCode }, options: true }); // Step 2: Find gender
     return gender
-      ? res
-          .status(STATUS_CODE_SUCCESS)
-          .send(
-            handleSuccess(
-              STATUS_CODE_SUCCESS,
-              MESSAGE_GET_GENDER_SUCCESS,
-              gender
-            )
-          )
-      : handleError(next, STATUS_CODE_BAD_REQUEST, MESSAGE_GENDER_NOT_FOUND);
+      ? res.status(STATUS_CODE_SUCCESS).send(
+          handleSuccess(STATUS_CODE_SUCCESS, MESSAGE_GET_GENDER_SUCCESS, gender) // Step 3: Send success response
+        )
+      : handleError(next, STATUS_CODE_BAD_REQUEST, MESSAGE_GENDER_NOT_FOUND); // Step 4: Handle error if not found
   },
 
   /**
@@ -102,44 +77,36 @@ module.exports = {
    * @param {Function} next - Express next middleware function
    */
   CreateGender: async (req, res, next) => {
-    const { genderName } = req.body;
-    const formattedName = genderName.trim().toUpperCase();
-
-    // Check if gender already exists
-    if (await Gender.findOne({ genderName: formattedName }))
+    const { genderName } = req.body; // Step 1: Extract genderName
+    const formattedName = formatGenderName(genderName); // Step 2: Format name
+    const existingGender = await findGender({
+      query: { genderName: formattedName },
+    }); // Step 3: Check if gender exists
+    if (existingGender)
       return handleError(next, STATUS_CODE_CONFLICT, MESSAGE_GENDER_EXIST);
-
-    // Create new gender
-    const newGender = new Gender({
-      genderCode: generateGenderCode(),
-      genderName: formattedName,
+    const newGender = await createGenderObj({ genderName: formattedName }); // Step 4: Create gender object
+    await newGender.save(); // Step 5: Save to database
+    const createdGender = await findGender({
+      query: { genderCode: newGender.genderCode },
+      options: true,
     });
-    await newGender.save();
-
-    // Log creation
-    const createdGender = await findGenderByCode(newGender.genderCode);
-    const currentUser = await findUserByCode(req.user.userCode);
+    const currentUser = await getCurrentUser(req.user.userCode);
     await logAudit(
-      generateAuditCode(),
       auditActions.CREATE,
       auditCollections.GENDERS,
       createdGender.genderCode,
       auditChanges.CREATE_GENDER,
       null,
       createdGender.toObject(),
-      currentUser.toObject()
+      currentUser.toObject() // Step 6: Log audit
     );
-
-    // Return success response
-    res
-      .status(STATUS_CODE_SUCCESS)
-      .send(
-        handleSuccess(
-          STATUS_CODE_SUCCESS,
-          MESSAGE_CREATE_GENDERS_SUCCESS,
-          createdGender
-        )
-      );
+    res.status(STATUS_CODE_SUCCESS).send(
+      handleSuccess(
+        STATUS_CODE_SUCCESS,
+        MESSAGE_CREATE_GENDERS_SUCCESS,
+        createdGender
+      ) // Step 7: Send response
+    );
   },
 
   /**
@@ -150,57 +117,42 @@ module.exports = {
    * @param {Function} next - Express next middleware function
    */
   UpdateGender: async (req, res, next) => {
-    const { genderCode, genderName } = req.body;
-    const formattedName = genderName.trim().toUpperCase();
-
-    // Check for existing gender
-    const existingGender = await findGenderByCode(genderCode);
+    const { genderCode, genderName } = req.body; // Step 1: Extract data
+    const formattedName = formatGenderName(genderName); // Step 2: Format name
+    const existingGender = await findGender({ query: { genderCode } }); // Step 3: Check existence
     if (!existingGender)
       return handleError(next, STATUS_CODE_CONFLICT, MESSAGE_GENDER_NOT_FOUND);
-
-    // Check if new gender name is taken
-    if (
-      await Gender.findOne({
-        genderCode: { $ne: genderCode },
-        genderName: formattedName,
-      })
-    )
+    const otherGenders = await findGender({
+      query: { genderCode: { $ne: genderCode }, genderName: formattedName },
+    });
+    if (otherGenders)
       return handleError(next, STATUS_CODE_CONFLICT, MESSAGE_GENDER_TAKEN);
-
-    // Update gender data
-    const previousData = existingGender.toObject();
-    await Gender.findOneAndUpdate(
-      { genderCode },
-      {
-        genderName: formattedName,
-        updatedAt: moment().valueOf(),
-      }
-    );
-
-    // Log the update audit
-    const updatedGender = await findCountryByCode(countryCode);
-    const currentUser = await findUserByCode(req.user.userCode);
+    const previousData = await findGender({
+      query: { genderCode },
+      options: true,
+    }); // Step 4: Get previous data
+    await updateGenderObj({ genderCode, genderName: formattedName }); // Step 5: Update
+    const updatedGender = await findGender({
+      query: { genderCode },
+      options: true,
+    });
+    const currentUser = await getCurrentUser(req.user.userCode);
     await logAudit(
-      generateAuditCode(),
       auditActions.UPDATE,
       auditCollections.GENDERS,
       genderCode,
       auditChanges.UPDATE_GENDER,
-      previousData,
+      previousData.toObject(),
       updatedGender.toObject(),
-      currentUser.toObject()
+      currentUser.toObject() // Step 6: Log audit
     );
-
-    // Return success response
-    res
-      .status(STATUS_CODE_SUCCESS)
-      .send(
-        handleSuccess(
-          STATUS_CODE_SUCCESS,
-          MESSAGE_UPDATE_GENDERS_SUCCESS,
-          updatedGender
-        )
-      );
+    res.status(STATUS_CODE_SUCCESS).send(
+      handleSuccess(
+        STATUS_CODE_SUCCESS,
+        MESSAGE_UPDATE_GENDERS_SUCCESS,
+        updatedGender
+      ) // Step 7: Send response
+    );
   },
 
   /**
@@ -211,50 +163,40 @@ module.exports = {
    * @param {Function} next - Express next middleware function
    */
   DeleteGender: async (req, res, next) => {
-    const { genderCode } = req.body;
-    const existingGender = await Gender.findOne({ genderCode });
-
-    // Validate gender existence
+    const { genderCode } = req.body; // Step 1: Extract genderCode
+    const existingGender = await findGender({ query: { genderCode } }); // Step 2: Check existence
     if (!existingGender)
       return handleError(next, STATUS_CODE_CONFLICT, MESSAGE_GENDER_NOT_FOUND);
-
-    // Check if gender is referenced elsewhere
-    const { isReferenced } = await IsObjectIdReferenced(existingCountry._id);
+    const { isReferenced } = await IsObjectIdReferenced(existingGender._id); // Step 3: Check references
     if (isReferenced)
       return handleError(
         next,
         STATUS_CODE_CONFLICT,
         MESSAGE_GENDER_NOT_ALLOWED_DELETE_REFERENCE_EXIST
       );
-
-    // Delete gender
-    const previousData = await findGenderByCode(genderCode);
-    const deletionResult = await Gender.deleteOne({ genderCode });
-
-    // Validate deletion
+    const previousData = await findGender({
+      query: { genderCode },
+      options: true,
+    }); // Step 4: Get previous data
+    const deletionResult = await deleteGenderObj(genderCode); // Step 5: Delete
     if (deletionResult.deletedCount === 0)
       return handleError(
         next,
         STATUS_CODE_INTERNAL_SERVER_ERROR,
         MESSAGE_DELETE_GENDERS_ERROR
       );
-
-    // Log deletion
-    const currentUser = await findUserByCode(req.user.userCode);
+    const currentUser = await getCurrentUser(req.user.userCode);
     await logAudit(
-      generateAuditCode(),
       auditActions.DELETE,
       auditCollections.GENDERS,
       genderCode,
       auditChanges.DELETE_GENDER,
       previousData.toObject(),
       null,
-      currentUser.toObject()
+      currentUser.toObject() // Step 6: Log audit
     );
-
-    // Return success response
-    res
-      .status(STATUS_CODE_SUCCESS)
-      .send(handleSuccess(STATUS_CODE_SUCCESS, MESSAGE_DELETE_GENDERS_SUCCESS));
+    res.status(STATUS_CODE_SUCCESS).send(
+      handleSuccess(STATUS_CODE_SUCCESS, MESSAGE_DELETE_GENDERS_SUCCESS) // Step 7: Send response
+    );
   },
 };

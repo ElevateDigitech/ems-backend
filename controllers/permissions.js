@@ -10,7 +10,6 @@ const {
   MESSAGE_GET_PERMISSION_SUCCESS,
 } = require("../utils/messages");
 
-// Permission Controller
 module.exports = {
   /**
    * Retrieves all permissions from the database.
@@ -24,7 +23,7 @@ module.exports = {
     const { start = 1, end = 10 } = req.query;
 
     // Step 2: Query the database to retrieve all permission documents within the provided range
-    const permissions = await findPermissions({ start, end });
+    const permissions = await findPermissions({ start, end, options: true });
 
     // Step 3: Return a success response with the retrieved permissions
     res.status(STATUS_CODE_SUCCESS).send(
@@ -48,7 +47,10 @@ module.exports = {
     const { permissionCode } = req.body;
 
     // Step 2: Query the database to find the permission document by its unique code
-    const permission = await findPermission({ query: { permissionCode } });
+    const permission = await findPermission({
+      query: { permissionCode },
+      options: true,
+    });
 
     // Step 3: Check if the permission exists in the database
     if (!permission) {

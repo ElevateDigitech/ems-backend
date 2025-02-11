@@ -3,7 +3,7 @@ const City = require("../models/city");
 const State = require("../models/state");
 const Country = require("../models/country");
 const User = require("../models/user");
-const { logAudit } = require("../middleware");
+const { logAudit } = require("../queries/auditLogs");
 const {
   auditActions,
   auditCollections,
@@ -224,7 +224,6 @@ module.exports = {
     const createdCity = await findCityByQuery({ cityCode: city.cityCode });
     const user = await findUserByCode(req.user.userCode);
     await logAudit(
-      generateAuditCode(),
       auditActions.CREATE,
       auditCollections.CITIES,
       city.cityCode,
@@ -297,7 +296,6 @@ module.exports = {
     const updatedCity = await findCityByQuery({ cityCode });
     const user = await findUserByCode(req.user.userCode);
     await logAudit(
-      generateAuditCode(),
       auditActions.UPDATE,
       auditCollections.CITIES,
       cityCode,
@@ -358,7 +356,6 @@ module.exports = {
     // Log the audit
     const currentUser = await findUserByCode(req.user.userCode);
     await logAudit(
-      generateAuditCode(),
       auditActions.DELETE,
       auditCollections.CITIES,
       city.cityCode,

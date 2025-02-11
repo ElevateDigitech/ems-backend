@@ -7,6 +7,7 @@ const ExpressResponse = require("./ExpressResponse");
 const fsPromises = require("fs").promises;
 const { STATUS_SUCCESS, STATUS_ERROR } = require("./status");
 const { referenceFields } = require("./referenceFields");
+const { findUser } = require("../queries/users");
 
 const hiddenFieldsDefault = { __v: 0, _id: 0, id: 0 };
 const hiddenFieldsUser = { __v: 0, _id: 0, salt: 0, hash: 0 };
@@ -107,6 +108,23 @@ const writeToFile = async (path, content) => {
   }
 };
 
+const getCurrentUser = async (userCode) => {
+  console.log("in");
+  return await findUser({
+    query: { userCode },
+    options: true,
+    populated: true,
+  });
+};
+
+const getLimitAndSkip = (start, end) => {
+  const parsedStart = parseInt(start) > 0 ? start : 1;
+  const parsedEnd = parseInt(end) > 0 ? end : 10;
+  const limit = parsedEnd - parsedStart + 1;
+  const skip = parsedStart - 1;
+  return { limit, skip };
+};
+
 module.exports = {
   hiddenFieldsDefault,
   hiddenFieldsUser,
@@ -137,4 +155,6 @@ module.exports = {
   getRoleId,
   toCapitalize,
   writeToFile,
+  getCurrentUser,
+  getLimitAndSkip,
 };

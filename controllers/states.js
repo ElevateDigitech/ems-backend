@@ -2,7 +2,7 @@ const moment = require("moment-timezone");
 const Country = require("../models/country");
 const State = require("../models/state");
 const User = require("../models/user");
-const { logAudit } = require("../middleware");
+const { logAudit } = require("../queries/auditLogs");
 const {
   auditActions,
   auditCollections,
@@ -201,7 +201,6 @@ module.exports = {
     // Log the creation action for auditing
     const currentUser = await findUser(req.user.userCode);
     await logAudit(
-      generateAuditCode(),
       auditActions.CREATE,
       auditCollections.STATES,
       createdState.stateCode,
@@ -272,7 +271,6 @@ module.exports = {
     // Log the update action for auditing
     const currentUser = await findUser(req.user.userCode);
     await logAudit(
-      generateAuditCode(),
       auditActions.UPDATE,
       auditCollections.STATES,
       updatedState.stateCode,
@@ -334,7 +332,6 @@ module.exports = {
     // Log the deletion action for auditing
     const currentUser = await findUser(req.user.userCode);
     await logAudit(
-      generateAuditCode(),
       auditActions.DELETE,
       auditCollections.STATES,
       previousData.stateCode,

@@ -10,7 +10,6 @@ const {
   MESSAGE_GET_AUDIT_SUCCESS,
 } = require("../utils/messages");
 
-// Auditlog Controller
 module.exports = {
   /**
    * Retrieves all audit logs from the database.
@@ -24,7 +23,7 @@ module.exports = {
     const { start = 1, end = 10 } = req.query;
 
     // Step 2: Fetch audit logs from the database using the provided start and end range
-    const auditLogs = await findAuditLogs({ start, end });
+    const auditLogs = await findAuditLogs({ start, end, options: true });
 
     // Step 3: Send a successful HTTP response with the retrieved audit logs
     res.status(STATUS_CODE_SUCCESS).send(
@@ -48,7 +47,10 @@ module.exports = {
     const { auditCode } = req.body;
 
     // Step 2: Find a single audit log that matches the provided audit code
-    const auditLog = await findAuditLog({ query: { auditCode } });
+    const auditLog = await findAuditLog({
+      query: { auditCode },
+      options: true,
+    });
 
     // Step 3: Check if the audit log exists in the database
     if (!auditLog) {

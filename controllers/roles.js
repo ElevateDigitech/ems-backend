@@ -1,7 +1,7 @@
 const moment = require("moment-timezone");
 const Role = require("../models/role");
 const User = require("../models/user");
-const { logAudit } = require("../middleware");
+const { logAudit } = require("../queries/auditLogs");
 const {
   auditActions,
   auditChanges,
@@ -17,6 +17,7 @@ const {
   getInvalidPermissions,
   IsObjectIdReferenced,
   generateAuditCode,
+  getCurrentUser,
 } = require("../utils/helpers");
 const {
   STATUS_CODE_SUCCESS,
@@ -38,19 +39,13 @@ const {
   MESSAGE_ROLE_NOT_ALLOWED_DELETE_REFERENCE_EXIST,
   MESSAGE_ROLE_TAKEN,
 } = require("../utils/messages");
-
-const findRole = async (filter) =>
-  Role.findOne(filter, hiddenFieldsDefault).populate(
-    "rolePermissions",
-    hiddenFieldsDefault
-  );
-
-const getCurrentUser = async (userCode) =>
-  User.findOne({ userCode }, hiddenFieldsUser).populate({
-    path: "role",
-    select: hiddenFieldsDefault,
-    populate: { path: "rolePermissions", select: hiddenFieldsDefault },
-  });
+const {
+  findRoles,
+  findRole,
+  createRoleObj,
+  updateRoleObj,
+  deleteRoleObj,
+} = require("../queries/roles");
 
 module.exports = {
   /**
@@ -60,12 +55,13 @@ module.exports = {
    * @param {Object} res - Express response object
    */
   GetRoles: async (req, res) => {
-    // Destructure 'entries' from the query parameters, defaulting to 100 if not provided
-    const { entries = 100 } = req.query;
-    // Retrieve all roles from the database
-    const roles = await Role.find({}, hiddenFieldsDefault)
-      .populate("rolePermissions", hiddenFieldsDefault)
-      .limit(entries);
+    const { start = 1, end = 10 } = req.query; // Step 1: Extract pagination parameters
+    const roles = await findRoles({
+      start,
+      end,
+      options: true,
+      populated: true,
+    }); // Step 2: Fetch exams from database
 
     // Send the retrieved roles in the response
     res
@@ -84,7 +80,11 @@ module.exports = {
    */
   GetOwnRole: async (req, res, next) => {
     // Find the role of the current user
-    const role = await findRole({ roleCode: req.user?.role?.roleCode });
+    const role = await findRole({
+      query: { roleCode: req.user?.role?.roleCode },
+      options: true,
+      populated: true,
+    });
 
     // Handle error if role not found
     if (!role)
@@ -105,7 +105,11 @@ module.exports = {
    */
   GetRoleByCode: async (req, res, next) => {
     // Find the role using the provided role code
-    const role = await findRole({ roleCode: req.body.roleCode });
+    const role = await findRole({
+      query: { roleCode: req.body.roleCode },
+      options: true,
+      populated: true,
+    });
 
     // Handle error if role not found
     if (!role)
@@ -132,9 +136,15 @@ module.exports = {
       rolePermissions,
     } = req.body;
 
+    const { formattedRoleName, formattedRoleDescription } = formatRoleFields({
+      roleName,
+      roleDescription,
+    });
     // Check if the role already exists
-    const existingRole = await Role.findOne({
-      roleName: roleName?.trim()?.toUpperCase(),
+    const existingRole = await findRole({
+      query: {
+        roleName: formattedRoleName,
+      },
     });
     if (existingRole)
       return handleError(next, STATUS_CODE_BAD_REQUEST, MESSAGE_ROLE_EXIST);
@@ -149,10 +159,9 @@ module.exports = {
       );
 
     // Create a new role
-    const newRole = new Role({
-      roleCode: generateRoleCode(),
-      roleName: roleName?.trim()?.toUpperCase(),
-      roleDescription,
+    const newRole = await createRoleObj({
+      roleName: formattedRoleName,
+      roleDescription: formattedRoleDescription,
       roleAllowDeletion,
       rolePermissions: await getPermissionIds(rolePermissions),
     });
@@ -161,12 +170,15 @@ module.exports = {
     await newRole.save();
 
     // Retrieve the newly created role
-    const createdRole = await findRole({ roleCode: newRole.roleCode });
+    const createdRole = await findRole({
+      query: { roleCode: newRole.roleCode },
+      options: true,
+      populated: true,
+    });
     const currentUser = await getCurrentUser(req.user.userCode);
 
     // Log the creation action
     await logAudit(
-      generateAuditCode(),
       auditActions.CREATE,
       auditCollections.ROLES,
       createdRole.roleCode,
@@ -197,16 +209,21 @@ module.exports = {
    */
   UpdateRole: async (req, res, next) => {
     const { roleCode, roleName, roleDescription, rolePermissions } = req.body;
-
+    const { formattedRoleName, formattedRoleDescription } = formatRoleFields({
+      roleName,
+      roleDescription,
+    });
     // Find the existing role
-    const existingRole = await findRole({ roleCode });
+    const existingRole = await findRole({ query: { roleCode } });
     if (!existingRole)
       return handleError(next, STATUS_CODE_BAD_REQUEST, MESSAGE_ROLE_NOT_FOUND);
 
     // Check for role name conflicts
-    const otherRoles = await Role.find({
-      roleCode: { $ne: roleCode },
-      roleName: roleName?.trim()?.toUpperCase(),
+    const otherRoles = await findRole({
+      query: {
+        roleCode: { $ne: roleCode },
+        roleName: formattedRoleName,
+      },
     });
     if (otherRoles?.length)
       return handleError(next, STATUS_CODE_CONFLICT, MESSAGE_ROLE_TAKEN);
@@ -221,31 +238,34 @@ module.exports = {
       );
 
     // Save the current role state for audit logging
-    const roleBeforeUpdate = await findRole({ roleCode });
+    const previousData = await findRole({
+      query: { roleCode },
+      options: true,
+    });
 
     // Update the role in the database
-    await Role.updateOne(
-      { roleCode },
-      {
-        roleName: roleName?.trim()?.toUpperCase(),
-        roleDescription,
-        rolePermissions: await getPermissionIds(rolePermissions),
-        updatedAt: moment().valueOf(),
-      }
-    );
+    await updateRoleObj({
+      roleCode,
+      roleName: formattedRoleName,
+      roleDescription: formattedRoleDescription,
+      rolePermissions: await getPermissionIds(rolePermissions),
+    });
 
     // Retrieve the updated role
-    const updatedRole = await findRole({ roleCode });
+    const updatedRole = await findRole({
+      query: { roleCode },
+      options: true,
+      populated: true,
+    });
     const currentUser = await getCurrentUser(req.user.userCode);
 
     // Log the update action
     await logAudit(
-      generateAuditCode(),
       auditActions.UPDATE,
       auditCollections.ROLES,
       updatedRole.roleCode,
       auditChanges.UPDATE_ROLE,
-      roleBeforeUpdate.toObject(),
+      previousData.toObject(),
       updatedRole.toObject(),
       currentUser.toObject()
     );
@@ -273,7 +293,7 @@ module.exports = {
     const { roleCode } = req.body;
 
     // Find the role to be deleted
-    const existingRole = await Role.findOne({ roleCode });
+    const existingRole = await findRole({ query: { roleCode } });
     if (!existingRole)
       return handleError(next, STATUS_CODE_BAD_REQUEST, MESSAGE_ROLE_NOT_FOUND);
 
@@ -295,10 +315,14 @@ module.exports = {
       );
 
     // Save the current role state for audit logging
-    const previousData = await findRole({ roleCode });
+    const previousData = await findRole({
+      query: { roleCode },
+      options: true,
+      populated: true,
+    });
 
     // Delete the role from the database
-    const deletionResult = await Role.deleteOne({ roleCode });
+    const deletionResult = await deleteRoleObj(roleCode);
 
     // Handle error if deletion failed
     if (deletionResult.deletedCount === 0)
@@ -313,7 +337,6 @@ module.exports = {
 
     // Log the deletion action
     await logAudit(
-      generateAuditCode(),
       auditActions.DELETE,
       auditCollections.ROLES,
       roleCode,

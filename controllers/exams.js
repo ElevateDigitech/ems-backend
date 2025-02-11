@@ -1,20 +1,14 @@
-const moment = require("moment-timezone");
-const Exam = require("../models/exam");
-const User = require("../models/user");
-const { logAudit } = require("../middleware");
+const { logAudit } = require("../queries/auditLogs");
 const {
   auditActions,
   auditCollections,
   auditChanges,
 } = require("../utils/audit");
 const {
-  hiddenFieldsDefault,
-  hiddenFieldsUser,
   handleError,
   handleSuccess,
   IsObjectIdReferenced,
-  generateExamCode,
-  generateAuditCode,
+  getCurrentUser,
 } = require("../utils/helpers");
 const {
   STATUS_CODE_SUCCESS,
@@ -34,18 +28,15 @@ const {
   MESSAGE_DELETE_EXAMS_ERROR,
   MESSAGE_DELETE_EXAMS_SUCCESS,
 } = require("../utils/messages");
+const {
+  findExams,
+  findExam,
+  createExamObj,
+  formatExamTitle,
+  updateExamObj,
+  deleteExamObj,
+} = require("../queries/exams");
 
-// Utility functions
-const findExamByCode = async (examCode) =>
-  await Exam.findOne({ examCode }, hiddenFieldsDefault);
-const findUserByCode = async (userCode) =>
-  await User.findOne({ userCode }, hiddenFieldsUser).populate({
-    path: "role",
-    select: hiddenFieldsDefault,
-    populate: { path: "rolePermissions", select: hiddenFieldsDefault },
-  });
-
-// Exam Controller
 module.exports = {
   /**
    * Retrieves all exams from the database.
@@ -54,12 +45,10 @@ module.exports = {
    * @param {Object} res - Express response object
    */
   GetExams: async (req, res) => {
-    // Destructure 'entries' from the query parameters, defaulting to 100 if not provided
-    const { entries = 100 } = req.query;
-    // Fetch all exam documents
-    const exams = await Exam.find({}, hiddenFieldsDefault).limit(entries);
+    const { start = 1, end = 10 } = req.query; // Step 1: Extract pagination parameters
+    const exams = await findExams({ start, end, options: true }); // Step 2: Fetch exams from database
 
-    // Return success response with fetched data
+    // Step 3: Return success response with fetched data
     res
       .status(STATUS_CODE_SUCCESS)
       .send(
@@ -68,19 +57,17 @@ module.exports = {
   },
 
   /**
-   * Retrieves a exam by its unique exam code.
+   * Retrieves an exam by its unique exam code.
    *
    * @param {Object} req - Express request object
    * @param {Object} res - Express response object
    * @param {Function} next - Express next middleware function
    */
   GetExamByCode: async (req, res, next) => {
-    const { examCode } = req.body;
+    const { examCode } = req.body; // Step 1: Extract exam code from request
+    const exam = await findExam({ query: { examCode }, options: true }); // Step 2: Fetch exam by provided examCode
 
-    // Fetch exam by provided examCode
-    const exam = await findExamByCode(examCode);
-
-    // Return response based on exam existence
+    // Step 3: Return response based on exam existence
     return exam
       ? res
           .status(STATUS_CODE_SUCCESS)
@@ -98,27 +85,27 @@ module.exports = {
    * @param {Function} next - Express next middleware function
    */
   CreateExam: async (req, res, next) => {
-    const { title } = req.body;
-    const formattedName = title.trim().toUpperCase();
+    const { title } = req.body; // Step 1: Extract exam title from request
+    const formattedTitle = formatExamTitle(title); // Step 2: Format exam title
 
-    // Check if exam already exists
-    if (await Exam.findOne({ title: formattedName }))
+    // Step 3: Check if exam already exists
+    const existingExam = await findExam({ query: { title: formattedTitle } });
+    if (existingExam)
       return handleError(next, STATUS_CODE_CONFLICT, MESSAGE_EXAM_EXIST);
 
-    // Create new exam
-    const newExam = new Exam({
-      examCode: generateExamCode(),
-      title: formattedName,
-    });
+    // Step 4: Create new exam
+    const newExam = await createExamObj({ title: formattedTitle });
     await newExam.save();
 
-    // Log creation
-    const createdExam = await findExamByCode(newExam.examCode);
-    const currentUser = await findUserByCode(req.user.userCode);
+    // Step 5: Log creation
+    const createdExam = await findExam({
+      query: { examCode: newExam.examCode },
+      options: true,
+    });
+    const currentUser = await getCurrentUser(req.user.userCode);
     await logAudit(
-      generateAuditCode(),
       auditActions.CREATE,
-      auditCollections.examS,
+      auditCollections.EXAMS,
       createdExam.examCode,
       auditChanges.CREATE_EXAM,
       null,
@@ -126,7 +113,7 @@ module.exports = {
       currentUser.toObject()
     );
 
-    // Return success response
+    // Step 6: Return success response
     res
       .status(STATUS_CODE_SUCCESS)
       .send(
@@ -146,48 +133,39 @@ module.exports = {
    * @param {Function} next - Express next middleware function
    */
   UpdateExam: async (req, res, next) => {
-    const { examCode, title } = req.body;
-    const formattedName = title.trim().toUpperCase();
+    const { examCode, title } = req.body; // Step 1: Extract exam code and title from request
+    const formattedTitle = formatExamTitle(title); // Step 2: Format exam title
 
-    // Check for existing exam
-    const existingExam = await findExamByCode(examCode);
+    // Step 3: Check for existing exam
+    const existingExam = await findExam({ query: { examCode } });
     if (!existingExam)
       return handleError(next, STATUS_CODE_CONFLICT, MESSAGE_EXAM_NOT_FOUND);
 
-    // Check if new exam is taken
-    if (
-      await Exam.findOne({
-        examCode: { $ne: examCode },
-        title: formattedName,
-      })
-    )
+    // Step 4: Check if new exam title is taken
+    const otherExams = await findExam({
+      query: { examCode: { $ne: examCode }, title: formattedTitle },
+    });
+    if (otherExams)
       return handleError(next, STATUS_CODE_CONFLICT, MESSAGE_EXAM_TAKEN);
 
-    // Update exam data
-    const previousData = existingExam.toObject();
-    await Exam.findOneAndUpdate(
-      { examCode },
-      {
-        title: formattedName,
-        updatedAt: moment().valueOf(),
-      }
-    );
+    // Step 5: Update exam data
+    const previousData = await findExam({ query: { examCode }, options: true });
+    await updateExamObj({ examCode, title: formattedTitle });
 
-    // Log the update audit
-    const updatedExam = await findExamByCode(examCode);
-    const currentUser = await findUserByCode(req.user.userCode);
+    // Step 6: Log the update audit
+    const updatedExam = await findExam({ query: { examCode }, options: true });
+    const currentUser = await getCurrentUser(req.user.userCode);
     await logAudit(
-      generateAuditCode(),
       auditActions.UPDATE,
-      auditCollections.examS,
+      auditCollections.EXAMS,
       examCode,
       auditChanges.UPDATE_EXAM,
-      previousData,
+      previousData.toObject(),
       updatedExam.toObject(),
       currentUser.toObject()
     );
 
-    // Return success response
+    // Step 7: Return success response
     res
       .status(STATUS_CODE_SUCCESS)
       .send(
@@ -200,21 +178,20 @@ module.exports = {
   },
 
   /**
-   * Deletes a exam from the database.
+   * Deletes an exam from the database.
    *
    * @param {Object} req - Express request object
    * @param {Object} res - Express response object
    * @param {Function} next - Express next middleware function
    */
   DeleteExam: async (req, res, next) => {
-    const { examCode } = req.body;
-    const existingExam = await Exam.findOne({ examCode });
+    const { examCode } = req.body; // Step 1: Extract exam code from request
+    const existingExam = await findExam({ query: { examCode } }); // Step 2: Validate exam existence
 
-    // Validate exam existence
     if (!existingExam)
       return handleError(next, STATUS_CODE_CONFLICT, MESSAGE_EXAM_NOT_FOUND);
 
-    // Check if exam is referenced elsewhere
+    // Step 3: Check if exam is referenced elsewhere
     const { isReferenced } = await IsObjectIdReferenced(existingExam._id);
     if (isReferenced)
       return handleError(
@@ -223,11 +200,10 @@ module.exports = {
         MESSAGE_EXAM_NOT_ALLOWED_DELETE_REFERENCE_EXIST
       );
 
-    // Delete exam
-    const previousData = await findExamByCode(examCode);
-    const deletionResult = await Exam.deleteOne({ examCode });
+    // Step 4: Delete exam
+    const previousData = await findExam({ query: { examCode }, options: true });
+    const deletionResult = await deleteExamObj(examCode);
 
-    // Validate deletion
     if (deletionResult.deletedCount === 0)
       return handleError(
         next,
@@ -235,12 +211,11 @@ module.exports = {
         MESSAGE_DELETE_EXAMS_ERROR
       );
 
-    // Log deletion
-    const currentUser = await findUserByCode(req.user.userCode);
+    // Step 5: Log deletion
+    const currentUser = await getCurrentUser(req.user.userCode);
     await logAudit(
-      generateAuditCode(),
       auditActions.DELETE,
-      auditCollections.examS,
+      auditCollections.EXAMS,
       examCode,
       auditChanges.DELETE_EXAM,
       previousData.toObject(),
@@ -248,7 +223,7 @@ module.exports = {
       currentUser.toObject()
     );
 
-    // Return success response
+    // Step 6: Return success response
     res
       .status(STATUS_CODE_SUCCESS)
       .send(handleSuccess(STATUS_CODE_SUCCESS, MESSAGE_DELETE_EXAMS_SUCCESS));

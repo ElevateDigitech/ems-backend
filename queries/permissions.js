@@ -13,20 +13,18 @@ const { hiddenFieldsDefault } = require("../utils/helpers");
  */
 const findPermissions = async ({
   query = {}, // MongoDB query object to filter permissions
-  options = hiddenFieldsDefault, // Fields to include/exclude in the result
+  options = false, // Fields to include/exclude in the result
   start = 1, // Starting index for pagination (default is 1)
   end = 10, // Ending index for pagination (default is 10)
 }) => {
-  // Calculate the number of entries to fetch
-  const limit = (end > 0 ? end : 10) - (start > 0 ? start : 1) + 1;
+  // Step 1: Calculate the limit and skip values for pagination
+  const { limit, skip } = getLimitAndSkip(start, end);
 
-  // Calculate how many entries to skip
-  const skip = (start > 0 ? start : 1) - 1;
-
-  // Query the database with the provided filters
-  // Apply skip for pagination
-  // Apply limit to control the number of results returned
-  return await Permission.find(query, options).skip(skip).limit(limit);
+  // Step 2: Query the database with provided filters
+  // Apply skip for pagination and limit to control the number of results returned
+  return await Permission.find(query, options ? hiddenFieldsDefault : {})
+    .skip(skip) // Apply skip
+    .limit(limit); // Apply limit
 };
 
 /**
@@ -39,11 +37,11 @@ const findPermissions = async ({
  */
 const findPermission = async ({
   query = {}, // MongoDB query object to filter the permission
-  options = hiddenFieldsDefault, // Fields to include/exclude in the result
+  options = false, // Fields to include/exclude in the result
 }) => {
-  // Query the database to find a single permission
+  // Step 1: Query the database to find a single permission
   // Return the first document that matches the query criteria
-  return await Permission.findOne(query, options);
+  return await Permission.findOne(query, options ? hiddenFieldsDefault : {});
 };
 
 module.exports = {
