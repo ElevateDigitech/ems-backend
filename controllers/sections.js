@@ -112,7 +112,9 @@ module.exports = {
     const { start = 1, end = 10 } = req.query; // Step 1: Extract pagination parameters
     const { classCode } = req.body;
     const foundClass = await findClass({
-      classCode,
+      query: {
+        classCode,
+      },
     }); // Step 2: Find the class using the provided class code
 
     if (!foundClass)
