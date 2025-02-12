@@ -44,7 +44,7 @@ module.exports = {
    * @param {Object} req - Express request object
    * @param {Object} res - Express response object
    */
-  GetGenders: async (req, res) => {
+  GetGenders: async (req, res, next) => {
     const { start = 1, end = 10 } = req.query; // Step 1: Get pagination parameters
     const genders = await findGenders({ start, end, options: true }); // Step 2: Fetch genders
     res.status(STATUS_CODE_SUCCESS).send(

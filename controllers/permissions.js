@@ -18,7 +18,7 @@ module.exports = {
    * @param {Object} res - Express response object
    * @param {Function} next - Express next middleware function
    */
-  GetPermissions: async (req, res) => {
+  GetPermissions: async (req, res, next) => {
     // Step 1: Destructure 'start' and 'end' from the query parameters, defaulting to 1 and 10 if not provided
     const { start = 1, end = 10 } = req.query;
 

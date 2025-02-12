@@ -48,7 +48,7 @@ module.exports = {
    * @param {Object} req - Express request object
    * @param {Object} res - Express response object
    */
-  GetRoles: async (req, res) => {
+  GetRoles: async (req, res, next) => {
     const { start = 1, end = 10 } = req.query; // Step 1: Extract pagination parameters
     const roles = await findRoles({
       start,

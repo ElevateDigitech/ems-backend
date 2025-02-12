@@ -54,8 +54,6 @@ const findUsers = async ({
 const findUser = async ({
   query = {}, // MongoDB query object to filter the permission
   options = false, // Fields to include/exclude in the result
-  roleOptions = false,
-  rolePermissionoptions = false,
   populated = false,
 }) => {
   // Query the database to find a single permission
@@ -63,10 +61,10 @@ const findUser = async ({
   return populated
     ? await User.findOne(query, options ? hiddenFieldsUser : {}).populate({
         path: "role",
-        select: roleOptions ? hiddenFieldsDefault : {},
+        select: hiddenFieldsDefault,
         populate: {
           path: "rolePermissions",
-          select: rolePermissionoptions ? hiddenFieldsDefault : {},
+          select: hiddenFieldsDefault,
         },
       })
     : await User.findOne(query, options ? hiddenFieldsUser : {});

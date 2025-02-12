@@ -86,7 +86,7 @@ module.exports = {
    * @param {Object} req - Express request object
    * @param {Object} res - Express response object
    */
-  GetCities: async (req, res) => {
+  GetCities: async (req, res, next) => {
     // Destructure 'entries' from the query parameters, defaulting to 100 if not provided
     const { entries = 100 } = req.query;
     // Retrieve all cities from the database

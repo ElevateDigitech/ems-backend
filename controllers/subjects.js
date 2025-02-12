@@ -1,6 +1,3 @@
-const moment = require("moment-timezone");
-const Subject = require("../models/subject");
-const User = require("../models/user");
 const { logAudit } = require("../queries/auditLogs");
 const {
   auditActions,
@@ -8,14 +5,10 @@ const {
   auditChanges,
 } = require("../utils/audit");
 const {
-  hiddenFieldsDefault,
-  hiddenFieldsUser,
   handleSuccess,
   handleError,
-  toCapitalize,
   IsObjectIdReferenced,
-  generateAuditCode,
-  generateSubjectCode,
+  getCurrentUser,
 } = require("../utils/helpers");
 const {
   STATUS_CODE_CONFLICT,
@@ -35,26 +28,14 @@ const {
   MESSAGE_DELETE_SUBJECT_ERROR,
   MESSAGE_DELETE_SUBJECT_SUCCESS,
 } = require("../utils/messages");
-
-/**
- * Retrieves the current user along with their role and permissions.
- *
- * @param {String} userCode - Unique identifier for the user
- * @returns {Object} - User object with populated role and permissions
- */
-const getCurrentUser = async (userCode) => {
-  // Find the user by userCode, hiding specific fields
-  return await User.findOne({ userCode }, hiddenFieldsUser).populate({
-    // Populate the role details
-    path: "role",
-    select: hiddenFieldsDefault,
-    populate: {
-      // Further populate the rolePermissions under role
-      path: "rolePermissions",
-      select: hiddenFieldsDefault,
-    },
-  });
-};
+const {
+  findSubjects,
+  findSubject,
+  formatSubjectName,
+  createSubjectObj,
+  updateSubjectObj,
+  deleteSubjectObj,
+} = require("../queries/subjects");
 
 module.exports = {
   /**
@@ -65,12 +46,10 @@ module.exports = {
    * @param {Function} next - Express next middleware function
    */
   GetSubjects: async (req, res, next) => {
-    // Destructure 'entries' from the query parameters, defaulting to 100 if not provided
-    const { entries = 100 } = req.query;
-    // Fetch all subjects from the database, excluding hidden fields
-    const subjects = await Subject.find({}, hiddenFieldsDefault).limit(entries);
+    const { start = 1, end = 10 } = req.query; // Step 1: Extract pagination parameters
+    const subjects = await findSubjects({ start, end, options: true }); // Step 2: Fetch subjects from the database
 
-    // Send success response with the list of subjects
+    // Step 3: Send success response with the list of subjects
     res
       .status(STATUS_CODE_SUCCESS)
       .send(
@@ -90,13 +69,15 @@ module.exports = {
    * @param {Function} next - Express next middleware function
    */
   GetSubjectByCode: async (req, res, next) => {
-    // Extract subject code from request body
-    const { subjectCode } = req.body;
+    const { subjectCode } = req.body; // Step 1: Extract subject code from request body
 
-    // Find subject in the database using the subject code
-    const subject = await Subject.findOne({ subjectCode }, hiddenFieldsDefault);
+    // Step 2: Find subject in the database using the subject code
+    const subject = await findSubject({
+      query: { subjectCode },
+      options: true,
+    });
 
-    // Handle case where subject is not found
+    // Step 3: Handle case where subject is not found
     if (!subject) {
       return handleError(
         next,
@@ -105,7 +86,7 @@ module.exports = {
       );
     }
 
-    // Send success response with the subject details
+    // Step 4: Send success response with the subject details
     res
       .status(STATUS_CODE_SUCCESS)
       .send(
@@ -121,31 +102,31 @@ module.exports = {
    * @param {Function} next - Express next middleware function
    */
   CreateSubject: async (req, res, next) => {
-    // Extract and capitalize the subject name from the request body
-    const { name } = req.body;
-    const capitalizedName = toCapitalize(name);
+    const { name } = req.body; // Step 1: Extract and format subject name from request body
+    const capitalizedName = formatSubjectName(name);
 
-    // Check if a subject with the same name already exists
-    const existingSubject = await Subject.findOne({ name: capitalizedName });
+    // Step 2: Check if a subject with the same name already exists
+    const existingSubject = await findSubject({
+      query: { name: capitalizedName },
+    });
     if (existingSubject) {
       return handleError(next, STATUS_CODE_CONFLICT, MESSAGE_SUBJECT_EXIST);
     }
 
-    // Generate a new subject code and create the subject
-    const subjectCode = generateSubjectCode();
-    const subject = new Subject({ subjectCode, name: capitalizedName });
+    // Step 3: Create new subject object and save to database
+    const subject = await createSubjectObj({ name: capitalizedName });
     await subject.save();
 
-    // Retrieve the newly created subject details
-    const createdSubject = await Subject.findOne(
-      { subjectCode },
-      hiddenFieldsDefault
-    );
+    // Step 4: Retrieve the newly created subject details
+    const createdSubject = await findSubject({
+      query: { subjectCode: subject.subjectCode },
+      options: true,
+    });
 
-    // Get the current user information
+    // Step 5: Get current user information for audit logging
     const currentUser = await getCurrentUser(req.user.userCode);
 
-    // Log the audit details for subject creation
+    // Step 6: Log the audit details for subject creation
     await logAudit(
       auditActions.CREATE,
       auditCollections.SUBJECTS,
@@ -156,7 +137,7 @@ module.exports = {
       currentUser.toObject()
     );
 
-    // Send success response with the created subject details
+    // Step 7: Send success response with created subject details
     res
       .status(STATUS_CODE_SUCCESS)
       .send(
@@ -176,58 +157,51 @@ module.exports = {
    * @param {Function} next - Express next middleware function
    */
   UpdateSubject: async (req, res, next) => {
-    // Extract subject code and new name from request body
-    const { subjectCode, name } = req.body;
-    const capitalizedName = toCapitalize(name);
+    const { subjectCode, name } = req.body; // Step 1: Extract subject code and new name from request body
+    const capitalizedName = formatSubjectName(name);
 
-    // Check if the subject exists in the database
-    const existingSubject = await Subject.findOne({ subjectCode });
+    // Step 2: Check if the subject exists in the database
+    const existingSubject = await findSubject({ query: { subjectCode } });
     if (!existingSubject) {
       return handleError(next, STATUS_CODE_CONFLICT, MESSAGE_SUBJECT_NOT_FOUND);
     }
 
-    // Ensure no other subject has the same new name
-    const duplicateSubjects = await Subject.find({
-      subjectCode: { $ne: subjectCode },
-      name: capitalizedName,
+    // Step 3: Ensure no other subject has the same new name
+    const duplicateSubjects = await findSubjects({
+      query: { subjectCode: { $ne: subjectCode }, name: capitalizedName },
     });
     if (duplicateSubjects.length > 0) {
       return handleError(next, STATUS_CODE_CONFLICT, MESSAGE_SUBJECT_TAKEN);
     }
 
-    // Retrieve the subject before updating
-    const subjectBeforeUpdate = await Subject.findOne(
-      { subjectCode },
-      hiddenFieldsDefault
-    );
+    // Step 4: Retrieve subject details before update for audit logging
+    const previousData = await findSubject({
+      query: { subjectCode },
+      options: true,
+    });
 
-    // Update the subject details in the database
-    await Subject.findOneAndUpdate(
-      { subjectCode },
-      { name: capitalizedName, updatedAt: moment().valueOf() }
-    );
+    // Step 5: Update the subject details in the database
+    await updateSubjectObj({ subjectCode, name: capitalizedName });
 
-    // Retrieve the updated subject details
-    const updatedSubject = await Subject.findOne(
-      { subjectCode },
-      hiddenFieldsDefault
-    );
+    // Step 6: Retrieve updated subject details
+    const updatedSubject = await findSubject({
+      query: { subjectCode },
+      options: true,
+    });
 
-    // Get current user information
+    // Step 7: Log the audit details for subject update
     const currentUser = await getCurrentUser(req.user.userCode);
-
-    // Log the audit details for subject update
     await logAudit(
       auditActions.UPDATE,
       auditCollections.SUBJECTS,
       updatedSubject.subjectCode,
       auditChanges.UPDATE_SUBJECT,
-      subjectBeforeUpdate.toObject(),
+      previousData.toObject(),
       updatedSubject.toObject(),
       currentUser.toObject()
     );
 
-    // Send success response with the updated subject details
+    // Step 8: Send success response with updated subject details
     res
       .status(STATUS_CODE_SUCCESS)
       .send(
@@ -247,16 +221,15 @@ module.exports = {
    * @param {Function} next - Express next middleware function
    */
   DeleteSubject: async (req, res, next) => {
-    // Extract subject code from request body
-    const { subjectCode } = req.body;
+    const { subjectCode } = req.body; // Step 1: Extract subject code from request body
 
-    // Check if the subject exists in the database
-    const existingSubject = await Subject.findOne({ subjectCode });
+    // Step 2: Check if the subject exists in the database
+    const existingSubject = await findSubject({ query: { subjectCode } });
     if (!existingSubject) {
       return handleError(next, STATUS_CODE_CONFLICT, MESSAGE_SUBJECT_NOT_FOUND);
     }
 
-    // Verify if the subject is referenced elsewhere in the database
+    // Step 3: Verify if the subject is referenced elsewhere in the database
     const { isReferenced } = await IsObjectIdReferenced(existingSubject._id);
     if (isReferenced) {
       return handleError(
@@ -266,14 +239,14 @@ module.exports = {
       );
     }
 
-    // Retrieve subject details before deletion
-    const previousData = await Subject.findOne(
-      { subjectCode },
-      hiddenFieldsDefault
-    );
+    // Step 4: Retrieve subject details before deletion for audit logging
+    const previousData = await findSubject({
+      query: { subjectCode },
+      options: true,
+    });
 
-    // Delete the subject from the database
-    const subject = await Subject.deleteOne({ subjectCode });
+    // Step 5: Delete the subject from the database
+    const subject = await deleteSubjectObj(subjectCode);
     if (subject.deletedCount === 0) {
       return handleError(
         next,
@@ -282,10 +255,8 @@ module.exports = {
       );
     }
 
-    // Get current user information
+    // Step 6: Log the audit details for subject deletion
     const currentUser = await getCurrentUser(req.user.userCode);
-
-    // Log the audit details for subject deletion
     await logAudit(
       auditActions.DELETE,
       auditCollections.SUBJECTS,
@@ -296,7 +267,7 @@ module.exports = {
       currentUser.toObject()
     );
 
-    // Send success response confirming deletion
+    // Step 7: Send success response confirming deletion
     res
       .status(STATUS_CODE_SUCCESS)
       .send(handleSuccess(STATUS_CODE_SUCCESS, MESSAGE_DELETE_SUBJECT_SUCCESS));

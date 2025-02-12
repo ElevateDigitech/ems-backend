@@ -1,7 +1,3 @@
-const moment = require("moment-timezone");
-const Country = require("../models/country");
-const State = require("../models/state");
-const User = require("../models/user");
 const { logAudit } = require("../queries/auditLogs");
 const {
   auditActions,
@@ -9,14 +5,10 @@ const {
   auditChanges,
 } = require("../utils/audit");
 const {
-  hiddenFieldsDefault,
-  hiddenFieldsUser,
-  toCapitalize,
   IsObjectIdReferenced,
-  generateStateCode,
-  generateAuditCode,
   handleError,
   handleSuccess,
+  getCurrentUser,
 } = require("../utils/helpers");
 const {
   STATUS_CODE_CONFLICT,
@@ -38,33 +30,15 @@ const {
   MESSAGE_COUNTRY_NOT_FOUND,
   MESSAGE_STATE_TAKEN,
 } = require("../utils/messages");
-
-const findUser = async (userCode) =>
-  // Find a user by userCode
-  await User.findOne({ userCode }, hiddenFieldsUser)
-    // Populate the role information for the user
-    .populate({
-      path: "role",
-      select: hiddenFieldsDefault,
-      // Populate the rolePermissions associated with the role
-      populate: {
-        path: "rolePermissions",
-        select: hiddenFieldsDefault,
-      },
-    });
-
-const findState = async (criteria) =>
-  // Find a single state matching the provided criteria
-  await State.findOne(criteria, hiddenFieldsDefault)
-    // Populate the associated country information for the state
-    .populate("country", hiddenFieldsDefault);
-
-const findStates = async (criteria = {}, limit) =>
-  // Find all states that match the provided criteria (or all if none specified)
-  await State.find(criteria, hiddenFieldsDefault)
-    // Populate the associated country information for each state
-    .populate("country", hiddenFieldsDefault)
-    .limit(limit);
+const {
+  findStates,
+  findState,
+  createStateObj,
+  formatStateFields,
+  updateStateObj,
+  deleteStateObj,
+} = require("../queries/states");
+const { findCountry } = require("../queries/countries");
 
 module.exports = {
   /**
@@ -72,14 +46,20 @@ module.exports = {
    *
    * @param {Object} req - Express request object
    * @param {Object} res - Express response object
+   * @param {Function} next - Express next middleware function
    */
-  GetStates: async (req, res) => {
-    // Destructure 'entries' from the query parameters, defaulting to 100 if not provided
-    const { entries = 100 } = req.query;
-    // Retrieve all states from the database
-    const states = await findStates({}, entries);
+  GetStates: async (req, res, next) => {
+    const { start = 1, end = 10 } = req.query; // Step 1: Extract pagination parameters
 
-    // Send success response with the list of states
+    // Step 2: Retrieve all states from the database
+    const states = await findStates({
+      start,
+      end,
+      options: true,
+      populated: true,
+    });
+
+    // Step 3: Send success response with the list of states
     res
       .status(STATUS_CODE_SUCCESS)
       .send(
@@ -95,13 +75,16 @@ module.exports = {
    * @param {Function} next - Express next middleware function
    */
   GetStateByCode: async (req, res, next) => {
-    // Extract state code from request body
-    const { stateCode } = req.body;
+    const { stateCode } = req.body; // Step 1: Extract state code from request body
 
-    // Find the state by its code
-    const state = await findState({ stateCode });
+    // Step 2: Find the state by its code
+    const state = await findState({
+      query: { stateCode },
+      options: true,
+      populated: true,
+    });
 
-    // Handle case when state is not found
+    // Step 3: Handle case when state is not found
     if (!state)
       return handleError(
         next,
@@ -109,7 +92,7 @@ module.exports = {
         MESSAGE_STATE_NOT_FOUND
       );
 
-    // Send success response with the found state
+    // Step 4: Send success response with the found state
     res
       .status(STATUS_CODE_SUCCESS)
       .send(
@@ -125,15 +108,13 @@ module.exports = {
    * @param {Function} next - Express next middleware function
    */
   GetStatesByCountryCode: async (req, res, next) => {
-    // Destructure 'entries' from the query parameters, defaulting to 100 if not provided
-    const { entries = 100 } = req.query;
-    // Extract country code from request body
-    const { countryCode } = req.body;
+    const { start = 1, end = 10 } = req.query; // Step 1: Extract pagination parameters
+    const { countryCode } = req.body; // Step 2: Extract country code from request body
 
-    // Find the country by its code
-    const country = await Country.findOne({ countryCode });
+    // Step 3: Find the country by its code
+    const country = await findCountry({ query: { countryCode } });
 
-    // Handle case when country is not found
+    // Step 4: Handle case when country is not found
     if (!country)
       return handleError(
         next,
@@ -141,10 +122,16 @@ module.exports = {
         MESSAGE_COUNTRY_NOT_FOUND
       );
 
-    // Retrieve states associated with the country
-    const states = await findStates({ country: country._id }, entries);
+    // Step 5: Retrieve states associated with the country
+    const states = await findStates({
+      query: { country: country._id },
+      start,
+      end,
+      options: true,
+      populated: true,
+    });
 
-    // Handle case when no states are found
+    // Step 6: Handle case when no states are found
     if (!states?.length)
       return handleError(
         next,
@@ -152,7 +139,7 @@ module.exports = {
         MESSAGE_STATES_NOT_FOUND
       );
 
-    // Send success response with the list of states
+    // Step 7: Send success response with the list of states
     res
       .status(STATUS_CODE_SUCCESS)
       .send(
@@ -168,38 +155,38 @@ module.exports = {
    * @param {Function} next - Express next middleware function
    */
   CreateState: async (req, res, next) => {
-    // Extract state details from request body
-    const { name, iso, countryCode } = req.body;
+    const { name, iso, countryCode } = req.body; // Step 1: Extract state details from request body
+    const { formattedName, formattedISO } = formatStateFields({ name, iso }); // Step 2: Format state fields
 
-    // Check if the state already exists
-    const existingState = await State.findOne({
-      $or: [{ name: toCapitalize(name) }, { iso: iso.toUpperCase() }],
+    // Step 3: Check if the state already exists
+    const existingState = await findState({
+      query: { $or: [{ name: formattedName }, { iso: formattedISO }] },
     });
     if (existingState)
       return handleError(next, STATUS_CODE_CONFLICT, MESSAGE_STATE_EXIST);
 
-    // Verify if the provided country exists
-    const existingCountry = await Country.findOne({ countryCode });
+    // Step 4: Verify if the provided country exists
+    const existingCountry = await findCountry({ query: { countryCode } });
     if (!existingCountry)
       return handleError(next, STATUS_CODE_CONFLICT, MESSAGE_COUNTRY_NOT_FOUND);
 
-    // Generate unique code for the new state
-    const stateCode = generateStateCode();
-
-    // Create a new state document
-    const newState = new State({
-      stateCode,
-      name: toCapitalize(name),
-      iso: iso.toUpperCase(),
+    // Step 5: Create a new state document
+    const newState = await createStateObj({
+      name: formattedName,
+      iso: formattedISO,
       country: existingCountry._id,
     });
     await newState.save();
 
-    // Retrieve the newly created state
-    const createdState = await findState({ stateCode });
+    // Step 6: Retrieve the newly created state
+    const createdState = await findState({
+      query: { stateCode: newState.stateCode },
+      options: true,
+      populated: true,
+    });
 
-    // Log the creation action for auditing
-    const currentUser = await findUser(req.user.userCode);
+    // Step 7: Log the creation action for auditing
+    const currentUser = await getCurrentUser(req.user.userCode);
     await logAudit(
       auditActions.CREATE,
       auditCollections.STATES,
@@ -210,7 +197,7 @@ module.exports = {
       currentUser.toObject()
     );
 
-    // Send success response with the created state
+    // Step 8: Send success response with the created state
     res
       .status(STATUS_CODE_SUCCESS)
       .send(
@@ -230,57 +217,64 @@ module.exports = {
    * @param {Function} next - Express next middleware function
    */
   UpdateState: async (req, res, next) => {
-    // Extract state details from request body
-    const { stateCode, name, iso, countryCode } = req.body;
+    const { stateCode, name, iso, countryCode } = req.body; // Step 1: Extract state details from request body
+    const { formattedName, formattedISO } = formatStateFields({ name, iso }); // Step 2: Format state fields
 
-    // Verify if the state exists
-    const existingState = await State.findOne({ stateCode });
+    // Step 3: Verify if the state exists
+    const existingState = await findState({ query: { stateCode } });
     if (!existingState)
       return handleError(next, STATUS_CODE_CONFLICT, MESSAGE_STATE_NOT_FOUND);
 
-    // Verify if the provided country exists
-    const existingCountry = await Country.findOne({ countryCode });
+    // Step 4: Verify if the provided country exists
+    const existingCountry = await findCountry({ query: { countryCode } });
     if (!existingCountry)
       return handleError(next, STATUS_CODE_CONFLICT, MESSAGE_COUNTRY_NOT_FOUND);
 
-    // Check for duplicate state details
-    const otherStates = await State.find({
-      stateCode: { $ne: stateCode },
-      $or: [{ name: toCapitalize(name) }, { iso: iso.toUpperCase() }],
+    // Step 5: Check for duplicate state details
+    const otherStates = await findStates({
+      query: {
+        stateCode: { $ne: stateCode },
+        $or: [{ name: formattedName }, { iso: formattedISO }],
+      },
     });
     if (otherStates?.length)
       return handleError(next, STATUS_CODE_CONFLICT, MESSAGE_STATE_TAKEN);
 
-    // Retrieve state before updating (for audit)
-    const stateBeforeUpdate = await findState({ stateCode });
+    // Step 6: Retrieve state before updating (for audit)
+    const previousData = await findState({
+      query: { stateCode },
+      options: true,
+      populated: true,
+    });
 
-    // Update state details
-    await State.findOneAndUpdate(
-      { stateCode },
-      {
-        name: toCapitalize(name),
-        iso: iso.toUpperCase(),
-        country: existingCountry._id,
-        updatedAt: moment().valueOf(),
-      }
-    );
+    // Step 7: Update state details
+    await updateStateObj({
+      stateCode,
+      name: formattedName,
+      iso: formattedISO,
+      country: existingCountry._id,
+    });
 
-    // Retrieve updated state
-    const updatedState = await findState({ stateCode });
+    // Step 8: Retrieve updated state
+    const updatedState = await findState({
+      query: { stateCode },
+      options: true,
+      populated: true,
+    });
 
-    // Log the update action for auditing
-    const currentUser = await findUser(req.user.userCode);
+    // Step 9: Log the update action for auditing
+    const currentUser = await getCurrentUser(req.user.userCode);
     await logAudit(
       auditActions.UPDATE,
       auditCollections.STATES,
       updatedState.stateCode,
       auditChanges.UPDATE_STATE,
-      stateBeforeUpdate.toObject(),
+      previousData.toObject(),
       updatedState.toObject(),
       currentUser.toObject()
     );
 
-    // Send success response with the updated state
+    // Step 10: Send success response with the updated state
     res
       .status(STATUS_CODE_SUCCESS)
       .send(
@@ -300,15 +294,14 @@ module.exports = {
    * @param {Function} next - Express next middleware function
    */
   DeleteState: async (req, res, next) => {
-    // Extract state code from request body
-    const { stateCode } = req.body;
+    const { stateCode } = req.body; // Step 1: Extract state code from request body
 
-    // Verify if the state exists
-    const existingState = await State.findOne({ stateCode });
+    // Step 2: Verify if the state exists
+    const existingState = await findState({ query: { stateCode } });
     if (!existingState)
       return handleError(next, STATUS_CODE_CONFLICT, MESSAGE_STATE_NOT_FOUND);
 
-    // Check if the state is referenced elsewhere
+    // Step 3: Check if the state is referenced elsewhere
     const { isReferenced } = await IsObjectIdReferenced(existingState._id);
     if (isReferenced)
       return handleError(
@@ -317,11 +310,15 @@ module.exports = {
         MESSAGE_STATE_NOT_ALLOWED_DELETE_REFERENCE_EXIST
       );
 
-    // Retrieve state before deletion (for audit)
-    const previousData = await findState({ stateCode });
+    // Step 4: Retrieve state before deletion (for audit)
+    const previousData = await findState({
+      query: { stateCode },
+      options: true,
+      populated: true,
+    });
 
-    // Delete the state
-    const deleteResult = await State.deleteOne({ stateCode });
+    // Step 5: Delete the state
+    const deleteResult = await deleteStateObj(stateCode);
     if (!deleteResult?.deletedCount)
       return handleError(
         next,
@@ -329,8 +326,8 @@ module.exports = {
         MESSAGE_DELETE_STATE_ERROR
       );
 
-    // Log the deletion action for auditing
-    const currentUser = await findUser(req.user.userCode);
+    // Step 6: Log the deletion action for auditing
+    const currentUser = await getCurrentUser(req.user.userCode);
     await logAudit(
       auditActions.DELETE,
       auditCollections.STATES,
@@ -341,7 +338,7 @@ module.exports = {
       currentUser.toObject()
     );
 
-    // Send success response confirming deletion
+    // Step 7: Send success response confirming deletion
     res
       .status(STATUS_CODE_SUCCESS)
       .send(handleSuccess(STATUS_CODE_SUCCESS, MESSAGE_DELETE_STATE_SUCCESS));

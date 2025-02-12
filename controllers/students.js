@@ -1,7 +1,3 @@
-const moment = require("moment-timezone");
-const Section = require("../models/section");
-const Student = require("../models/student");
-const User = require("../models/user");
 const { logAudit } = require("../queries/auditLogs");
 const {
   auditActions,
@@ -9,14 +5,10 @@ const {
   auditChanges,
 } = require("../utils/audit");
 const {
-  hiddenFieldsDefault,
-  hiddenFieldsUser,
   handleError,
   handleSuccess,
-  toCapitalize,
   IsObjectIdReferenced,
-  generateStudentCode,
-  generateAuditCode,
+  getCurrentUser,
 } = require("../utils/helpers");
 const {
   STATUS_CODE_CONFLICT,
@@ -38,41 +30,15 @@ const {
   MESSAGE_DELETE_STUDENT_ERROR,
   MESSAGE_DELETE_STUDENT_SUCCESS,
 } = require("../utils/messages");
-
-const findUser = async (userCode) =>
-  // Find a user by userCode
-  await User.findOne({ userCode }, hiddenFieldsUser)
-    // Populate the role information for the user
-    .populate({
-      path: "role",
-      select: hiddenFieldsDefault,
-      // Populate the rolePermissions associated with the role
-      populate: {
-        path: "rolePermissions",
-        select: hiddenFieldsDefault,
-      },
-    });
-
-const findStudent = async (criteria) =>
-  // Find a single student matching the provided criteria
-  await Student.findOne(criteria, hiddenFieldsDefault)
-    // Populate the associated section information for the student
-    .populate({
-      path: "section",
-      select: hiddenFieldsDefault,
-      // Populate the class associated with the section
-      populate: {
-        path: "class",
-        select: hiddenFieldsDefault,
-      },
-    });
-
-const findStudents = async (criteria = {}, limit) =>
-  // Find all students that match the provided criteria (or all if none specified)
-  await Student.find(criteria, hiddenFieldsDefault)
-    // Populate the associated section information for each student
-    .populate("section", hiddenFieldsDefault)
-    .limit(limit);
+const {
+  findStudent,
+  findStudents,
+  formatStudentFields,
+  createStudentObj,
+  updateStudentObj,
+  deleteStudentObj,
+} = require("../queries/students");
+const { findSection } = require("../queries/sections");
 
 module.exports = {
   /**
@@ -80,14 +46,20 @@ module.exports = {
    *
    * @param {Object} req - Express request object
    * @param {Object} res - Express response object
+   * @param {Function} next - Express next middleware function
    */
-  GetStudents: async (req, res) => {
-    // Destructure 'entries' from the query parameters, defaulting to 100 if not provided
-    const { entries = 100 } = req.query;
-    // Retrieve all students from the database
-    const students = await findStudents({}, entries);
+  GetStudents: async (req, res, next) => {
+    const { start = 1, end = 10 } = req.query; // Step 1: Extract pagination parameters
 
-    // Send success response with the list of students
+    // Step 2: Retrieve all students from the database
+    const students = await findStudents({
+      start,
+      end,
+      options: true,
+      populated: true,
+    });
+
+    // Step 3: Send success response with the list of students
     res
       .status(STATUS_CODE_SUCCESS)
       .send(
@@ -107,13 +79,15 @@ module.exports = {
    * @param {Function} next - Express next middleware function
    */
   GetStudentByCode: async (req, res, next) => {
-    // Extract student code from request body
-    const { studentCode } = req.body;
+    const { studentCode } = req.body; // Step 1: Extract student code from request body
 
-    // Find the student by its code
-    const student = await findStudent({ studentCode });
+    // Step 2: Find the student by its code
+    const student = await findStudent({
+      query: { studentCode },
+      options: true,
+    });
 
-    // Handle case when student is not found
+    // Step 3: Handle case when student is not found
     if (!student)
       return handleError(
         next,
@@ -121,7 +95,7 @@ module.exports = {
         MESSAGE_STUDENT_NOT_FOUND
       );
 
-    // Send success response with the found student
+    // Step 4: Send success response with the found student
     res
       .status(STATUS_CODE_SUCCESS)
       .send(
@@ -137,15 +111,13 @@ module.exports = {
    * @param {Function} next - Express next middleware function
    */
   GetStudentsBySectionCode: async (req, res, next) => {
-    // Destructure 'entries' from the query parameters, defaulting to 100 if not provided
-    const { entries = 100 } = req.query;
-    // Extract section code from request body
-    const { sectionCode } = req.body;
+    const { start = 1, end = 10 } = req.query; // Step 1: Extract pagination parameters
+    const { sectionCode } = req.body; // Step 2: Extract section code from request body
 
-    // Find the section by its code
-    const section = await Section.findOne({ sectionCode });
+    // Step 3: Find the section by its code
+    const section = await findSection({ query: { sectionCode } });
 
-    // Handle case when section is not found
+    // Step 4: Handle case when section is not found
     if (!section)
       return handleError(
         next,
@@ -153,25 +125,31 @@ module.exports = {
         MESSAGE_SECTION_NOT_FOUND
       );
 
-    // Retrieve sections associated with the section
-    const sections = await findStudents({ section: section._id }, entries);
+    // Step 5: Retrieve students associated with the section
+    const students = await findStudents({
+      query: { section: section._id },
+      start,
+      end,
+      options: true,
+      populated: true,
+    });
 
-    // Handle case when no sections are found
-    if (!sections?.length)
+    // Step 6: Handle case when no students are found
+    if (!students?.length)
       return handleError(
         next,
         STATUS_CODE_BAD_REQUEST,
         MESSAGE_STUDENTS_NOT_FOUND
       );
 
-    // Send success response with the list of sections
+    // Step 7: Send success response with the list of students
     res
       .status(STATUS_CODE_SUCCESS)
       .send(
         handleSuccess(
           STATUS_CODE_SUCCESS,
           MESSAGE_GET_STUDENT_SUCCESS,
-          sections
+          students
         )
       );
   },
@@ -184,38 +162,41 @@ module.exports = {
    * @param {Function} next - Express next middleware function
    */
   CreateStudent: async (req, res, next) => {
-    // Extract student details from request body
-    const { name, rollNumber, sectionCode } = req.body;
+    const { name, rollNumber, sectionCode } = req.body; // Step 1: Extract student details from request body
+    const { formattedName, formattedRollNumber } = formatStudentFields({
+      name,
+      rollNumber,
+    }); // Step 2: Format student fields
 
-    // Check if the student already exists
-    const existingStudent = await Student.findOne({
-      rollNumber: rollNumber.toUpperCase(),
+    // Step 3: Check if the student already exists
+    const existingStudent = await findStudent({
+      query: { rollNumber: formattedRollNumber },
     });
     if (existingStudent)
       return handleError(next, STATUS_CODE_CONFLICT, MESSAGE_STUDENT_EXIST);
 
-    // Verify if the provided section exists
-    const existingSection = await Section.findOne({ sectionCode });
+    // Step 4: Verify if the provided section exists
+    const existingSection = await findSection({ query: { sectionCode } });
     if (!existingSection)
       return handleError(next, STATUS_CODE_CONFLICT, MESSAGE_SECTION_NOT_FOUND);
 
-    // Generate unique code for the new student
-    const studentCode = generateStudentCode();
-
-    // Create a new student document
-    const newStudent = new Student({
-      studentCode,
-      name: toCapitalize(name),
-      rollNumber: rollNumber.toUpperCase(),
+    // Step 5: Create a new student document
+    const newStudent = await createStudentObj({
+      name: formattedName,
+      rollNumber: formattedRollNumber,
       section: existingSection._id,
     });
     await newStudent.save();
 
-    // Retrieve the newly created student
-    const createdStudent = await findStudent({ studentCode });
+    // Step 6: Retrieve the newly created student
+    const createdStudent = await findStudent({
+      query: { studentCode: newStudent.studentCode },
+      options: true,
+      populated: true,
+    });
 
-    // Log the creation action for auditing
-    const currentUser = await findUser(req.user.userCode);
+    // Step 7: Log the creation action for auditing
+    const currentUser = await getCurrentUser(req.user.userCode);
     await logAudit(
       auditActions.CREATE,
       auditCollections.STUDENTS,
@@ -226,7 +207,7 @@ module.exports = {
       currentUser.toObject()
     );
 
-    // Send success response with the created student
+    // Step 8: Send success response with the created student
     res
       .status(STATUS_CODE_SUCCESS)
       .send(
@@ -246,57 +227,67 @@ module.exports = {
    * @param {Function} next - Express next middleware function
    */
   UpdateStudent: async (req, res, next) => {
-    // Extract student details from request body
-    const { studentCode, name, rollNumber, sectionCode } = req.body;
+    const { studentCode, name, rollNumber, sectionCode } = req.body; // Step 1: Extract student details from request body
+    const { formattedName, formattedRollNumber } = formatStudentFields({
+      name,
+      rollNumber,
+    }); // Step 2: Format student fields
 
-    // Verify if the student exists
-    const existingStudent = await Student.findOne({ studentCode });
+    // Step 3: Verify if the student exists
+    const existingStudent = await findStudent({ query: { studentCode } });
     if (!existingStudent)
       return handleError(next, STATUS_CODE_CONFLICT, MESSAGE_STUDENT_NOT_FOUND);
 
-    // Verify if the provided section exists
-    const existingSection = await Section.findOne({ sectionCode });
+    // Step 4: Verify if the provided section exists
+    const existingSection = await findSection({ query: { sectionCode } });
     if (!existingSection)
       return handleError(next, STATUS_CODE_CONFLICT, MESSAGE_SECTION_NOT_FOUND);
 
-    // Check for duplicate student details
-    const otherStudents = await Student.find({
-      studentCode: { $ne: studentCode },
-      rollNumber: rollNumber.toUpperCase(),
+    // Step 5: Check for duplicate student details
+    const otherStudents = await findStudent({
+      query: {
+        studentCode: { $ne: studentCode },
+        rollNumber: formattedRollNumber,
+      },
     });
     if (otherStudents?.length)
       return handleError(next, STATUS_CODE_CONFLICT, MESSAGE_STUDENT_TAKEN);
 
-    // Retrieve student before updating (for audit)
-    const studentBeforeUpdate = await findStudent({ studentCode });
+    // Step 6: Retrieve student before updating (for audit)
+    const previousData = await findStudent({
+      query: { studentCode },
+      options: true,
+      populated: true,
+    });
 
-    // Update student details
-    await Student.findOneAndUpdate(
-      { studentCode },
-      {
-        name: toCapitalize(name),
-        rollNumber: rollNumber.toUpperCase(),
-        section: existingSection._id,
-        updatedAt: moment().valueOf(),
-      }
-    );
+    // Step 7: Update student details
+    await updateStudentObj({
+      studentCode,
+      name: formattedName,
+      rollNumber: formattedRollNumber,
+      section: existingSection._id,
+    });
 
-    // Retrieve updated student
-    const updatedStudent = await findStudent({ studentCode });
+    // Step 8: Retrieve updated student
+    const updatedStudent = await findStudent({
+      query: { studentCode },
+      options: true,
+      populated: true,
+    });
 
-    // Log the update action for auditing
-    const currentUser = await findUser(req.user.userCode);
+    // Step 9: Log the update action for auditing
+    const currentUser = await getCurrentUser(req.user.userCode);
     await logAudit(
       auditActions.UPDATE,
       auditCollections.STUDENTS,
       updatedStudent.studentCode,
       auditChanges.UPDATE_STUDENT,
-      studentBeforeUpdate.toObject(),
+      previousData.toObject(),
       updatedStudent.toObject(),
       currentUser.toObject()
     );
 
-    // Send success response with the updated student
+    // Step 10: Send success response with the updated student
     res
       .status(STATUS_CODE_SUCCESS)
       .send(
@@ -316,15 +307,14 @@ module.exports = {
    * @param {Function} next - Express next middleware function
    */
   DeleteStudent: async (req, res, next) => {
-    // Extract student code from request body
-    const { studentCode } = req.body;
+    const { studentCode } = req.body; // Step 1: Extract student code from request body
 
-    // Verify if the student exists
-    const existingStudent = await Student.findOne({ studentCode });
+    // Step 2: Verify if the student exists
+    const existingStudent = await findStudent({ query: { studentCode } });
     if (!existingStudent)
       return handleError(next, STATUS_CODE_CONFLICT, MESSAGE_STUDENT_NOT_FOUND);
 
-    // Check if the student is referenced elsewhere
+    // Step 3: Check if the student is referenced elsewhere
     const { isReferenced } = await IsObjectIdReferenced(existingStudent._id);
     if (isReferenced)
       return handleError(
@@ -333,11 +323,15 @@ module.exports = {
         MESSAGE_STUDENT_NOT_ALLOWED_DELETE_REFERENCE_EXIST
       );
 
-    // Retrieve student before deletion (for audit)
-    const previousData = await findStudent({ studentCode });
+    // Step 4: Retrieve student before deletion (for audit)
+    const previousData = await findStudent({
+      query: { studentCode },
+      options: true,
+      populated: true,
+    });
 
-    // Delete the student
-    const deleteResult = await Student.deleteOne({ studentCode });
+    // Step 5: Delete the student
+    const deleteResult = await deleteStudentObj(studentCode);
     if (!deleteResult?.deletedCount)
       return handleError(
         next,
@@ -345,8 +339,8 @@ module.exports = {
         MESSAGE_DELETE_STUDENT_ERROR
       );
 
-    // Log the deletion action for auditing
-    const currentUser = await findUser(req.user.userCode);
+    // Step 6: Log the deletion action for auditing
+    const currentUser = await getCurrentUser(req.user.userCode);
     await logAudit(
       auditActions.DELETE,
       auditCollections.STUDENTS,
@@ -357,7 +351,7 @@ module.exports = {
       currentUser.toObject()
     );
 
-    // Send success response confirming deletion
+    // Step 7: Send success response confirming deletion
     res
       .status(STATUS_CODE_SUCCESS)
       .send(handleSuccess(STATUS_CODE_SUCCESS, MESSAGE_DELETE_STUDENT_SUCCESS));

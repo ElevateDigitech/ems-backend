@@ -44,7 +44,7 @@ module.exports = {
    * @param {Object} req - Express request object
    * @param {Object} res - Express response object
    */
-  GetClasses: async (req, res) => {
+  GetClasses: async (req, res, next) => {
     const { start = 1, end = 10 } = req.query; // Step 1: Extract pagination parameters
     const classes = await findClasses({ start, end, options: true }); // Step 2: Fetch classes from database
 

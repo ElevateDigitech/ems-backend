@@ -44,7 +44,7 @@ module.exports = {
    * @param {Object} req - Express request object
    * @param {Object} res - Express response object
    */
-  GetExams: async (req, res) => {
+  GetExams: async (req, res, next) => {
     const { start = 1, end = 10 } = req.query; // Step 1: Extract pagination parameters
     const exams = await findExams({ start, end, options: true }); // Step 2: Fetch exams from database
 
