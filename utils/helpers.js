@@ -109,7 +109,6 @@ const writeToFile = async (path, content) => {
 };
 
 const getCurrentUser = async (userCode) => {
-  console.log("in");
   return await findUser({
     query: { userCode },
     options: true,

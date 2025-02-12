@@ -1,6 +1,3 @@
-const moment = require("moment-timezone");
-const Role = require("../models/role");
-const User = require("../models/user");
 const { logAudit } = require("../queries/auditLogs");
 const {
   auditActions,
@@ -8,15 +5,11 @@ const {
   auditCollections,
 } = require("../utils/audit");
 const {
-  hiddenFieldsDefault,
-  hiddenFieldsUser,
   handleError,
   handleSuccess,
-  generateRoleCode,
   getPermissionIds,
   getInvalidPermissions,
   IsObjectIdReferenced,
-  generateAuditCode,
   getCurrentUser,
 } = require("../utils/helpers");
 const {
@@ -45,6 +38,7 @@ const {
   createRoleObj,
   updateRoleObj,
   deleteRoleObj,
+  formatRoleFields,
 } = require("../queries/roles");
 
 module.exports = {
@@ -61,9 +55,9 @@ module.exports = {
       end,
       options: true,
       populated: true,
-    }); // Step 2: Fetch exams from database
+    }); // Step 2: Fetch roles from the database
 
-    // Send the retrieved roles in the response
+    // Step 3: Send the retrieved roles in the response
     res
       .status(STATUS_CODE_SUCCESS)
       .send(
@@ -79,18 +73,16 @@ module.exports = {
    * @param {Function} next - Express next middleware function
    */
   GetOwnRole: async (req, res, next) => {
-    // Find the role of the current user
     const role = await findRole({
       query: { roleCode: req.user?.role?.roleCode },
       options: true,
       populated: true,
-    });
+    }); // Step 1: Find the role of the current user
 
-    // Handle error if role not found
     if (!role)
-      return handleError(next, STATUS_CODE_BAD_REQUEST, MESSAGE_ROLE_NOT_FOUND);
+      return handleError(next, STATUS_CODE_BAD_REQUEST, MESSAGE_ROLE_NOT_FOUND); // Step 2: Handle error if role not found
 
-    // Send the retrieved role in the response
+    // Step 3: Send the retrieved role in the response
     res
       .status(STATUS_CODE_SUCCESS)
       .send(handleSuccess(STATUS_CODE_SUCCESS, MESSAGE_GET_ROLE_SUCCESS, role));
@@ -104,18 +96,16 @@ module.exports = {
    * @param {Function} next - Express next middleware function
    */
   GetRoleByCode: async (req, res, next) => {
-    // Find the role using the provided role code
     const role = await findRole({
       query: { roleCode: req.body.roleCode },
       options: true,
       populated: true,
-    });
+    }); // Step 1: Find the role using the provided role code
 
-    // Handle error if role not found
     if (!role)
-      return handleError(next, STATUS_CODE_BAD_REQUEST, MESSAGE_ROLE_NOT_FOUND);
+      return handleError(next, STATUS_CODE_BAD_REQUEST, MESSAGE_ROLE_NOT_FOUND); // Step 2: Handle error if role not found
 
-    // Send the retrieved role in the response
+    // Step 3: Send the retrieved role in the response
     res
       .status(STATUS_CODE_SUCCESS)
       .send(handleSuccess(STATUS_CODE_SUCCESS, MESSAGE_GET_ROLE_SUCCESS, role));
@@ -139,45 +129,38 @@ module.exports = {
     const { formattedRoleName, formattedRoleDescription } = formatRoleFields({
       roleName,
       roleDescription,
-    });
-    // Check if the role already exists
+    }); // Step 1: Format role fields
+
     const existingRole = await findRole({
-      query: {
-        roleName: formattedRoleName,
-      },
+      query: { roleName: formattedRoleName },
     });
     if (existingRole)
-      return handleError(next, STATUS_CODE_BAD_REQUEST, MESSAGE_ROLE_EXIST);
+      return handleError(next, STATUS_CODE_BAD_REQUEST, MESSAGE_ROLE_EXIST); // Step 2: Check if role already exists
 
-    // Validate the provided permissions
     const invalidPermission = await getInvalidPermissions(rolePermissions);
     if (invalidPermission.some(Boolean))
       return handleError(
         next,
         STATUS_CODE_BAD_REQUEST,
         MESSAGE_ROLE_PERMISSION_NOT_FOUND
-      );
+      ); // Step 3: Validate permissions
 
-    // Create a new role
     const newRole = await createRoleObj({
       roleName: formattedRoleName,
       roleDescription: formattedRoleDescription,
       roleAllowDeletion,
       rolePermissions: await getPermissionIds(rolePermissions),
-    });
+    }); // Step 4: Create new role
 
-    // Save the new role to the database
-    await newRole.save();
+    await newRole.save(); // Step 5: Save the new role
 
-    // Retrieve the newly created role
     const createdRole = await findRole({
       query: { roleCode: newRole.roleCode },
       options: true,
       populated: true,
-    });
-    const currentUser = await getCurrentUser(req.user.userCode);
+    }); // Step 6: Retrieve the newly created role
 
-    // Log the creation action
+    const currentUser = await getCurrentUser(req.user.userCode);
     await logAudit(
       auditActions.CREATE,
       auditCollections.ROLES,
@@ -186,9 +169,8 @@ module.exports = {
       null,
       createdRole.toObject(),
       currentUser.toObject()
-    );
+    ); // Step 7: Log the creation action
 
-    // Send the created role in the response
     res
       .status(STATUS_CODE_SUCCESS)
       .send(
@@ -197,7 +179,7 @@ module.exports = {
           MESSAGE_CREATE_ROLE_SUCCESS,
           createdRole
         )
-      );
+      ); // Step 8: Send the created role in the response
   },
 
   /**
@@ -212,54 +194,46 @@ module.exports = {
     const { formattedRoleName, formattedRoleDescription } = formatRoleFields({
       roleName,
       roleDescription,
-    });
-    // Find the existing role
+    }); // Step 1: Format role fields
+
     const existingRole = await findRole({ query: { roleCode } });
     if (!existingRole)
-      return handleError(next, STATUS_CODE_BAD_REQUEST, MESSAGE_ROLE_NOT_FOUND);
+      return handleError(next, STATUS_CODE_BAD_REQUEST, MESSAGE_ROLE_NOT_FOUND); // Step 2: Find the existing role
 
-    // Check for role name conflicts
     const otherRoles = await findRole({
-      query: {
-        roleCode: { $ne: roleCode },
-        roleName: formattedRoleName,
-      },
+      query: { roleCode: { $ne: roleCode }, roleName: formattedRoleName },
     });
     if (otherRoles?.length)
-      return handleError(next, STATUS_CODE_CONFLICT, MESSAGE_ROLE_TAKEN);
+      return handleError(next, STATUS_CODE_CONFLICT, MESSAGE_ROLE_TAKEN); // Step 3: Check for role name conflicts
 
-    // Validate the provided permissions
-    const invalidPermisions = await getInvalidPermissions(rolePermissions);
-    if (invalidPermisions.some(Boolean))
+    const invalidPermissions = await getInvalidPermissions(rolePermissions);
+    if (invalidPermissions.some(Boolean))
       return handleError(
         next,
         STATUS_CODE_BAD_REQUEST,
         MESSAGE_ROLE_PERMISSION_NOT_FOUND
-      );
+      ); // Step 4: Validate permissions
 
-    // Save the current role state for audit logging
     const previousData = await findRole({
       query: { roleCode },
       options: true,
+      populated: true,
     });
-
-    // Update the role in the database
+    
     await updateRoleObj({
       roleCode,
       roleName: formattedRoleName,
       roleDescription: formattedRoleDescription,
       rolePermissions: await getPermissionIds(rolePermissions),
-    });
+    }); // Step 5: Update the role in the database
 
-    // Retrieve the updated role
     const updatedRole = await findRole({
       query: { roleCode },
       options: true,
       populated: true,
     });
-    const currentUser = await getCurrentUser(req.user.userCode);
 
-    // Log the update action
+    const currentUser = await getCurrentUser(req.user.userCode);
     await logAudit(
       auditActions.UPDATE,
       auditCollections.ROLES,
@@ -268,9 +242,8 @@ module.exports = {
       previousData.toObject(),
       updatedRole.toObject(),
       currentUser.toObject()
-    );
+    ); // Step 6: Log the update action
 
-    // Send the updated role in the response
     res
       .status(STATUS_CODE_SUCCESS)
       .send(
@@ -279,7 +252,7 @@ module.exports = {
           MESSAGE_UPDATE_ROLE_SUCCESS,
           updatedRole
         )
-      );
+      ); // Step 7: Send the updated role in the response
   },
 
   /**
@@ -292,50 +265,40 @@ module.exports = {
   DeleteRole: async (req, res, next) => {
     const { roleCode } = req.body;
 
-    // Find the role to be deleted
     const existingRole = await findRole({ query: { roleCode } });
     if (!existingRole)
-      return handleError(next, STATUS_CODE_BAD_REQUEST, MESSAGE_ROLE_NOT_FOUND);
+      return handleError(next, STATUS_CODE_BAD_REQUEST, MESSAGE_ROLE_NOT_FOUND); // Step 1: Find the role to be deleted
 
-    // Check if the role is allowed to be deleted
     if (!existingRole.roleAllowDeletion)
       return handleError(
         next,
         STATUS_CODE_CONFLICT,
         MESSAGE_ROLE_NOT_ALLOWED_DELETE
-      );
+      ); // Step 2: Check if deletion is allowed
 
-    // Check if the role is referenced by other objects
     const { isReferenced } = await IsObjectIdReferenced(existingRole._id);
     if (isReferenced)
       return handleError(
         next,
         STATUS_CODE_CONFLICT,
         MESSAGE_ROLE_NOT_ALLOWED_DELETE_REFERENCE_EXIST
-      );
+      ); // Step 3: Check for references
 
-    // Save the current role state for audit logging
     const previousData = await findRole({
       query: { roleCode },
       options: true,
       populated: true,
     });
 
-    // Delete the role from the database
     const deletionResult = await deleteRoleObj(roleCode);
-
-    // Handle error if deletion failed
     if (deletionResult.deletedCount === 0)
       return handleError(
         next,
         STATUS_CODE_INTERNAL_SERVER_ERROR,
         MESSAGE_DELETE_ROLE_ERROR
-      );
+      ); // Step 4: Handle deletion error
 
-    // Retrieve the current user for audit logging
     const currentUser = await getCurrentUser(req.user.userCode);
-
-    // Log the deletion action
     await logAudit(
       auditActions.DELETE,
       auditCollections.ROLES,
@@ -344,11 +307,10 @@ module.exports = {
       previousData.toObject(),
       null,
       currentUser.toObject()
-    );
+    ); // Step 5: Log the deletion action
 
-    // Send a success response
     res
       .status(STATUS_CODE_SUCCESS)
-      .send(handleSuccess(STATUS_CODE_SUCCESS, MESSAGE_DELETE_ROLE_SUCCESS));
+      .send(handleSuccess(STATUS_CODE_SUCCESS, MESSAGE_DELETE_ROLE_SUCCESS)); // Step 6: Send a success response
   },
 };

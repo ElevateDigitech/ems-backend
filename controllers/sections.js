@@ -1,7 +1,3 @@
-const moment = require("moment-timezone");
-const Class = require("../models/class");
-const Section = require("../models/section");
-const User = require("../models/user");
 const { logAudit } = require("../queries/auditLogs");
 const {
   auditActions,
@@ -15,14 +11,10 @@ const {
   STATUS_CODE_INTERNAL_SERVER_ERROR,
 } = require("../utils/statusCodes");
 const {
-  hiddenFieldsDefault,
-  hiddenFieldsUser,
   handleError,
   handleSuccess,
-  toCapitalize,
   IsObjectIdReferenced,
-  generateSectionCode,
-  generateAuditCode,
+  getCurrentUser,
 } = require("../utils/helpers");
 const {
   MESSAGE_GET_STATE_SUCCESS,
@@ -39,40 +31,15 @@ const {
   MESSAGE_DELETE_SECTION_ERROR,
   MESSAGE_DELETE_SECTION_SUCCESS,
 } = require("../utils/messages");
-
-// Function to find a user along with their role and role permissions
-const findUserWithRole = async (userCode) => {
-  return await User.findOne({ userCode }, hiddenFieldsUser) // Find a user by userCode, excluding hidden fields
-    .populate({
-      // Populate the 'role' field with role details
-      path: "role", // Path to the 'role' field in the User model
-      select: hiddenFieldsDefault, // Exclude hidden fields in the role
-      populate: {
-        // Further populate the 'rolePermissions' field inside the role
-        path: "rolePermissions", // Path to 'rolePermissions' within the role
-        select: hiddenFieldsDefault, // Exclude hidden fields in the rolePermissions
-      },
-    });
-};
-
-// Function to find multiple sections and populate the related class information
-const populateSections = async (query, limit) => {
-  return await Section.find(query, hiddenFieldsDefault) // Find sections matching the query, excluding hidden fields
-    .populate(
-      "class", // Populate the 'class' field in each section
-      hiddenFieldsDefault // Exclude hidden fields in the class
-    )
-    .limit(limit);
-};
-
-// Function to find a single section and populate the related class information
-const populateSection = async (query) => {
-  return await Section.findOne(query, hiddenFieldsDefault) // Find a single section matching the query, excluding hidden fields
-    .populate(
-      "class", // Populate the 'class' field in the section
-      hiddenFieldsDefault // Exclude hidden fields in the class
-    );
-};
+const {
+  findSections,
+  findSection,
+  formatSectionName,
+  createSectionObj,
+  updateSectionObj,
+  deleteSectionObj,
+} = require("../queries/sections");
+const { findClass } = require("../queries/classes");
 
 module.exports = {
   /**
@@ -83,12 +50,15 @@ module.exports = {
    * @param {Function} next - Express next middleware function
    */
   GetSections: async (req, res, next) => {
-    // Destructure 'entries' from the query parameters, defaulting to 100 if not provided
-    const { entries = 100 } = req.query;
-    // Fetch all sections from the database
-    const sections = await populateSections({}, entries);
+    const { start = 1, end = 10 } = req.query; // Step 1: Extract pagination parameters
+    const sections = await findSections({
+      start,
+      end,
+      options: true,
+      populated: true,
+    }); // Step 2: Fetch sections from the database
 
-    // Send a success response with the fetched sections
+    // Step 3: Send the retrieved sections in the response
     res
       .status(STATUS_CODE_SUCCESS)
       .send(
@@ -108,22 +78,22 @@ module.exports = {
    * @param {Function} next - Express next middleware function
    */
   GetSectionByCode: async (req, res, next) => {
-    // Extract sectionCode from the request body
     const { sectionCode } = req.body;
+    const section = await findSection({
+      query: { sectionCode },
+      options: true,
+      populated: true,
+    }); // Step 1: Find the section using the provided section code
 
-    // Find the section in the database using sectionCode
-    const section = await populateSection({ sectionCode });
-
-    // Handle error if section is not found
     if (!section) {
       return handleError(
         next,
         STATUS_CODE_BAD_REQUEST,
         MESSAGE_SECTION_NOT_FOUND
       );
-    }
+    } // Step 2: Handle error if section not found
 
-    // Send success response with the retrieved section
+    // Step 3: Send the retrieved section in the response
     res
       .status(STATUS_CODE_SUCCESS)
       .send(
@@ -139,35 +109,36 @@ module.exports = {
    * @param {Function} next - Express next middleware function
    */
   GetSectionsByClassCode: async (req, res, next) => {
-    // Destructure 'entries' from the query parameters, defaulting to 100 if not provided
-    const { entries = 100 } = req.query;
-    // Extract classCode from the request body
+    const { start = 1, end = 10 } = req.query; // Step 1: Extract pagination parameters
     const { classCode } = req.body;
+    const foundClass = await findClass({
+      classCode,
+    }); // Step 2: Find the class using the provided class code
 
-    // Find the class in the database using classCode
-    const foundClass = await Class.findOne({ classCode });
-
-    // Handle error if class is not found
     if (!foundClass)
       return handleError(
         next,
         STATUS_CODE_BAD_REQUEST,
         MESSAGE_CLASS_NOT_FOUND
-      );
+      ); // Step 3: Handle error if class not found
 
-    // Fetch all sections associated with the class
-    const sections = await populateSections({ class: foundClass._id }, entries);
+    const sections = await findSections({
+      query: { class: foundClass._id },
+      start,
+      end,
+      options: true,
+      populated: true,
+    }); // Step 4: Fetch sections using the found class
 
-    // Handle error if no sections are found
     if (!sections.length) {
       return handleError(
         next,
         STATUS_CODE_BAD_REQUEST,
         MESSAGE_SECTIONS_NOT_FOUND
       );
-    }
+    } // Step 5: Handle error if no section found
 
-    // Send success response with the fetched sections
+    // Step 3: Send the retrieved sections in the response
     res
       .status(STATUS_CODE_SUCCESS)
       .send(
@@ -183,38 +154,35 @@ module.exports = {
    * @param {Function} next - Express next middleware function
    */
   CreateSection: async (req, res, next) => {
-    // Extract name and classCode from the request body
     const { name, classCode } = req.body;
-    const capitalizedName = toCapitalize(name);
+    const capitalizedName = formatSectionName(name); // Step 1: Format section fields
 
-    // Check if a section with the same name already exists
-    const existingSection = await populateSection({ name: capitalizedName });
+    const existingSection = await findSection({
+      query: { name: capitalizedName },
+    });
     if (existingSection) {
       return handleError(next, STATUS_CODE_CONFLICT, MESSAGE_SECTION_EXIST);
-    }
+    } // Step 2: Check if section already exists
 
-    // Find the class in the database using classCode
-    const existingClass = await Class.findOne({ classCode });
+    const existingClass = await findClass({ query: { classCode } });
     if (!existingClass)
       return handleError(next, STATUS_CODE_CONFLICT, MESSAGE_CLASS_NOT_FOUND);
+    // Step 3: Validate class
 
-    // Create a new section with the provided data
-    const section = new Section({
-      sectionCode: generateSectionCode(),
+    const section = await createSectionObj({
       name: capitalizedName,
-      class: existingClass._id,
-    });
+      classId: existingClass._id,
+    }); // Step 4: Create new section
 
-    // Save the new section to the database
-    await section.save();
+    await section.save(); // Step 5: Save the new section
 
-    // Fetch the created section for confirmation
-    const createdSection = await populateSection({
-      sectionCode: section.sectionCode,
-    });
+    const createdSection = await findSection({
+      query: { sectionCode: section.sectionCode },
+      options: true,
+      populated: true,
+    }); // Step 6: Retrieve the newly created section
 
-    // Find the current user and log the creation action
-    const currentUser = await findUserWithRole(req.user.userCode);
+    const currentUser = await getCurrentUser(req.user.userCode);
     await logAudit(
       auditActions.CREATE,
       auditCollections.SECTIONS,
@@ -223,9 +191,8 @@ module.exports = {
       null,
       createdSection.toObject(),
       currentUser.toObject()
-    );
+    ); // Step 7: Log the creation action
 
-    // Send success response with the created section
     res
       .status(STATUS_CODE_SUCCESS)
       .send(
@@ -234,7 +201,7 @@ module.exports = {
           MESSAGE_CREATE_SECTION_SUCCESS,
           createdSection
         )
-      );
+      ); // Step 8: Send the created section in the response
   },
 
   /**
@@ -245,53 +212,55 @@ module.exports = {
    * @param {Function} next - Express next middleware function
    */
   UpdateSection: async (req, res, next) => {
-    // Extract sectionCode, name, and classCode from the request body
     const { sectionCode, name, classCode } = req.body;
+    const capitalizedName = formatSectionName(name); // Step 1: Format section fields
 
-    // Find the existing section in the database
-    const existingSection = await populateSection({ sectionCode });
+    const existingSection = await findSection({ query: { sectionCode } });
     if (!existingSection)
       return handleError(next, STATUS_CODE_CONFLICT, MESSAGE_SECTION_NOT_FOUND);
+    // Step 2: Find the existing section
 
-    // Find the class in the database using classCode
-    const existingClass = await Class.findOne({ classCode });
+    const existingClass = await findClass({ query: { classCode } });
     if (!existingClass)
       return handleError(next, STATUS_CODE_CONFLICT, MESSAGE_CLASS_NOT_FOUND);
+    // Step 3: Validate class
 
-    // Check for name conflicts with other sections
-    const nameConflict = await populateSection({
-      name: toCapitalize(name),
-      sectionCode: { $ne: sectionCode },
+    const nameConflict = await findSection({
+      query: { name: capitalizedName, sectionCode: { $ne: sectionCode } },
     });
     if (nameConflict)
       return handleError(next, STATUS_CODE_CONFLICT, MESSAGE_SECTION_TAKEN);
+    // Step 4: Check for section name conflicts
 
-    // Update the section with the new data
-    await Section.findOneAndUpdate(
-      { sectionCode },
-      {
-        name: toCapitalize(name),
-        class: existingClass._id,
-        updatedAt: moment().valueOf(),
-      }
-    );
+    const previousData = await findSection({
+      query: { sectionCode },
+      options: true,
+      populated: true,
+    });
 
-    // Fetch the updated section for confirmation
-    const updatedSection = await populateSection({ sectionCode });
+    await updateSectionObj({
+      sectionCode,
+      name: capitalizedName,
+      class: existingClass._id,
+    }); // Step 5: Update the role in the database
 
-    // Find the current user and log the update action
-    const currentUser = await findUserWithRole(req.user.userCode);
+    const updatedSection = await findSection({
+      query: { sectionCode },
+      options: true,
+      populated: true,
+    }); // Step 6: Log the update action
+
+    const currentUser = await getCurrentUser(req.user.userCode);
     await logAudit(
       auditActions.UPDATE,
       auditCollections.SECTIONS,
       sectionCode,
       auditChanges.UPDATE_SECTION,
-      existingSection.toObject(),
+      previousData.toObject(),
       updatedSection.toObject(),
       currentUser.toObject()
-    );
+    ); // Step 6: Log the update action
 
-    // Send success response with the updated section
     res
       .status(STATUS_CODE_SUCCESS)
       .send(
@@ -300,7 +269,7 @@ module.exports = {
           MESSAGE_UPDATE_SECTION_SUCCESS,
           updatedSection
         )
-      );
+      ); // Step 7: Send the updated role in the response
   },
 
   /**
@@ -311,15 +280,12 @@ module.exports = {
    * @param {Function} next - Express next middleware function
    */
   DeleteSection: async (req, res, next) => {
-    // Extract sectionCode from the request body
     const { sectionCode } = req.body;
+    const existingSection = await findSection({ query: { sectionCode } });
 
-    // Find the existing section in the database
-    const existingSection = await Section.findOne({ sectionCode });
     if (!existingSection)
       return handleError(next, STATUS_CODE_CONFLICT, MESSAGE_SECTION_NOT_FOUND);
 
-    // Check if the section is referenced elsewhere
     const { isReferenced } = await IsObjectIdReferenced(existingSection._id);
     if (isReferenced)
       return handleError(
@@ -328,9 +294,13 @@ module.exports = {
         MESSAGE_SECTION_NOT_ALLOWED_DELETE_REFERENCE_EXIST
       );
 
-    // Delete the section from the database
-    const previousData = await populateSection({ sectionCode });
-    const deletionResult = await Section.deleteOne({ sectionCode });
+    const previousData = await findSection({
+      query: { sectionCode },
+      options: true,
+      populated: true,
+    });
+    const deletionResult = await deleteSectionObj(sectionCode);
+
     if (deletionResult.deletedCount === 0) {
       return handleError(
         next,
@@ -339,8 +309,7 @@ module.exports = {
       );
     }
 
-    // Find the current user and log the deletion action
-    const currentUser = await findUserWithRole(req.user.userCode);
+    const currentUser = await getCurrentUser(req.user.userCode);
     await logAudit(
       auditActions.DELETE,
       auditCollections.SECTIONS,
@@ -351,7 +320,6 @@ module.exports = {
       currentUser.toObject()
     );
 
-    // Send success response confirming the deletion
     res
       .status(STATUS_CODE_SUCCESS)
       .send(handleSuccess(STATUS_CODE_SUCCESS, MESSAGE_DELETE_SECTION_SUCCESS));
