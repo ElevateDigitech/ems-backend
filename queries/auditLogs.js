@@ -1,5 +1,9 @@
 const AuditLog = require("../models/auditLog");
-const { hiddenFieldsDefault, generateAuditCode } = require("../utils/helpers");
+const {
+  hiddenFieldsDefault,
+  generateAuditCode,
+  getLimitAndSkip,
+} = require("../utils/helpers");
 
 /**
  * Retrieves multiple audit logs from the database with pagination support.

@@ -1,5 +1,5 @@
 const Permission = require("../models/permission");
-const { hiddenFieldsDefault } = require("../utils/helpers");
+const { hiddenFieldsDefault, getLimitAndSkip } = require("../utils/helpers");
 
 /**
  * Retrieves multiple permissions from the database with pagination support.

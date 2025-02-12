@@ -149,6 +149,7 @@ module.exports.profileSchema = Joi.object({
   profilePicture: Joi.object({
     url: Joi.string().required(),
     filename: Joi.string().required(),
+    extension: Joi.string().required(),
   }).required(),
   dob: Joi.string().required().pattern(VALID_DATE),
   genderCode: Joi.string().required(),
@@ -183,6 +184,7 @@ module.exports.updateProfileSchema = Joi.object({
   profilePicture: Joi.object({
     url: Joi.string().required(),
     filename: Joi.string().required(),
+    extension: Joi.string().required(),
   }).required(),
   dob: Joi.string().required().pattern(VALID_DATE),
   genderCode: Joi.string().required(),
@@ -207,6 +209,7 @@ module.exports.updateProfileSchema = Joi.object({
     sms: Joi.boolean().required(),
     push: Joi.boolean().required(),
   }).required(),
+  isProfilePictureChanged: Joi.boolean().required(),
 });
 
 /**

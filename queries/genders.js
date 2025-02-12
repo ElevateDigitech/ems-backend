@@ -1,6 +1,10 @@
 const moment = require("moment-timezone");
 const Gender = require("../models/gender");
-const { hiddenFieldsDefault, generateGenderCode } = require("../utils/helpers");
+const {
+  hiddenFieldsDefault,
+  generateGenderCode,
+  getLimitAndSkip,
+} = require("../utils/helpers");
 
 /**
  * Retrieves multiple genders from the database with pagination support.

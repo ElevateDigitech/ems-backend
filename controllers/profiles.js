@@ -1,3 +1,4 @@
+const { cloudinary } = require("../cloudinary");
 const Profile = require("../models/profile");
 const Gender = require("../models/gender");
 const Country = require("../models/country");
@@ -18,6 +19,7 @@ const {
   generateProfileCode,
   generateAuditCode,
   IsObjectIdReferenced,
+  getCurrentUser,
 } = require("../utils/helpers");
 const {
   STATUS_CODE_SUCCESS,
@@ -45,114 +47,18 @@ const {
   MESSAGE_PROFILE_TAKEN,
   MESSAGE_PROFILE_NOT_ALLOWED_DELETE_REFERENCE_EXIST,
 } = require("../utils/messages");
-
-// Function to find multiple profiles based on a query
-const findProfilesByQuery = async (query, limit) => {
-  return Profile.find(query, hiddenFieldsDefault)
-    .populate("gender", hiddenFieldsDefault) // Populating gender field
-    .populate({
-      path: "user", // Populating user field
-      select: hiddenFieldsDefault,
-      populate: {
-        path: "role", // Populating user's role
-        select: hiddenFieldsDefault,
-        populate: {
-          path: "rolePermissions", // Populating role permissions
-          select: hiddenFieldsDefault,
-        },
-      },
-    })
-    .populate({
-      path: "address.city", // Populating address.city field
-      select: hiddenFieldsDefault,
-      populate: [
-        {
-          path: "state", // Populating state under city
-          select: hiddenFieldsDefault,
-          populate: {
-            path: "country", // Populating country under state
-            select: hiddenFieldsDefault,
-          },
-        },
-        {
-          path: "country", // Populating country under city
-          select: hiddenFieldsDefault,
-        },
-      ],
-    })
-    .populate({
-      path: "address.state", // Populating address.state field
-      select: hiddenFieldsDefault,
-      populate: {
-        path: "country", // Populating country under state
-        select: hiddenFieldsDefault,
-      },
-    })
-    .populate({
-      path: "address.country", // Populating address.country field
-      select: hiddenFieldsDefault,
-    })
-    .limit(limit);
-};
-
-// Function to find a single profile based on a query
-const findProfileByQuery = async (query) => {
-  return Profile.findOne(query, hiddenFieldsDefault)
-    .populate("gender", hiddenFieldsDefault) // Populating gender field
-    .populate({
-      path: "user", // Populating user field
-      select: hiddenFieldsDefault,
-      populate: {
-        path: "role", // Populating user's role
-        select: hiddenFieldsDefault,
-        populate: {
-          path: "rolePermissions", // Populating role permissions
-          select: hiddenFieldsDefault,
-        },
-      },
-    })
-    .populate({
-      path: "address.city", // Populating address.city field
-      select: hiddenFieldsDefault,
-      populate: [
-        {
-          path: "state", // Populating state under city
-          select: hiddenFieldsDefault,
-          populate: {
-            path: "country", // Populating country under state
-            select: hiddenFieldsDefault,
-          },
-        },
-        {
-          path: "country", // Populating country under city
-          select: hiddenFieldsDefault,
-        },
-      ],
-    })
-    .populate({
-      path: "address.state", // Populating address.state field
-      select: hiddenFieldsDefault,
-      populate: {
-        path: "country", // Populating country under state
-        select: hiddenFieldsDefault,
-      },
-    })
-    .populate({
-      path: "address.country", // Populating address.country field
-      select: hiddenFieldsDefault,
-    });
-};
-
-// Function to find a user based on user code
-const findUserByCode = async (userCode) =>
-  await User.findOne({ userCode }, hiddenFieldsUser).populate({
-    path: "role", // Populating user's role
-    select: hiddenFieldsDefault,
-    populate: {
-      path: "rolePermissions", // Populating role permissions
-      select: hiddenFieldsDefault,
-    },
-  });
+const {
+  findProfiles,
+  findProfile,
+  createProfileObj,
+  updateProfileObj,
+  removeUploadedProfilePicture,
+} = require("../queries/profiles");
+const { findUser } = require("../queries/users");
+const { findGender } = require("../queries/genders");
+const { findCountry } = require("../queries/countries");
+const { findState } = require("../queries/states");
+const { findCity } = require("../queries/cities");
 
 module.exports = {
   /**
@@ -163,10 +69,14 @@ module.exports = {
    * @param {Function} next - Express next middleware function
    */
   getProfiles: async (req, res, next) => {
-    // Destructure 'entries' from the query parameters, defaulting to 100 if not provided
-    const { entries = 100 } = req.query;
+    const { start = 1, end = 10 } = req.query; // Step 1: Extract pagination parameters
     // Retrieve all profiles from the database using an empty query object
-    const profiles = await findProfilesByQuery({}, entries);
+    const profiles = await findProfiles({
+      start,
+      end,
+      options: true,
+      populated: true,
+    });
 
     // Convert each profile object to a plain JSON object for easier handling
     const profilesJSON = profiles.map((profile) => profile.toJSON());
@@ -190,10 +100,16 @@ module.exports = {
    */
   GetOwnProfile: async (req, res, next) => {
     // Find the logged-in user's information from the database using their userCode
-    const loggedInUser = await User.findOne({ userCode: req.user.userCode });
+    const loggedInUser = await findUser({
+      query: { userCode: req.user.userCode },
+    });
 
     // Retrieve the profile associated with the logged-in user
-    const profile = await findProfileByQuery({ user: loggedInUser });
+    const profile = await findProfile({
+      query: { user: loggedInUser._id },
+      options: true,
+      populated: true,
+    });
 
     // Check if the profile exists
     if (!profile) {
@@ -227,7 +143,11 @@ module.exports = {
     const { profileCode } = req.body;
 
     // Use the 'profileCode' to find the corresponding profile in the database
-    const profile = await findProfileByQuery({ profileCode });
+    const profile = await findProfile({
+      query: { profileCode },
+      options: true,
+      populated: true,
+    });
 
     // Check if the profile exists
     if (!profile) {
@@ -273,7 +193,7 @@ module.exports = {
     }
 
     // Search for the user in the database using the provided userCode
-    const user = await User.findOne({ userCode });
+    const user = await findUser({ query: { userCode } });
 
     // If the user is not found, handle the error indicating the user was not found
     if (!user) {
@@ -281,7 +201,11 @@ module.exports = {
     }
 
     // Find the profile associated with the found user's ID
-    const profile = await findProfileByQuery({ user: user._id });
+    const profile = await findProfile({
+      query: { user: user._id },
+      options: true,
+      populated: true,
+    });
 
     // If the profile is not found, handle the error indicating the profile was not found under the user
     if (!profile) {
@@ -327,66 +251,81 @@ module.exports = {
 
     // Destructure the address object to get location codes
     const { cityCode, stateCode, countryCode } = address;
+    const fileName = profilePicture?.filename;
 
     // Check if the user with the provided userCode exists
-    const existingUser = await User.findOne({ userCode });
-    if (!existingUser)
+    const existingUser = await findUser({ query: { userCode } });
+    if (!existingUser) {
+      await removeUploadedProfilePicture(fileName);
       return handleError(next, STATUS_CODE_CONFLICT, MESSAGE_USER_NOT_FOUND);
+    }
 
     // Check if a profile already exists for the user
-    const existingProfile = await findProfileByQuery({
-      user: existingUser._id,
+    const existingProfile = await findProfile({
+      query: { user: existingUser._id },
     });
-    if (existingProfile)
+    if (existingProfile) {
+      await removeUploadedProfilePicture(fileName);
       return handleError(next, STATUS_CODE_CONFLICT, MESSAGE_PROFILE_EXIST);
+    }
 
     // Check if the phone number is already associated with another profile
-    const existingProfileWithPhone = await findProfileByQuery({
-      phoneNumber: phoneNumber?.trim(),
+    const existingProfileWithPhone = await findProfile({
+      query: { phoneNumber: phoneNumber?.trim() },
     });
-    if (existingProfileWithPhone)
+    if (existingProfileWithPhone) {
+      await removeUploadedProfilePicture(fileName);
       return handleError(next, STATUS_CODE_CONFLICT, MESSAGE_PROFILE_TAKEN);
+    }
 
     // Validate the gender code
-    const existingGender = await Gender.findOne({ genderCode });
-    if (!existingGender)
+    const existingGender = await findGender({ query: { genderCode } });
+    if (!existingGender) {
+      await removeUploadedProfilePicture(fileName);
       return handleError(next, STATUS_CODE_CONFLICT, MESSAGE_GENDER_NOT_FOUND);
+    }
 
     // Validate the country code
-    const existingCountry = await Country.findOne({ countryCode });
-    if (!existingCountry)
+    const existingCountry = await findCountry({ query: { countryCode } });
+    if (!existingCountry) {
+      await removeUploadedProfilePicture(fileName);
       return handleError(next, STATUS_CODE_CONFLICT, MESSAGE_COUNTRY_NOT_FOUND);
+    }
 
     // Validate the state code within the specified country
-    const existingState = await State.findOne({
-      stateCode,
-      country: existingCountry._id,
+    const existingState = await findState({
+      query: {
+        stateCode,
+        country: existingCountry._id,
+      },
     });
-    if (!existingState)
+    if (!existingState) {
+      await removeUploadedProfilePicture(fileName);
       return handleError(
         next,
         STATUS_CODE_CONFLICT,
         MESSAGE_STATE_NOT_FOUND_UNDER_COUNTRY
       );
+    }
 
     // Validate the city code within the specified state
-    const existingCity = await City.findOne({
-      cityCode,
-      state: existingState._id,
+    const existingCity = await findCity({
+      query: {
+        cityCode,
+        state: existingState._id,
+      },
     });
-    if (!existingCity)
+    if (!existingCity) {
+      await removeUploadedProfilePicture(fileName);
       return handleError(
         next,
         STATUS_CODE_CONFLICT,
         MESSAGE_CITY_NOT_FOUND_UNDER_STATE
       );
-
-    // Generate a unique profile code
-    const profileCode = generateProfileCode();
+    }
 
     // Create the profile object with the validated data
     let obj = {
-      profileCode,
       firstName,
       lastName,
       profilePicture,
@@ -409,14 +348,18 @@ module.exports = {
     }
 
     // Create a new profile document in the database
-    const profile = new Profile(obj);
+    const profile = await createProfileObj(obj);
     await profile.save();
 
     // Retrieve the newly created profile to confirm creation
-    const createdProfile = await findProfileByQuery({ profileCode });
+    const createdProfile = await findProfile({
+      query: { profileCode: profile.profileCode },
+      options: true,
+      populated: true,
+    });
 
     // Get the current user information from the request
-    const currentUser = await findUserByCode(req.user.userCode);
+    const currentUser = await getCurrentUser(req.user.userCode);
 
     // Log the creation action in the audit logs
     await logAudit(
@@ -460,60 +403,86 @@ module.exports = {
       address,
       social = null, // Default to null if not provided
       notification,
+      isProfilePictureChanged = false,
     } = req.body;
 
     // Destructure address-related codes
     const { cityCode, stateCode, countryCode } = address;
+    const newFileName = profilePicture?.filename;
 
     // Check if the profile with the provided profileCode exists
-    const existingProfile = await findProfileByQuery({ profileCode });
-    if (!existingProfile)
+    const existingProfile = await findProfile({ query: { profileCode } });
+    if (!existingProfile) {
+      await removeUploadedProfilePicture(newFileName);
       return handleError(next, STATUS_CODE_CONFLICT, MESSAGE_PROFILE_NOT_FOUND);
+    }
+
+    const fileName = existingProfile?.profilePicture?.filename;
 
     // Check if the provided phone number is already associated with another profile
-    const existingProfileWithPhone = await findProfileByQuery({
-      profileCode: { $ne: profileCode }, // Exclude current profile
-      phoneNumber: phoneNumber?.trim(), // Trim whitespace
+    const existingProfileWithPhone = await findProfile({
+      query: {
+        profileCode: { $ne: profileCode }, // Exclude current profile
+        phoneNumber: phoneNumber?.trim(), // Trim whitespace
+      },
     });
-    if (existingProfileWithPhone)
+    if (existingProfileWithPhone) {
+      await removeUploadedProfilePicture(newFileName);
       return handleError(next, STATUS_CODE_CONFLICT, MESSAGE_PROFILE_TAKEN);
+    }
 
     // Validate if the provided genderCode exists
-    const existingGender = await Gender.findOne({ genderCode });
-    if (!existingGender)
+    const existingGender = await findGender({ query: { genderCode } });
+    if (!existingGender) {
+      await removeUploadedProfilePicture(newFileName);
       return handleError(next, STATUS_CODE_CONFLICT, MESSAGE_GENDER_NOT_FOUND);
+    }
 
     // Validate if the provided countryCode exists
-    const existingCountry = await Country.findOne({ countryCode });
-    if (!existingCountry)
+    const existingCountry = await findCountry({ query: { countryCode } });
+    if (!existingCountry) {
+      await removeUploadedProfilePicture(newFileName);
       return handleError(next, STATUS_CODE_CONFLICT, MESSAGE_COUNTRY_NOT_FOUND);
+    }
 
     // Validate if the provided stateCode exists under the provided country
-    const existingState = await State.findOne({
-      stateCode,
-      country: existingCountry._id,
+    const existingState = await findState({
+      query: {
+        stateCode,
+        country: existingCountry._id,
+      },
     });
-    if (!existingState)
+    if (!existingState) {
+      await removeUploadedProfilePicture(newFileName);
       return handleError(
         next,
         STATUS_CODE_CONFLICT,
         MESSAGE_STATE_NOT_FOUND_UNDER_COUNTRY
       );
+    }
 
     // Validate if the provided cityCode exists under the provided state
-    const existingCity = await City.findOne({
-      cityCode,
-      state: existingState._id,
+    const existingCity = await findCity({
+      query: {
+        cityCode,
+        state: existingState._id,
+      },
     });
-    if (!existingCity)
+    if (!existingCity) {
+      await removeUploadedProfilePicture(newFileName);
       return handleError(
         next,
         STATUS_CODE_CONFLICT,
         MESSAGE_CITY_NOT_FOUND_UNDER_STATE
       );
+    }
 
     // Save previous profile data for audit logging
-    const previousData = existingProfile.toObject();
+    const previousData = await findProfile({
+      query: { profileCode },
+      options: true,
+      populated: true,
+    });
 
     // Prepare the updated profile object
     let obj = {
@@ -538,14 +507,24 @@ module.exports = {
       obj.social = social;
     }
 
+    if (isProfilePictureChanged) {
+      await removeUploadedProfilePicture(fileName);
+    } else {
+      await removeUploadedProfilePicture(newFileName);
+    }
+
     // Update the profile with the new data
-    await Profile.findOneAndUpdate({ genderCode }, obj);
+    await updateProfileObj({ genderCode, ...obj });
 
     // Fetch the updated profile data
-    const updatedProfile = await findProfileByQuery({ profileCode });
+    const updatedProfile = await findProfile({
+      query: { profileCode },
+      options: true,
+      populated: true,
+    });
 
     // Fetch the current user making the request
-    const currentUser = await findUserByCode(req.user.userCode);
+    const currentUser = await getCurrentUser(req.user.userCode);
 
     // Log the profile update action for auditing purposes
     await logAudit(
@@ -553,8 +532,8 @@ module.exports = {
       auditCollections.PROFILES,
       existingProfile.profileCode,
       auditChanges.UPDATE_PROFILE,
-      previousData,
-      updatedProfile,
+      previousData.toObject(),
+      updatedProfile.toObject(),
       currentUser.toObject()
     );
 
@@ -586,6 +565,8 @@ module.exports = {
       // If the profile does not exist, return an error response
       return handleError(next, STATUS_CODE_CONFLICT, MESSAGE_PROFILE_NOT_FOUND);
 
+    const fileName = existingProfile?.profilePicture?.filename;
+
     // Check if the profile is referenced by any other objects in the system
     const { isReferenced } = await IsObjectIdReferenced(existingProfile._id);
     if (isReferenced)
@@ -597,7 +578,13 @@ module.exports = {
       );
 
     // Convert the existing profile document to a plain JavaScript object for audit logging
-    const previousData = await findProfileByQuery({ profileCode });
+    const previousData = await findProfile({
+      query: { profileCode },
+      options: true,
+      populated: true,
+    });
+
+    await removeUploadedProfilePicture(fileName);
 
     // Attempt to delete the profile from the database
     const deletionResult = await existingProfile.deleteOne();

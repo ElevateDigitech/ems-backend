@@ -8,6 +8,7 @@ const fsPromises = require("fs").promises;
 const { STATUS_SUCCESS, STATUS_ERROR } = require("./status");
 const { referenceFields } = require("./referenceFields");
 const { findUser } = require("../queries/users");
+const path = require("path");
 
 const hiddenFieldsDefault = { __v: 0, _id: 0, id: 0 };
 const hiddenFieldsUser = { __v: 0, _id: 0, salt: 0, hash: 0 };
@@ -124,6 +125,8 @@ const getLimitAndSkip = (start, end) => {
   return { limit, skip };
 };
 
+const getFileExtension = (filename) => path.extname(filename);
+
 module.exports = {
   hiddenFieldsDefault,
   hiddenFieldsUser,
@@ -156,4 +159,5 @@ module.exports = {
   writeToFile,
   getCurrentUser,
   getLimitAndSkip,
+  getFileExtension,
 };

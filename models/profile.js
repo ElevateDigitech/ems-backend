@@ -22,6 +22,11 @@ const ImageSchema = new Schema(
       required: true,
       trim: true,
     },
+    extension: {
+      type: String,
+      required: true,
+      trim: true,
+    },
   },
   {
     ...removeIdsForSubSchemas,

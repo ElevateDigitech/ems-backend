@@ -16,6 +16,7 @@ const { IMAGE_FIELD_PROFILE_PICTURE } = require("./utils/imageFields");
 const { uploadProfilePicture } = require("./multer");
 const { MulterError } = require("multer");
 const catchAsync = require("./utils/catchAsync");
+const { getFileExtension } = require("./utils/helpers");
 
 /**
  * Middleware for validating request bodies against a provided schema.
@@ -77,6 +78,7 @@ const validateProfileSchema = (passedSchema) =>
     const file = {
       url: req?.file?.path ?? "",
       filename: req?.file?.filename ?? "",
+      extension: getFileExtension(req?.file?.originalname ?? ""),
     };
 
     // Add file data to the request body under the appropriate field name
