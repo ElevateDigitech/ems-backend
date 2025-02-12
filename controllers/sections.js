@@ -282,6 +282,7 @@ module.exports = {
   DeleteSection: async (req, res, next) => {
     const { sectionCode } = req.body;
     const existingSection = await findSection({ query: { sectionCode } });
+    // Step 1: Find the section to be deleted
 
     if (!existingSection)
       return handleError(next, STATUS_CODE_CONFLICT, MESSAGE_SECTION_NOT_FOUND);
@@ -292,13 +293,14 @@ module.exports = {
         next,
         STATUS_CODE_CONFLICT,
         MESSAGE_SECTION_NOT_ALLOWED_DELETE_REFERENCE_EXIST
-      );
+      ); // Step 2: Check for references
 
     const previousData = await findSection({
       query: { sectionCode },
       options: true,
       populated: true,
     });
+
     const deletionResult = await deleteSectionObj(sectionCode);
 
     if (deletionResult.deletedCount === 0) {
@@ -307,7 +309,7 @@ module.exports = {
         STATUS_CODE_INTERNAL_SERVER_ERROR,
         MESSAGE_DELETE_SECTION_ERROR
       );
-    }
+    } // Step 3: Handle deletion error
 
     const currentUser = await getCurrentUser(req.user.userCode);
     await logAudit(
@@ -318,10 +320,11 @@ module.exports = {
       previousData.toObject(),
       null,
       currentUser.toObject()
-    );
+    ); // Step 4: Log the deletion action
 
     res
       .status(STATUS_CODE_SUCCESS)
       .send(handleSuccess(STATUS_CODE_SUCCESS, MESSAGE_DELETE_SECTION_SUCCESS));
+    // Step 5: Send a success response
   },
 };
