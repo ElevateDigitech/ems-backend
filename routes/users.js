@@ -44,7 +44,7 @@ router.get(
   catchAsync(users.GetOwnUser)
 );
 
-router.get(
+router.post(
   "/GetUserById",
   isLoggedIn,
   checkPermission(allPermissions?.VIEW_USERS),

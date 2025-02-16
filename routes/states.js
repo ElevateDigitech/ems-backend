@@ -20,7 +20,7 @@ router.get(
   catchAsync(states.GetStates)
 );
 
-router.get(
+router.post(
   "/GetStateByCode",
   isLoggedIn,
   checkPermission(allPermissions?.VIEW_STATES),
@@ -28,7 +28,7 @@ router.get(
   catchAsync(states.GetStateByCode)
 );
 
-router.get(
+router.post(
   "/GetStatesByCountryCode",
   isLoggedIn,
   checkPermission(allPermissions?.VIEW_STATES),

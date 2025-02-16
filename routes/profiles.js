@@ -26,7 +26,7 @@ router.get(
   catchAsync(profiles.GetOwnProfile)
 );
 
-router.get(
+router.post(
   "/GetProfileByCode",
   isLoggedIn,
   checkPermission(allPermissions?.VIEW_PROFILES),
@@ -34,7 +34,7 @@ router.get(
   catchAsync(profiles.GetProfileByCode)
 );
 
-router.get(
+router.post(
   "/GetProfileByUserCode",
   isLoggedIn,
   checkPermission(allPermissions?.VIEW_PROFILES),

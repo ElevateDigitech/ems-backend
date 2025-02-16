@@ -39,6 +39,7 @@ const {
   updateRoleObj,
   deleteRoleObj,
   formatRoleFields,
+  getRolePaginationObject,
 } = require("../queries/roles");
 
 module.exports = {
@@ -49,19 +50,24 @@ module.exports = {
    * @param {Object} res - Express response object
    */
   GetRoles: async (req, res, next) => {
-    const { start = 1, end = 10 } = req.query; // Step 1: Extract pagination parameters
+    const { page = 1, perPage = 10 } = req.query; // Step 1: Extract pagination parameters
     const roles = await findRoles({
-      start,
-      end,
+      page,
+      perPage,
       options: true,
       populated: true,
     }); // Step 2: Fetch roles from the database
-
+    const pagination = await getRolePaginationObject(page, perPage);
     // Step 3: Send the retrieved roles in the response
     res
       .status(STATUS_CODE_SUCCESS)
       .send(
-        handleSuccess(STATUS_CODE_SUCCESS, MESSAGE_GET_ROLES_SUCCESS, roles)
+        handleSuccess(
+          STATUS_CODE_SUCCESS,
+          MESSAGE_GET_ROLES_SUCCESS,
+          roles,
+          pagination
+        )
       );
   },
 
@@ -200,7 +206,7 @@ module.exports = {
     if (!existingRole)
       return handleError(next, STATUS_CODE_BAD_REQUEST, MESSAGE_ROLE_NOT_FOUND); // Step 2: Find the existing role
 
-    const otherRoles = await findRole({
+    const otherRoles = await findRoles({
       query: { roleCode: { $ne: roleCode }, roleName: formattedRoleName },
     });
     if (otherRoles?.length)
@@ -219,7 +225,7 @@ module.exports = {
       options: true,
       populated: true,
     });
-    
+
     await updateRoleObj({
       roleCode,
       roleName: formattedRoleName,

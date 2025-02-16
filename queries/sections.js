@@ -21,11 +21,11 @@ const {
 const findSections = async ({
   query = {},
   options = false,
-  start = 1,
-  end = 10,
+  page = 1,
+  perPage = 10,
   populated = false,
 }) => {
-  const { limit, skip } = getLimitAndSkip(start, end); // Step 1: Calculate pagination parameters
+  const { limit, skip } = getLimitAndSkip(page, perPage); // Step 1: Calculate pagination parameters
 
   // Step 2: Build the base query
   const sectionsQuery = Section.find(query, options ? hiddenFieldsDefault : {})
@@ -122,6 +122,12 @@ const deleteSectionObj = async (sectionCode) => {
   return await Section.deleteOne({ sectionCode }); // Step 1: Delete the section by sectionCode
 };
 
+const getSectionPaginationObject = async (page, perPage) => ({
+  page,
+  perPage,
+  total: await Section.countDocuments(),
+});
+
 module.exports = {
   findSections, // Export function to retrieve multiple sections
   findSection, // Export function to retrieve a single section
@@ -129,4 +135,5 @@ module.exports = {
   createSectionObj, // Export function to create a new section
   updateSectionObj, // Export function to update an existing section
   deleteSectionObj, // Export function to delete a section
+  getSectionPaginationObject,
 };

@@ -20,11 +20,11 @@ const {
 const findCountries = async ({
   query = {}, // MongoDB query object to filter countries
   options = false, // Fields to include/exclude in the result
-  start = 1, // Starting index for pagination (default is 1)
-  end = 10, // Ending index for pagination (default is 10)
+  page = 1, // Current page for pagination (default is 1)
+  perPage = 10, // Items per page for pagination (default is 10)
 }) => {
   // Step 1: Calculate the limit and skip values for pagination
-  const { limit, skip } = getLimitAndSkip(start, end);
+  const { limit, skip } = getLimitAndSkip(page, perPage);
 
   // Step 2: Query the database with provided filters, apply pagination (skip & limit)
   return await Country.find(query, options ? hiddenFieldsDefault : {})
@@ -121,6 +121,12 @@ const deleteCountryObj = async (countryCode) => {
   return await Country.deleteOne({ countryCode });
 };
 
+const getCountryPaginationObject = async (page, perPage) => ({
+  page,
+  perPage,
+  total: await Country.countDocuments(),
+});
+
 module.exports = {
   findCountries, // Export function to retrieve multiple countries
   findCountry, // Export function to retrieve a single country
@@ -128,4 +134,5 @@ module.exports = {
   createCountryObj, // Export function to create a new country object
   updateCountryObj, // Export function to update an existing country
   deleteCountryObj, // Export function to delete a country
+  getCountryPaginationObject,
 };

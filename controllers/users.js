@@ -17,7 +17,6 @@ const {
   getRoleId,
   IsObjectIdReferenced,
   generateUserCode,
-  generateAuditCode,
 } = require("../utils/helpers");
 const {
   STATUS_CODE_BAD_REQUEST,
@@ -49,6 +48,7 @@ const {
   MESSAGE_UPDATE_USER_SUCCESS,
   MESSAGE_ACCESS_DENIED_NO_PERMISSION,
 } = require("../utils/messages");
+const { getUserPaginationObject } = require("../queries/users");
 
 /**
  * Retrieves the current user based on userCode.
@@ -160,7 +160,8 @@ module.exports = {
     const currentUser = await getCurrentUser(req.user.userCode);
 
     //: Log the audit for user creation
-    await logAudit( // Generate audit code
+    await logAudit(
+      // Generate audit code
       auditActions.CREATE, // Specify audit action
       auditCollections.USERS, // Specify audit collection
       createdUser.userCode, // Reference created user's code
@@ -226,7 +227,6 @@ module.exports = {
 
         // Log the login action in the audit log
         await logAudit(
-          generateAuditCode(), // Generate a unique audit code
           auditActions.LOGIN, // Specify the login action
           auditCollections.USERS, // Specify the collection being audited
           currentUser.userCode, // Include the current user's code
@@ -275,7 +275,6 @@ module.exports = {
 
         // Log the logout event for audit purposes
         await logAudit(
-          generateAuditCode(), // Generate a unique code for the audit log
           auditActions.LOGOUT, // Define the action as LOGOUT
           auditCollections.USERS, // Specify the collection related to the audit (USERS)
           currentUser.userCode, // Include the user code in the audit log
@@ -477,12 +476,17 @@ module.exports = {
         },
       })
       .limit(entries);
-
+    const pagination = await getUserPaginationObject(page, perPage);
     // Send a success response with the retrieved users
     res
       .status(STATUS_CODE_SUCCESS)
       .send(
-        handleSuccess(STATUS_CODE_SUCCESS, MESSAGE_GET_USERS_SUCCESS, allUsers)
+        handleSuccess(
+          STATUS_CODE_SUCCESS,
+          MESSAGE_GET_USERS_SUCCESS,
+          allUsers,
+          pagination
+        )
       );
   },
 
@@ -510,7 +514,7 @@ module.exports = {
    * @param {Function} next - Express next middleware function
    */
   GetUserById: async (req, res, next) => {
-    const { userCode } = req.body; // Extract user code from the request body
+    const { userCode } = req.query; // Extract user code from the request body
 
     // Validate if the user code is provided
     if (!userCode?.trim()) {

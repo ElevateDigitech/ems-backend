@@ -19,11 +19,11 @@ const {
 const findSubjects = async ({
   query = {}, // MongoDB query object to filter subjects
   options = false, // Fields to include/exclude in the result
-  start = 1, // Starting index for pagination (default is 1)
-  end = 10, // Ending index for pagination (default is 10)
+  page = 1, // Current page for pagination (default is 1)
+  perPage = 10, // Items per page for pagination (default is 10)
 }) => {
   // Step 1: Calculate the limit and skip values for pagination
-  const { limit, skip } = getLimitAndSkip(start, end);
+  const { limit, skip } = getLimitAndSkip(page, perPage);
 
   // Step 2: Query the database with provided filters, apply pagination (skip & limit)
   return await Subject.find(query, options ? hiddenFieldsDefault : {})
@@ -106,6 +106,12 @@ const deleteSubjectObj = async (subjectCode) => {
   return await Subject.deleteOne({ subjectCode });
 };
 
+const getSubjectPaginationObject = async (page, perPage) => ({
+  page,
+  perPage,
+  total: await Subject.countDocuments(),
+});
+
 module.exports = {
   findSubjects, // Export function to retrieve multiple subjects
   findSubject, // Export function to retrieve a single subject
@@ -113,4 +119,5 @@ module.exports = {
   createSubjectObj, // Export function to create a new subject object
   updateSubjectObj, // Export function to update an existing subject
   deleteSubjectObj, // Export function to delete a subject
+  getSubjectPaginationObject,
 };

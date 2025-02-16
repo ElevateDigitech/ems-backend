@@ -19,11 +19,11 @@ const {
 const findExams = async ({
   query = {}, // MongoDB query object to filter exams
   options = false, // Fields to include/exclude in the result
-  start = 1, // Starting index for pagination (default is 1)
-  end = 10, // Ending index for pagination (default is 10)
+  page = 1, // Current page for pagination (default is 1)
+  perPage = 10, // Items per page for pagination (default is 10)
 }) => {
   // Step 1: Calculate the limit and skip values for pagination
-  const { limit, skip } = getLimitAndSkip(start, end);
+  const { limit, skip } = getLimitAndSkip(page, perPage);
 
   // Step 2: Query the database with provided filters, apply pagination (skip & limit)
   return await Exam.find(query, options ? hiddenFieldsDefault : {})
@@ -106,6 +106,12 @@ const deleteExamObj = async (examCode) => {
   return await Exam.deleteOne({ examCode });
 };
 
+const getExamPaginationObject = async (page, perPage) => ({
+  page,
+  perPage,
+  total: await Exam.countDocuments(),
+});
+
 module.exports = {
   findExams, // Export function to retrieve multiple exams
   findExam, // Export function to retrieve a single exam
@@ -113,4 +119,5 @@ module.exports = {
   createExamObj, // Export function to create a new exam object
   updateExamObj, // Export function to update an existing exam
   deleteExamObj, // Export function to delete an exam
+  getExamPaginationObject,
 };

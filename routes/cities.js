@@ -21,7 +21,7 @@ router.get(
   catchAsync(cities.GetCities)
 );
 
-router.get(
+router.post(
   "/GetCityByCode",
   isLoggedIn,
   checkPermission(allPermissions?.VIEW_CITIES),
@@ -29,7 +29,7 @@ router.get(
   catchAsync(cities.GetCityByCode)
 );
 
-router.get(
+router.post(
   "/GetCitiesByStateCode",
   isLoggedIn,
   checkPermission(allPermissions?.VIEW_CITIES),
@@ -37,7 +37,7 @@ router.get(
   catchAsync(cities.GetCitiesByStateCode)
 );
 
-router.get(
+router.post(
   "/GetCitiesByCountryCode",
   isLoggedIn,
   checkPermission(allPermissions?.VIEW_CITIES),

@@ -22,7 +22,7 @@ router.get(
   catchAsync(marks.GetMarks)
 );
 
-router.get(
+router.post(
   "/GetMarkByCode",
   isLoggedIn,
   checkPermission(allPermissions?.VIEW_MARKS),
@@ -30,7 +30,7 @@ router.get(
   catchAsync(marks.GetMarkByCode)
 );
 
-router.get(
+router.post(
   "/GetMarksByExamCode",
   isLoggedIn,
   checkPermission(allPermissions?.VIEW_MARKS),
@@ -38,7 +38,7 @@ router.get(
   catchAsync(marks.GetMarksByExamCode)
 );
 
-router.get(
+router.post(
   "/GetMarksByStudentCode",
   isLoggedIn,
   checkPermission(allPermissions?.VIEW_MARKS),
@@ -46,7 +46,7 @@ router.get(
   catchAsync(marks.GetMarksByStudentCode)
 );
 
-router.get(
+router.post(
   "/GetMarksBySubjectCode",
   isLoggedIn,
   checkPermission(allPermissions?.VIEW_MARKS),

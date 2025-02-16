@@ -25,7 +25,7 @@ router.get(
   catchAsync(roles.GetOwnRole)
 );
 
-router.get(
+router.post(
   "/GetRoleByCode",
   isLoggedIn,
   checkPermission(allPermissions?.VIEW_ROLES),

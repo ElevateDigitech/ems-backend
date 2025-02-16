@@ -33,10 +33,6 @@ const PermissionSchema = new Schema(
       default: timeNow,
       immutable: true,
     },
-    updatedAt: {
-      type: Date,
-      default: timeNow,
-    },
   },
   defaultOptions
 );
@@ -44,10 +40,6 @@ const PermissionSchema = new Schema(
 // Virtuals for timestamps
 PermissionSchema.virtual("createdAtEpochTimestamp").get(function () {
   return moment(this.createdAt).valueOf();
-});
-
-PermissionSchema.virtual("updatedAtEpochTimestamp").get(function () {
-  return moment(this.updatedAt).valueOf();
 });
 
 // Pre-find middleware to sort results by _id descending

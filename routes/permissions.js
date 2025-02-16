@@ -6,6 +6,7 @@ const {
   isLoggedIn,
   checkPermission,
   validatePermissionCode,
+  validateRoleCode,
 } = require("../middleware");
 const { allPermissions } = require("../seeds/basePermissions");
 
@@ -16,12 +17,20 @@ router.get(
   catchAsync(permissions.GetPermissions)
 );
 
-router.get(
+router.post(
   "/GetPermissionByCode",
   isLoggedIn,
   checkPermission(allPermissions?.VIEW_PERMISSIONS),
   validatePermissionCode,
   catchAsync(permissions.GetPermissionByCode)
+);
+
+router.post(
+  "/GetPermissionsByRoleCode",
+  isLoggedIn,
+  checkPermission(allPermissions?.VIEW_PERMISSIONS),
+  validateRoleCode,
+  catchAsync(permissions.GetPermissionsByRoleCode)
 );
 
 module.exports.permissionsRoutes = router;

@@ -18,7 +18,7 @@ router.get(
   catchAsync(exams.GetExams)
 );
 
-router.get(
+router.post(
   "/GetExamByCode",
   isLoggedIn,
   checkPermission(allPermissions?.VIEW_EXAMS),

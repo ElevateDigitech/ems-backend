@@ -21,12 +21,12 @@ const { cloudinary } = require("../cloudinary");
 const findProfiles = async ({
   query = {},
   options = false,
-  start = 1,
-  end = 10,
+  page = 1,
+  perPage = 10,
   populated = false,
 }) => {
   // Step 1: Calculate pagination parameters
-  const { limit, skip } = getLimitAndSkip(start, end);
+  const { limit, skip } = getLimitAndSkip(page, perPage);
 
   // Step 2: Build the base query to find profiles
   const profilesQuery = Profile.find(query, options ? hiddenFieldsDefault : {})
@@ -226,6 +226,12 @@ const deleteProfileObj = async (profileCode) => {
   return await Profile.deleteOne({ profileCode });
 };
 
+const getProfilePaginationObject = async (page, perPage) => ({
+  page,
+  perPage,
+  total: await Profile.countDocuments(),
+});
+
 module.exports = {
   findProfiles, // Export function to retrieve multiple profiles
   findProfile, // Export function to retrieve a single profile
@@ -233,4 +239,5 @@ module.exports = {
   createProfileObj, // Export function to create a new profile
   updateProfileObj, // Export function to update an existing profile
   deleteProfileObj, // Export function to delete a profile
+  getProfilePaginationObject,
 };

@@ -20,11 +20,11 @@ const {
 const findRoles = async ({
   query = {},
   options = false,
-  start = 1,
-  end = 10,
+  page = 1,
+  perPage = 10,
   populated = false,
 }) => {
-  const { limit, skip } = getLimitAndSkip(start, end); // Step 1: Calculate pagination parameters
+  const { limit, skip } = getLimitAndSkip(page, perPage); // Step 1: Calculate pagination parameters
 
   // Step 2: Build the base query
   const rolesQuery = Role.find(query, options ? hiddenFieldsDefault : {})
@@ -136,6 +136,12 @@ const deleteRoleObj = async (roleCode) => {
   return await Role.deleteOne({ roleCode }); // Step 1: Delete the role by roleCode
 };
 
+const getRolePaginationObject = async (page, perPage) => ({
+  page,
+  perPage,
+  total: await Role.countDocuments(),
+});
+
 module.exports = {
   findRoles, // Export function to retrieve multiple roles
   findRole, // Export function to retrieve a single role
@@ -143,4 +149,5 @@ module.exports = {
   createRoleObj, // Export function to create a new role
   updateRoleObj, // Export function to update an existing role
   deleteRoleObj, // Export function to delete a role
+  getRolePaginationObject,
 };

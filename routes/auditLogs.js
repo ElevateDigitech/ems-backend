@@ -17,10 +17,10 @@ router.get(
   catchAsync(auditLogs.GetAudits)
 );
 
-router.get(
+router.post(
   "/GetAuditByCode",
   isLoggedIn,
-  checkPermission(allPermissions?.VIEW_USERS),
+  checkPermission(allPermissions?.VIEW_AUDITS),
   validateAuditCode,
   catchAsync(auditLogs.GetAuditByCode)
 );

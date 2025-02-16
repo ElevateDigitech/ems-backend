@@ -20,12 +20,12 @@ const findUsers = async ({
   options = false, // Fields to include/exclude in the result
   roleOptions = false,
   rolePermissionOptions = false,
-  start = 1, // Starting index for pagination (default is 1)
-  end = 10, // Ending index for pagination (default is 10)
+  page = 1, // Current page for pagination (default is 1)
+  perPage = 10, // Items per page for pagination (default is 10)
   populated = false,
 }) => {
   // Step 1: Calculate the limit and skip values for pagination
-  const { limit, skip } = getLimitAndSkip(start, end);
+  const { limit, skip } = getLimitAndSkip(page, perPage);
 
   // Query the database with the provided filters
   // Apply skip for pagination
@@ -74,7 +74,14 @@ const findUser = async ({
     : await User.findOne(query, options ? hiddenFieldsUser : {});
 };
 
+const getUserPaginationObject = async (page, perPage) => ({
+  page,
+  perPage,
+  total: await User.countDocuments(),
+});
+
 module.exports = {
   findUsers, // Export function to retrieve multiple permissions
   findUser, // Export function to retrieve a single permission
+  getUserPaginationObject,
 };

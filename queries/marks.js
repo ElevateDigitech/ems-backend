@@ -20,12 +20,12 @@ const {
 const findMarks = async ({
   query = {},
   options = false,
-  start = 1,
-  end = 10,
+  page = 1,
+  perPage = 10,
   populated = false,
 }) => {
   // Step 1: Calculate pagination parameters
-  const { limit, skip } = getLimitAndSkip(start, end);
+  const { limit, skip } = getLimitAndSkip(page, perPage);
 
   // Step 2: Build the base query to find marks
   const marksQuery = Mark.find(query, options ? hiddenFieldsDefault : {})
@@ -162,10 +162,17 @@ const deleteMarkObj = async (markCode) => {
   return await Mark.deleteOne({ markCode });
 };
 
+const getMarkPaginationObject = async (page, perPage) => ({
+  page,
+  perPage,
+  total: await Mark.countDocuments(),
+});
+
 module.exports = {
   findMarks, // Export function to retrieve multiple marks
   findMark, // Export function to retrieve a single mark
   createMarkObj, // Export function to create a new mark
   updateMarkObj, // Export function to update an existing mark
   deleteMarkObj, // Export function to delete a mark
+  getMarkPaginationObject,
 };

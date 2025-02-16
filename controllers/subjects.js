@@ -35,6 +35,7 @@ const {
   createSubjectObj,
   updateSubjectObj,
   deleteSubjectObj,
+  getSubjectPaginationObject,
 } = require("../queries/subjects");
 
 module.exports = {
@@ -46,9 +47,9 @@ module.exports = {
    * @param {Function} next - Express next middleware function
    */
   GetSubjects: async (req, res, next) => {
-    const { start = 1, end = 10 } = req.query; // Step 1: Extract pagination parameters
-    const subjects = await findSubjects({ start, end, options: true }); // Step 2: Fetch subjects from the database
-
+    const { page = 1, perPage = 10 } = req.query; // Step 1: Extract pagination parameters
+    const subjects = await findSubjects({ page, perPage, options: true }); // Step 2: Fetch subjects from the database
+    const pagination = await getSubjectPaginationObject(page, perPage);
     // Step 3: Send success response with the list of subjects
     res
       .status(STATUS_CODE_SUCCESS)
@@ -56,7 +57,8 @@ module.exports = {
         handleSuccess(
           STATUS_CODE_SUCCESS,
           MESSAGE_GET_SUBJECTS_SUCCESS,
-          subjects
+          subjects,
+          pagination
         )
       );
   },

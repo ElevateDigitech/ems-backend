@@ -38,6 +38,7 @@ const {
   createSectionObj,
   updateSectionObj,
   deleteSectionObj,
+  getSectionPaginationObject,
 } = require("../queries/sections");
 const { findClass } = require("../queries/classes");
 
@@ -50,14 +51,14 @@ module.exports = {
    * @param {Function} next - Express next middleware function
    */
   GetSections: async (req, res, next) => {
-    const { start = 1, end = 10 } = req.query; // Step 1: Extract pagination parameters
+    const { page = 1, perPage = 10 } = req.query; // Step 1: Extract pagination parameters
     const sections = await findSections({
-      start,
-      end,
+      page,
+      perPage,
       options: true,
       populated: true,
     }); // Step 2: Fetch sections from the database
-
+    const pagination = await getSectionPaginationObject(page, perPage);
     // Step 3: Send the retrieved sections in the response
     res
       .status(STATUS_CODE_SUCCESS)
@@ -65,7 +66,8 @@ module.exports = {
         handleSuccess(
           STATUS_CODE_SUCCESS,
           MESSAGE_GET_SECTIONS_SUCCESS,
-          sections
+          sections,
+          pagination
         )
       );
   },
@@ -109,7 +111,7 @@ module.exports = {
    * @param {Function} next - Express next middleware function
    */
   GetSectionsByClassCode: async (req, res, next) => {
-    const { start = 1, end = 10 } = req.query; // Step 1: Extract pagination parameters
+    const { page = 1, perPage = 10 } = req.query; // Step 1: Extract pagination parameters
     const { classCode } = req.body;
     const foundClass = await findClass({
       query: {
@@ -126,8 +128,8 @@ module.exports = {
 
     const sections = await findSections({
       query: { class: foundClass._id },
-      start,
-      end,
+      page,
+      perPage,
       options: true,
       populated: true,
     }); // Step 4: Fetch sections using the found class
@@ -139,12 +141,17 @@ module.exports = {
         MESSAGE_SECTIONS_NOT_FOUND
       );
     } // Step 5: Handle error if no section found
-
+    const pagination = await getSectionPaginationObject(page, perPage);
     // Step 3: Send the retrieved sections in the response
     res
       .status(STATUS_CODE_SUCCESS)
       .send(
-        handleSuccess(STATUS_CODE_SUCCESS, MESSAGE_GET_STATE_SUCCESS, sections)
+        handleSuccess(
+          STATUS_CODE_SUCCESS,
+          MESSAGE_GET_STATE_SUCCESS,
+          sections,
+          pagination
+        )
       );
   },
 

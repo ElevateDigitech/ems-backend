@@ -21,11 +21,11 @@ const {
 const findStates = async ({
   query = {},
   options = false,
-  start = 1,
-  end = 10,
+  page = 1,
+  perPage = 10,
   populated = false,
 }) => {
-  const { limit, skip } = getLimitAndSkip(start, end); // Step 1: Calculate pagination parameters
+  const { limit, skip } = getLimitAndSkip(page, perPage); // Step 1: Calculate pagination parameters
 
   // Step 2: Build the base query to find states
   const statesQuery = State.find(query, options ? hiddenFieldsDefault : {})
@@ -128,6 +128,12 @@ const deleteStateObj = async (stateCode) => {
   return await State.deleteOne({ stateCode }); // Step 1: Delete the state document by stateCode
 };
 
+const getStatePaginationObject = async (page, perPage) => ({
+  page,
+  perPage,
+  total: await State.countDocuments(),
+});
+
 module.exports = {
   findStates, // Export function to retrieve multiple states
   findState, // Export function to retrieve a single state
@@ -135,4 +141,5 @@ module.exports = {
   createStateObj, // Export function to create a new state
   updateStateObj, // Export function to update an existing state
   deleteStateObj, // Export function to delete a state
+  getStatePaginationObject,
 };

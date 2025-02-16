@@ -19,11 +19,11 @@ const {
 const findGenders = async ({
   query = {}, // MongoDB query object to filter genders
   options = false, // Fields to include/exclude in the result
-  start = 1, // Starting index for pagination (default is 1)
-  end = 10, // Ending index for pagination (default is 10)
+  page = 1, // Current page for pagination (default is 1)
+  perPage = 10, // Items per page for pagination (default is 10)
 }) => {
   // Step 1: Calculate the limit and skip values for pagination
-  const { limit, skip } = getLimitAndSkip(start, end);
+  const { limit, skip } = getLimitAndSkip(page, perPage);
 
   // Step 2: Query the database with provided filters, apply pagination (skip & limit)
   return await Gender.find(query, options ? hiddenFieldsDefault : {})
@@ -106,6 +106,12 @@ const deleteGenderObj = async (genderCode) => {
   return await Gender.deleteOne({ genderCode });
 };
 
+const getGenderPaginationObject = async (page, perPage) => ({
+  page,
+  perPage,
+  total: await Gender.countDocuments(),
+});
+
 module.exports = {
   findGenders, // Export function to retrieve multiple genders
   findGender, // Export function to retrieve a single gender
@@ -113,4 +119,5 @@ module.exports = {
   createGenderObj, // Export function to create a new gender object
   updateGenderObj, // Export function to update an existing gender
   deleteGenderObj, // Export function to delete a gender
+  getGenderPaginationObject,
 };

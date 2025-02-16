@@ -35,6 +35,7 @@ const {
   createGenderObj,
   updateGenderObj,
   deleteGenderObj,
+  getGenderPaginationObject,
 } = require("../queries/genders");
 
 module.exports = {
@@ -45,10 +46,16 @@ module.exports = {
    * @param {Object} res - Express response object
    */
   GetGenders: async (req, res, next) => {
-    const { start = 1, end = 10 } = req.query; // Step 1: Get pagination parameters
-    const genders = await findGenders({ start, end, options: true }); // Step 2: Fetch genders
+    const { page = 1, perPage = 10 } = req.query; // Step 1: Get pagination parameters
+    const genders = await findGenders({ page, perPage, options: true }); // Step 2: Fetch genders
+    const pagination = await getGenderPaginationObject(page, perPage);
     res.status(STATUS_CODE_SUCCESS).send(
-      handleSuccess(STATUS_CODE_SUCCESS, MESSAGE_GET_GENDERS_SUCCESS, genders) // Step 3: Send success response
+      handleSuccess(
+        STATUS_CODE_SUCCESS,
+        MESSAGE_GET_GENDERS_SUCCESS,
+        genders,
+        pagination
+      ) // Step 3: Send success response
     );
   },
 
@@ -122,10 +129,10 @@ module.exports = {
     const existingGender = await findGender({ query: { genderCode } }); // Step 3: Check existence
     if (!existingGender)
       return handleError(next, STATUS_CODE_CONFLICT, MESSAGE_GENDER_NOT_FOUND);
-    const otherGenders = await findGender({
+    const otherGenders = await findGenders({
       query: { genderCode: { $ne: genderCode }, genderName: formattedName },
     });
-    if (otherGenders)
+    if (otherGenders?.length)
       return handleError(next, STATUS_CODE_CONFLICT, MESSAGE_GENDER_TAKEN);
     const previousData = await findGender({
       query: { genderCode },

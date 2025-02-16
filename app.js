@@ -5,6 +5,7 @@ if (process.env.NODE_ENV !== "production") {
 const express = require("express");
 const path = require("path");
 const mongoose = require("mongoose");
+const cors = require("cors");
 const session = require("express-session");
 const passport = require("passport");
 const localStrategy = require("passport-local");
@@ -60,6 +61,7 @@ db.once("open", () => {
 const app = express();
 
 app.use(express.urlencoded({ extended: true }));
+app.use(express.json());
 app.use(express.static(path.join(__dirname, "public")));
 app.use(mongoSanitize());
 
@@ -90,6 +92,16 @@ const sessionConfig = {
     maxAge: 1000 * 60 * 60 * 24 * 7,
   },
 };
+
+// Set up CORS
+const corsOptions = {
+  origin: "http://localhost:5173",
+  methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+  allowedHeaders: ["Content-Type", "Authorization"],
+  credentials: true,
+};
+
+app.use(cors(corsOptions));
 app.use(session(sessionConfig));
 app.use(helmet());
 

@@ -20,7 +20,7 @@ router.get(
   catchAsync(students.GetStudents)
 );
 
-router.get(
+router.post(
   "/GetStudentByCode",
   isLoggedIn,
   checkPermission(allPermissions?.VIEW_STUDENTS),
@@ -28,7 +28,7 @@ router.get(
   catchAsync(students.GetStudentByCode)
 );
 
-router.get(
+router.post(
   "/GetStudentsBySectionCode",
   isLoggedIn,
   checkPermission(allPermissions?.VIEW_STUDENTS),

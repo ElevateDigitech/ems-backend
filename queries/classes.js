@@ -19,11 +19,11 @@ const {
 const findClasses = async ({
   query = {}, // MongoDB query object to filter classes
   options = false, // Fields to include/exclude in the result
-  start = 1, // Starting index for pagination (default is 1)
-  end = 10, // Ending index for pagination (default is 10)
+  page = 1, // Current page for pagination (default is 1)
+  perPage = 10, // Items per page for pagination (default is 10)
 }) => {
   // Step 1: Calculate the limit and skip values for pagination
-  const { limit, skip } = getLimitAndSkip(start, end);
+  const { limit, skip } = getLimitAndSkip(page, perPage);
 
   // Step 2: Query the database with provided filters, apply pagination (skip & limit)
   return await Class.find(query, options ? hiddenFieldsDefault : {})
@@ -106,6 +106,12 @@ const deleteClassObj = async (classCode) => {
   return await Class.deleteOne({ classCode });
 };
 
+const getClassPaginationObject = async (page, perPage) => ({
+  page,
+  perPage,
+  total: await Class.countDocuments(),
+});
+
 module.exports = {
   findClasses, // Export function to retrieve multiple classes
   findClass, // Export function to retrieve a single class
@@ -113,4 +119,5 @@ module.exports = {
   createClassObj, // Export function to create a new class object
   updateClassObj, // Export function to update an existing class
   deleteClassObj, // Export function to delete a class
+  getClassPaginationObject,
 };

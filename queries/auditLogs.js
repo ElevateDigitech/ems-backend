@@ -18,11 +18,11 @@ const {
 const findAuditLogs = async ({
   query = {}, // MongoDB query object to filter audit logs
   options = false, // Fields to include/exclude in the result
-  start = 1, // Starting index for pagination (default is 1)
-  end = 10, // Ending index for pagination (default is 10)
+  page = 1, // Current page for pagination (default is 1)
+  perPage = 10, // Items per page for pagination (default is 10)
 }) => {
   // Step 1: Calculate the limit and skip values for pagination
-  const { limit, skip } = getLimitAndSkip(start, end);
+  const { limit, skip } = getLimitAndSkip(page, perPage);
 
   // Step 2: Query the database with provided filters, apply pagination (skip & limit)
   return await AuditLog.find(query, options ? hiddenFieldsDefault : {})
@@ -69,7 +69,6 @@ const logAudit = async (
 ) => {
   // Step 1: Generate a unique audit code for this audit log
   const auditCode = generateAuditCode();
-  console.log("in audit");
   // Step 2: Create a new audit log object with the provided details
   const audit = new AuditLog({
     auditCode, // Unique audit identifier
@@ -86,8 +85,15 @@ const logAudit = async (
   await audit.save();
 };
 
+const getAuditLogPaginationObject = async (page, perPage) => ({
+  page,
+  perPage,
+  total: await AuditLog.countDocuments(),
+});
+
 module.exports = {
   findAuditLogs, // Export function to retrieve multiple audit logs
   findAuditLog, // Export function to retrieve a single audit log
   logAudit, // Export function to log audit trails
+  getAuditLogPaginationObject,
 };

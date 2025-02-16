@@ -18,7 +18,7 @@ router.get(
   catchAsync(classes.GetClasses)
 );
 
-router.get(
+router.post(
   "/GetClassByCode",
   isLoggedIn,
   checkPermission(allPermissions?.VIEW_CLASSES),

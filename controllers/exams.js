@@ -35,6 +35,7 @@ const {
   formatExamTitle,
   updateExamObj,
   deleteExamObj,
+  getExamPaginationObject,
 } = require("../queries/exams");
 
 module.exports = {
@@ -45,14 +46,19 @@ module.exports = {
    * @param {Object} res - Express response object
    */
   GetExams: async (req, res, next) => {
-    const { start = 1, end = 10 } = req.query; // Step 1: Extract pagination parameters
-    const exams = await findExams({ start, end, options: true }); // Step 2: Fetch exams from database
-
+    const { page = 1, perPage = 10 } = req.query; // Step 1: Extract pagination parameters
+    const exams = await findExams({ page, perPage, options: true }); // Step 2: Fetch exams from database
+    const pagination = await getExamPaginationObject(page, perPage);
     // Step 3: Return success response with fetched data
     res
       .status(STATUS_CODE_SUCCESS)
       .send(
-        handleSuccess(STATUS_CODE_SUCCESS, MESSAGE_GET_EXAMS_SUCCESS, exams)
+        handleSuccess(
+          STATUS_CODE_SUCCESS,
+          MESSAGE_GET_EXAMS_SUCCESS,
+          exams,
+          pagination
+        )
       );
   },
 
@@ -142,10 +148,10 @@ module.exports = {
       return handleError(next, STATUS_CODE_CONFLICT, MESSAGE_EXAM_NOT_FOUND);
 
     // Step 4: Check if new exam title is taken
-    const otherExams = await findExam({
+    const otherExams = await findExams({
       query: { examCode: { $ne: examCode }, title: formattedTitle },
     });
-    if (otherExams)
+    if (otherExams?.length)
       return handleError(next, STATUS_CODE_CONFLICT, MESSAGE_EXAM_TAKEN);
 
     // Step 5: Update exam data

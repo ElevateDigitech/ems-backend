@@ -21,11 +21,11 @@ const {
 const findCities = async ({
   query = {},
   options = false,
-  start = 1,
-  end = 10,
+  page = 1,
+  perPage = 10,
   populated = false,
 }) => {
-  const { limit, skip } = getLimitAndSkip(start, end); // Step 1: Calculate pagination parameters
+  const { limit, skip } = getLimitAndSkip(page, perPage); // Step 1: Calculate pagination parameters
 
   // Step 2: Build the base query to find cities
   const citiesQuery = City.find(query, options ? hiddenFieldsDefault : {})
@@ -137,6 +137,12 @@ const deleteCityObj = async (cityCode) => {
   return await City.deleteOne({ cityCode }); // Step 1: Delete the city document by cityCode
 };
 
+const getCityPaginationObject = async (page, perPage) => ({
+  page,
+  perPage,
+  total: await City.countDocuments(),
+});
+
 module.exports = {
   findCities, // Export function to retrieve multiple cities
   findCity, // Export function to retrieve a single city
@@ -144,4 +150,5 @@ module.exports = {
   createCityObj, // Export function to create a new city
   updateCityObj, // Export function to update an existing city
   deleteCityObj, // Export function to delete a city
+  getCityPaginationObject,
 };

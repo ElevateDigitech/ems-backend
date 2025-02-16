@@ -20,7 +20,7 @@ router.get(
   catchAsync(sections.GetSections)
 );
 
-router.get(
+router.post(
   "/GetSectionByCode",
   isLoggedIn,
   checkPermission(allPermissions?.VIEW_SECTIONS),
@@ -28,7 +28,7 @@ router.get(
   catchAsync(sections.GetSectionByCode)
 );
 
-router.get(
+router.post(
   "/GetSectionsByClassCode",
   isLoggedIn,
   checkPermission(allPermissions?.VIEW_SECTIONS),

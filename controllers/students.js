@@ -37,6 +37,7 @@ const {
   createStudentObj,
   updateStudentObj,
   deleteStudentObj,
+  getStudentPaginationObject,
 } = require("../queries/students");
 const { findSection } = require("../queries/sections");
 
@@ -49,16 +50,16 @@ module.exports = {
    * @param {Function} next - Express next middleware function
    */
   GetStudents: async (req, res, next) => {
-    const { start = 1, end = 10 } = req.query; // Step 1: Extract pagination parameters
+    const { page = 1, perPage = 10 } = req.query; // Step 1: Extract pagination parameters
 
     // Step 2: Retrieve all students from the database
     const students = await findStudents({
-      start,
-      end,
+      page,
+      perPage,
       options: true,
       populated: true,
     });
-
+    const pagination = await getStudentPaginationObject(page, perPage);
     // Step 3: Send success response with the list of students
     res
       .status(STATUS_CODE_SUCCESS)
@@ -66,7 +67,8 @@ module.exports = {
         handleSuccess(
           STATUS_CODE_SUCCESS,
           MESSAGE_GET_STUDENTS_SUCCESS,
-          students
+          students,
+          pagination
         )
       );
   },
@@ -111,7 +113,7 @@ module.exports = {
    * @param {Function} next - Express next middleware function
    */
   GetStudentsBySectionCode: async (req, res, next) => {
-    const { start = 1, end = 10 } = req.query; // Step 1: Extract pagination parameters
+    const { page = 1, perPage = 10 } = req.query; // Step 1: Extract pagination parameters
     const { sectionCode } = req.body; // Step 2: Extract section code from request body
 
     // Step 3: Find the section by its code
@@ -128,8 +130,8 @@ module.exports = {
     // Step 5: Retrieve students associated with the section
     const students = await findStudents({
       query: { section: section._id },
-      start,
-      end,
+      page,
+      perPage,
       options: true,
       populated: true,
     });
@@ -141,7 +143,7 @@ module.exports = {
         STATUS_CODE_BAD_REQUEST,
         MESSAGE_STUDENTS_NOT_FOUND
       );
-
+    const pagination = await getStudentPaginationObject(page, perPage);
     // Step 7: Send success response with the list of students
     res
       .status(STATUS_CODE_SUCCESS)
@@ -149,7 +151,8 @@ module.exports = {
         handleSuccess(
           STATUS_CODE_SUCCESS,
           MESSAGE_GET_STUDENT_SUCCESS,
-          students
+          students,
+          pagination
         )
       );
   },

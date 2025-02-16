@@ -1,6 +1,7 @@
 const {
   STATUS_CODE_BAD_REQUEST,
   STATES_CODE_UNAUTHORIZED,
+  STATUS_CODE_UNAUTHENTICATED,
 } = require("./utils/statusCodes");
 const {
   MESSAGE_NOT_LOGGED_IN_YET,
@@ -121,7 +122,7 @@ module.exports = {
       req.session.returnTo = req.originalUrl;
       throw new ExpressResponse(
         STATUS_ERROR,
-        STATUS_CODE_BAD_REQUEST,
+        STATUS_CODE_UNAUTHENTICATED,
         MESSAGE_NOT_LOGGED_IN_YET
       );
     }

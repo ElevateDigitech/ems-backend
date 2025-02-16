@@ -21,11 +21,11 @@ const {
 const findStudents = async ({
   query = {},
   options = false,
-  start = 1,
-  end = 10,
+  page = 1,
+  perPage = 10,
   populated = false,
 }) => {
-  const { limit, skip } = getLimitAndSkip(start, end); // Step 1: Calculate pagination parameters
+  const { limit, skip } = getLimitAndSkip(page, perPage); // Step 1: Calculate pagination parameters
 
   // Step 2: Build the base query to find students
   const studentsQuery = Student.find(query, options ? hiddenFieldsDefault : {})
@@ -145,6 +145,12 @@ const deleteStudentObj = async (studentCode) => {
   return await Student.deleteOne({ studentCode }); // Step 1: Delete the student document by studentCode
 };
 
+const getStudentPaginationObject = async (page, perPage) => ({
+  page,
+  perPage,
+  total: await Student.countDocuments(),
+});
+
 module.exports = {
   findStudents, // Export function to retrieve multiple students
   findStudent, // Export function to retrieve a single student
@@ -152,4 +158,5 @@ module.exports = {
   createStudentObj, // Export function to create a new student
   updateStudentObj, // Export function to update an existing student
   deleteStudentObj, // Export function to delete a student
+  getStudentPaginationObject,
 };

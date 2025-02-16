@@ -18,7 +18,7 @@ router.get(
   catchAsync(genders.GetGenders)
 );
 
-router.get(
+router.post(
   "/GetGenderByCode",
   isLoggedIn,
   checkPermission(allPermissions?.VIEW_GENDERS),

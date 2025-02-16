@@ -37,6 +37,7 @@ const {
   createMarkObj,
   updateMarkObj,
   deleteMarkObj,
+  getMarkPaginationObject,
 } = require("../queries/marks");
 const { findExam } = require("../queries/exams");
 const { findStudent } = require("../queries/students");
@@ -52,21 +53,26 @@ module.exports = {
    */
   GetMarks: async (req, res, next) => {
     // Step 1: Extract pagination parameters from the query
-    const { start = 1, end = 10 } = req.query;
+    const { page = 1, perPage = 10 } = req.query;
 
     // Step 2: Retrieve all marks from the database with the specified pagination
     const marks = await findMarks({
-      start,
-      end,
+      page,
+      perPage,
       options: true,
       populated: true,
     });
-
+    const pagination = await getMarkPaginationObject(page, perPage);
     // Step 3: Send the retrieved marks in the response
     res
       .status(STATUS_CODE_SUCCESS)
       .send(
-        handleSuccess(STATUS_CODE_SUCCESS, MESSAGE_GET_MARKS_SUCCESS, marks)
+        handleSuccess(
+          STATUS_CODE_SUCCESS,
+          MESSAGE_GET_MARKS_SUCCESS,
+          marks,
+          pagination
+        )
       );
   },
 
@@ -107,7 +113,7 @@ module.exports = {
    */
   GetMarksByExamCode: async (req, res, next) => {
     // Step 1: Extract pagination parameters from the query
-    const { start = 1, end = 10 } = req.query;
+    const { page = 1, perPage = 10 } = req.query;
 
     // Step 2: Find the exam using the provided exam code
     const exam = await findExam({ query: { examCode: req.body.examCode } });
@@ -117,18 +123,24 @@ module.exports = {
     // Step 3: Retrieve marks associated with the found exam
     const marks = await findMarks({
       query: { exam: exam._id },
-      start,
-      end,
+      page,
+      perPage,
       options: true,
       populated: true,
     });
 
+    const pagination = await getMarkPaginationObject(page, perPage);
     // Step 4: Return the marks if found, or handle the error if none are found
     return marks.length
       ? res
           .status(STATUS_CODE_SUCCESS)
           .send(
-            handleSuccess(STATUS_CODE_SUCCESS, MESSAGE_GET_MARK_SUCCESS, marks)
+            handleSuccess(
+              STATUS_CODE_SUCCESS,
+              MESSAGE_GET_MARK_SUCCESS,
+              marks,
+              pagination
+            )
           )
       : handleError(next, STATUS_CODE_BAD_REQUEST, MESSAGE_MARKS_NOT_FOUND);
   },
@@ -142,7 +154,7 @@ module.exports = {
    */
   GetMarksByStudentCode: async (req, res, next) => {
     // Step 1: Extract pagination parameters from the query
-    const { start = 1, end = 10 } = req.query;
+    const { page = 1, perPage = 10 } = req.query;
 
     // Step 2: Find the student using the provided student code
     const student = await findStudent({
@@ -158,18 +170,24 @@ module.exports = {
     // Step 3: Retrieve marks associated with the found student
     const marks = await findMarks({
       query: { student: student._id },
-      start,
-      end,
+      page,
+      perPage,
       options: true,
       populated: true,
     });
 
+    const pagination = await getMarkPaginationObject(page, perPage);
     // Step 4: Return the marks if found, or handle the error if none are found
     return marks.length
       ? res
           .status(STATUS_CODE_SUCCESS)
           .send(
-            handleSuccess(STATUS_CODE_SUCCESS, MESSAGE_GET_MARK_SUCCESS, marks)
+            handleSuccess(
+              STATUS_CODE_SUCCESS,
+              MESSAGE_GET_MARK_SUCCESS,
+              marks,
+              pagination
+            )
           )
       : handleError(next, STATUS_CODE_BAD_REQUEST, MESSAGE_MARKS_NOT_FOUND);
   },
@@ -183,7 +201,7 @@ module.exports = {
    */
   GetMarksBySubjectCode: async (req, res, next) => {
     // Step 1: Extract pagination parameters from the query
-    const { start = 1, end = 10 } = req.query;
+    const { page = 1, perPage = 10 } = req.query;
 
     // Step 2: Find the subject using the provided subject code
     const subject = await findSubject({
@@ -199,18 +217,24 @@ module.exports = {
     // Step 3: Retrieve marks associated with the found subject
     const marks = await findMarks({
       query: { subject: subject._id },
-      start,
-      end,
+      page,
+      perPage,
       options: true,
       populated: true,
     });
 
+    const pagination = await getMarkPaginationObject(page, perPage);
     // Step 4: Return the marks if found, or handle the error if none are found
     return marks.length
       ? res
           .status(STATUS_CODE_SUCCESS)
           .send(
-            handleSuccess(STATUS_CODE_SUCCESS, MESSAGE_GET_MARK_SUCCESS, marks)
+            handleSuccess(
+              STATUS_CODE_SUCCESS,
+              MESSAGE_GET_MARK_SUCCESS,
+              marks,
+              pagination
+            )
           )
       : handleError(next, STATUS_CODE_BAD_REQUEST, MESSAGE_MARKS_NOT_FOUND);
   },
@@ -416,11 +440,10 @@ module.exports = {
     // Step 4: Delete the mark
     const deletionResult = await deleteMarkObj(markCode);
     if (deletionResult.deletedCount === 0)
-      return next(
-        handleSuccess(
-          STATUS_CODE_INTERNAL_SERVER_ERROR,
-          MESSAGE_DELETE_MARK_ERROR
-        )
+      return handleError(
+        next,
+        STATUS_CODE_INTERNAL_SERVER_ERROR,
+        MESSAGE_DELETE_MARK_ERROR
       );
 
     // Step 5: Log the audit

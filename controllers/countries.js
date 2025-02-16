@@ -35,6 +35,7 @@ const {
   createCountryObj,
   updateCountryObj,
   deleteCountryObj,
+  getCountryPaginationObject,
 } = require("../queries/countries");
 
 module.exports = {
@@ -45,9 +46,9 @@ module.exports = {
    * @param {Object} res - Express response object
    */
   GetCountries: async (req, res, next) => {
-    const { start = 1, end = 10 } = req.query; // Step 1: Extract pagination parameters
-    const countries = await findCountries({ start, end, options: true }); // Step 2: Fetch countries from database
-
+    const { page = 1, perPage = 10 } = req.query; // Step 1: Extract pagination parameters
+    const countries = await findCountries({ page, perPage, options: true }); // Step 2: Fetch countries from database
+    const pagination = await getCountryPaginationObject(page, perPage);
     // Step 3: Send the retrieved countries in the response
     res
       .status(STATUS_CODE_SUCCESS)
@@ -55,7 +56,8 @@ module.exports = {
         handleSuccess(
           STATUS_CODE_SUCCESS,
           MESSAGE_GET_COUNTRIES_SUCCESS,
-          countries
+          countries,
+          pagination
         )
       );
   },
@@ -161,7 +163,7 @@ module.exports = {
     if (!existingCountry)
       return handleError(next, STATUS_CODE_CONFLICT, MESSAGE_COUNTRY_NOT_FOUND); // Step 4: Handle not found error
 
-    const otherCountries = await findCountry({
+    const otherCountries = await findCountries({
       query: {
         countryCode: { $ne: countryCode },
         $or: [
@@ -172,7 +174,7 @@ module.exports = {
       },
     }); // Step 5: Check for duplicate country details
 
-    if (otherCountries)
+    if (otherCountries?.length)
       return handleError(next, STATUS_CODE_CONFLICT, MESSAGE_COUNTRY_TAKEN); // Step 6: Handle duplicate country error
 
     const previousData = await findCountry({

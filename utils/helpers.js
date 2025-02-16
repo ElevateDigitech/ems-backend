@@ -16,8 +16,8 @@ const removeIdsForSubSchemas = { _id: 0, id: 0 };
 
 const handleError = (next, status, message) =>
   next(new ExpressResponse(STATUS_ERROR, status, message));
-const handleSuccess = (status, message, data = null) =>
-  new ExpressResponse(STATUS_SUCCESS, status, message, data);
+const handleSuccess = (status, message, data = null, pagination = null) =>
+  new ExpressResponse(STATUS_SUCCESS, status, message, data, pagination);
 
 const trimAndTestRegex = (value, regex) =>
   value?.trim() && regex?.test(value.trim());
@@ -117,11 +117,9 @@ const getCurrentUser = async (userCode) => {
   });
 };
 
-const getLimitAndSkip = (start, end) => {
-  const parsedStart = parseInt(start) > 0 ? start : 1;
-  const parsedEnd = parseInt(end) > 0 ? end : 10;
-  const limit = parsedEnd - parsedStart + 1;
-  const skip = parsedStart - 1;
+const getLimitAndSkip = (page, perPage) => {
+  const limit = perPage; // Number of items to return
+  const skip = (page - 1) * perPage; // Number of items to skip
   return { limit, skip };
 };
 

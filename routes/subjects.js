@@ -19,7 +19,7 @@ router.get(
   catchAsync(subjects.GetSubjects)
 );
 
-router.get(
+router.post(
   "/GetSubjectByCode",
   isLoggedIn,
   checkPermission(allPermissions?.VIEW_USERS),

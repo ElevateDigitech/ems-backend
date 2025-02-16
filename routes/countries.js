@@ -19,7 +19,7 @@ router.get(
   catchAsync(countries.GetCountries)
 );
 
-router.get(
+router.post(
   "/GetCountryByCode",
   isLoggedIn,
   checkPermission(allPermissions?.VIEW_COUNTRIES),

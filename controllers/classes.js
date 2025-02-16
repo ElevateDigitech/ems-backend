@@ -35,6 +35,7 @@ const {
   createClassObj,
   updateClassObj,
   deleteClassObj,
+  getClassPaginationObject,
 } = require("../queries/classes");
 
 module.exports = {
@@ -45,14 +46,19 @@ module.exports = {
    * @param {Object} res - Express response object
    */
   GetClasses: async (req, res, next) => {
-    const { start = 1, end = 10 } = req.query; // Step 1: Extract pagination parameters
-    const classes = await findClasses({ start, end, options: true }); // Step 2: Fetch classes from database
-
+    const { page = 1, perPage = 10 } = req.query; // Step 1: Extract pagination parameters
+    const classes = await findClasses({ page, perPage, options: true }); // Step 2: Fetch classes from database
+    const pagination = await getClassPaginationObject(page, perPage);
     // Step 3: Send the retrieved classes in the response
     res
       .status(STATUS_CODE_SUCCESS)
       .send(
-        handleSuccess(STATUS_CODE_SUCCESS, MESSAGE_GET_CLASSES_SUCCESS, classes)
+        handleSuccess(
+          STATUS_CODE_SUCCESS,
+          MESSAGE_GET_CLASSES_SUCCESS,
+          classes,
+          pagination
+        )
       );
   },
 
@@ -149,10 +155,10 @@ module.exports = {
       return handleError(next, STATUS_CODE_CONFLICT, MESSAGE_CLASS_NOT_FOUND);
 
     // Step 4: Check for name conflicts with other classes
-    const otherClasses = await findClass({
+    const otherClasses = await findClasses({
       query: { classCode: { $ne: classCode }, name: formattedName },
     });
-    if (otherClasses)
+    if (otherClasses?.length)
       return handleError(next, STATUS_CODE_CONFLICT, MESSAGE_CLASS_TAKEN);
 
     // Step 5: Capture current class data before update

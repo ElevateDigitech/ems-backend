@@ -38,6 +38,7 @@ const {
   createCityObj,
   updateCityObj,
   deleteCityObj,
+  getCityPaginationObject,
 } = require("../queries/cities");
 const { findState } = require("../queries/states");
 const { findCountry } = require("../queries/countries");
@@ -50,21 +51,26 @@ module.exports = {
    * @param {Object} res - Express response object
    */
   GetCities: async (req, res, next) => {
-    const { start = 1, end = 10 } = req.query; // Step 1: Extract pagination parameters
+    const { page = 1, perPage = 10 } = req.query; // Step 1: Extract pagination parameters
 
     // Step 2: Retrieve all cities from the database
     const cities = await findCities({
-      start,
-      end,
+      page,
+      perPage,
       options: true,
       populated: true,
     });
-
+    const pagination = await getCityPaginationObject(page, perPage);
     // Step 3: Send the retrieved cities in the response
     res
       .status(STATUS_CODE_SUCCESS)
       .send(
-        handleSuccess(STATUS_CODE_SUCCESS, MESSAGE_GET_CITIES_SUCCESS, cities)
+        handleSuccess(
+          STATUS_CODE_SUCCESS,
+          MESSAGE_GET_CITIES_SUCCESS,
+          cities,
+          pagination
+        )
       );
   },
 
@@ -103,7 +109,7 @@ module.exports = {
    * @param {Function} next - Express next middleware function
    */
   GetCitiesByStateCode: async (req, res, next) => {
-    const { start = 1, end = 10 } = req.query; // Step 1: Extract pagination parameters
+    const { page = 1, perPage = 10 } = req.query; // Step 1: Extract pagination parameters
 
     // Step 2: Find the state by its code
     const state = await findState({ query: { stateCode: req.body.stateCode } });
@@ -117,18 +123,24 @@ module.exports = {
     // Step 3: Find cities related to the state
     const cities = await findCities({
       query: { state: state._id },
-      start,
-      end,
+      page,
+      perPage,
       options: true,
       populated: true,
     });
 
+    const pagination = await getCityPaginationObject(page, perPage);
     // Step 4: Return the cities if found, else return an error
     return cities.length
       ? res
           .status(STATUS_CODE_SUCCESS)
           .send(
-            handleSuccess(STATUS_CODE_SUCCESS, MESSAGE_GET_CITY_SUCCESS, cities)
+            handleSuccess(
+              STATUS_CODE_SUCCESS,
+              MESSAGE_GET_CITY_SUCCESS,
+              cities,
+              pagination
+            )
           )
       : handleError(next, STATUS_CODE_BAD_REQUEST, MESSAGE_CITIES_NOT_FOUND);
   },
@@ -141,7 +153,7 @@ module.exports = {
    * @param {Function} next - Express next middleware function
    */
   GetCitiesByCountryCode: async (req, res, next) => {
-    const { start = 1, end = 10 } = req.query; // Step 1: Extract pagination parameters
+    const { page = 1, perPage = 10 } = req.query; // Step 1: Extract pagination parameters
 
     // Step 2: Find the country by its code
     const country = await findCountry({
@@ -157,18 +169,24 @@ module.exports = {
     // Step 3: Find cities related to the country
     const cities = await findCities({
       query: { country: country._id },
-      start,
-      end,
+      page,
+      perPage,
       options: true,
       populated: true,
     });
 
+    const pagination = await getCityPaginationObject(page, perPage);
     // Step 4: Return the cities if found, else return an error
     return cities.length
       ? res
           .status(STATUS_CODE_SUCCESS)
           .send(
-            handleSuccess(STATUS_CODE_SUCCESS, MESSAGE_GET_CITY_SUCCESS, cities)
+            handleSuccess(
+              STATUS_CODE_SUCCESS,
+              MESSAGE_GET_CITY_SUCCESS,
+              cities,
+              pagination
+            )
           )
       : handleError(next, STATUS_CODE_BAD_REQUEST, MESSAGE_CITIES_NOT_FOUND);
   },
@@ -343,11 +361,10 @@ module.exports = {
     });
     const deletionResult = await deleteCityObj(cityCode);
     if (deletionResult.deletedCount === 0)
-      return next(
-        handleSuccess(
-          STATUS_CODE_INTERNAL_SERVER_ERROR,
-          MESSAGE_DELETE_CITY_ERROR
-        )
+      return handleError(
+        next,
+        STATUS_CODE_INTERNAL_SERVER_ERROR,
+        MESSAGE_DELETE_CITY_ERROR
       );
 
     // Step 5: Log the audit
