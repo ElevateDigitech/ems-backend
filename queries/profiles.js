@@ -2,10 +2,10 @@ const moment = require("moment-timezone");
 const Profile = require("../models/profile");
 const {
   hiddenFieldsDefault,
-  getLimitAndSkip,
   generateProfileCode,
 } = require("../utils/helpers");
 const { cloudinary } = require("../cloudinary");
+const searchFields = ["action", "module", "changes", "before", "after"];
 
 /**
  * Retrieves all profiles from the database with pagination support.
@@ -24,12 +24,30 @@ const findProfiles = async ({
   page = 1,
   perPage = 10,
   populated = false,
+  sortField,
+  sortValue,
+  keyword,
 }) => {
   // Step 1: Calculate pagination parameters
-  const { limit, skip } = getLimitAndSkip(page, perPage);
+  const limit = parseInt(perPage); // Number of items to return
+  const skip = (parseInt(page) - 1) * parseInt(perPage); // Number of items to skip
+
+  if (keyword && keyword?.length > 0 && searchFields.length > 0) {
+    const keywordRegex = new RegExp(keyword, "i");
+    const filterQueries = searchFields.map((field) => ({
+      [field]: { $regex: keywordRegex },
+    }));
+    query.$or = query.$or ? [...query.$or, ...filterQueries] : filterQueries;
+  }
+
+  const sortOptions =
+    sortField && sortField?.length > 0 && sortValue && sortValue?.length > 0
+      ? { [sortField]: sortValue }
+      : { _id: -1 };
 
   // Step 2: Build the base query to find profiles
   const profilesQuery = Profile.find(query, options ? hiddenFieldsDefault : {})
+    .sort(sortOptions)
     .skip(skip)
     .limit(limit);
 
@@ -226,11 +244,17 @@ const deleteProfileObj = async (profileCode) => {
   return await Profile.deleteOne({ profileCode });
 };
 
-const getProfilePaginationObject = async (page, perPage) => ({
-  page,
-  perPage,
-  total: await Profile.countDocuments(),
-});
+const getTotalProfiles = async (keyword) => {
+  const filter = {};
+  if (keyword && keyword?.length > 0 && searchFields.length > 0) {
+    const keywordRegex = new RegExp(keyword, "i");
+    filter.$or = searchFields.map((field) => ({
+      [field]: { $regex: keywordRegex },
+    }));
+  }
+  const total = await Profile.countDocuments(filter);
+  return total;
+};
 
 module.exports = {
   findProfiles, // Export function to retrieve multiple profiles
@@ -239,5 +263,5 @@ module.exports = {
   createProfileObj, // Export function to create a new profile
   updateProfileObj, // Export function to update an existing profile
   deleteProfileObj, // Export function to delete a profile
-  getProfilePaginationObject,
+  getTotalProfiles,
 };

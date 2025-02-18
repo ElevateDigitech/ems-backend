@@ -1,10 +1,7 @@
 const moment = require("moment-timezone");
 const Class = require("../models/class");
-const {
-  hiddenFieldsDefault,
-  generateClassCode,
-  getLimitAndSkip,
-} = require("../utils/helpers");
+const { hiddenFieldsDefault, generateClassCode } = require("../utils/helpers");
+const searchFields = ["action", "module", "changes", "before", "after"];
 
 /**
  * Retrieves multiple classes from the database with pagination support.
@@ -21,12 +18,30 @@ const findClasses = async ({
   options = false, // Fields to include/exclude in the result
   page = 1, // Current page for pagination (default is 1)
   perPage = 10, // Items per page for pagination (default is 10)
+  sortField,
+  sortValue,
+  keyword,
 }) => {
   // Step 1: Calculate the limit and skip values for pagination
-  const { limit, skip } = getLimitAndSkip(page, perPage);
+  const limit = parseInt(perPage); // Number of items to return
+  const skip = (parseInt(page) - 1) * parseInt(perPage); // Number of items to skip
+
+  if (keyword && keyword?.length > 0 && searchFields.length > 0) {
+    const keywordRegex = new RegExp(keyword, "i");
+    const filterQueries = searchFields.map((field) => ({
+      [field]: { $regex: keywordRegex },
+    }));
+    query.$or = query.$or ? [...query.$or, ...filterQueries] : filterQueries;
+  }
+
+  const sortOptions =
+    sortField && sortField?.length > 0 && sortValue && sortValue?.length > 0
+      ? { [sortField]: sortValue }
+      : { _id: -1 };
 
   // Step 2: Query the database with provided filters, apply pagination (skip & limit)
   return await Class.find(query, options ? hiddenFieldsDefault : {})
+    .sort(sortOptions)
     .skip(skip) // Apply skip for pagination
     .limit(limit); // Apply limit to control number of results
 };
@@ -106,11 +121,17 @@ const deleteClassObj = async (classCode) => {
   return await Class.deleteOne({ classCode });
 };
 
-const getClassPaginationObject = async (page, perPage) => ({
-  page,
-  perPage,
-  total: await Class.countDocuments(),
-});
+const getTotalClasses = async (keyword) => {
+  const filter = {};
+  if (keyword && keyword?.length > 0 && searchFields.length > 0) {
+    const keywordRegex = new RegExp(keyword, "i");
+    filter.$or = searchFields.map((field) => ({
+      [field]: { $regex: keywordRegex },
+    }));
+  }
+  const total = await Class.countDocuments(filter);
+  return total;
+};
 
 module.exports = {
   findClasses, // Export function to retrieve multiple classes
@@ -119,5 +140,5 @@ module.exports = {
   createClassObj, // Export function to create a new class object
   updateClassObj, // Export function to update an existing class
   deleteClassObj, // Export function to delete a class
-  getClassPaginationObject,
+  getTotalClasses,
 };

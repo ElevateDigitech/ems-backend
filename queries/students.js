@@ -2,10 +2,10 @@ const moment = require("moment-timezone");
 const Student = require("../models/student");
 const {
   hiddenFieldsDefault,
-  getLimitAndSkip,
   toCapitalize,
   generateStudentCode,
 } = require("../utils/helpers");
+const searchFields = ["action", "module", "changes", "before", "after"];
 
 /**
  * Retrieves all students from the database with pagination support.
@@ -24,11 +24,29 @@ const findStudents = async ({
   page = 1,
   perPage = 10,
   populated = false,
+  sortField,
+  sortValue,
+  keyword,
 }) => {
-  const { limit, skip } = getLimitAndSkip(page, perPage); // Step 1: Calculate pagination parameters
+  const limit = parseInt(perPage); // Number of items to return
+  const skip = (parseInt(page) - 1) * parseInt(perPage); // Number of items to skip // Step 1: Calculate pagination parameters
+
+  if (keyword && keyword?.length > 0 && searchFields.length > 0) {
+    const keywordRegex = new RegExp(keyword, "i");
+    const filterQueries = searchFields.map((field) => ({
+      [field]: { $regex: keywordRegex },
+    }));
+    query.$or = query.$or ? [...query.$or, ...filterQueries] : filterQueries;
+  }
+
+  const sortOptions =
+    sortField && sortField?.length > 0 && sortValue && sortValue?.length > 0
+      ? { [sortField]: sortValue }
+      : { _id: -1 };
 
   // Step 2: Build the base query to find students
   const studentsQuery = Student.find(query, options ? hiddenFieldsDefault : {})
+    .sort(sortOptions)
     .skip(skip)
     .limit(limit);
 
@@ -145,11 +163,17 @@ const deleteStudentObj = async (studentCode) => {
   return await Student.deleteOne({ studentCode }); // Step 1: Delete the student document by studentCode
 };
 
-const getStudentPaginationObject = async (page, perPage) => ({
-  page,
-  perPage,
-  total: await Student.countDocuments(),
-});
+const getTotalStudents = async (keyword) => {
+  const filter = {};
+  if (keyword && keyword?.length > 0 && searchFields.length > 0) {
+    const keywordRegex = new RegExp(keyword, "i");
+    filter.$or = searchFields.map((field) => ({
+      [field]: { $regex: keywordRegex },
+    }));
+  }
+  const total = await Student.countDocuments(filter);
+  return total;
+};
 
 module.exports = {
   findStudents, // Export function to retrieve multiple students
@@ -158,5 +182,5 @@ module.exports = {
   createStudentObj, // Export function to create a new student
   updateStudentObj, // Export function to update an existing student
   deleteStudentObj, // Export function to delete a student
-  getStudentPaginationObject,
+  getTotalStudents,
 };

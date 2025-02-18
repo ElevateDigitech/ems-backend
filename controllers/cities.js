@@ -39,6 +39,7 @@ const {
   updateCityObj,
   deleteCityObj,
   getCityPaginationObject,
+  getTotalCities,
 } = require("../queries/cities");
 const { findState } = require("../queries/states");
 const { findCountry } = require("../queries/countries");
@@ -51,16 +52,25 @@ module.exports = {
    * @param {Object} res - Express response object
    */
   GetCities: async (req, res, next) => {
-    const { page = 1, perPage = 10 } = req.query; // Step 1: Extract pagination parameters
+    const {
+      page = 1,
+      perPage = 10,
+      sortField = "",
+      sortValue = "",
+      keyword = "",
+    } = req.query; // Step 1: Extract pagination parameters
 
     // Step 2: Retrieve all cities from the database
     const cities = await findCities({
       page,
       perPage,
+      sortField,
+      sortValue,
+      keyword,
       options: true,
       populated: true,
     });
-    const pagination = await getCityPaginationObject(page, perPage);
+    const total = await getTotalCities(keyword);
     // Step 3: Send the retrieved cities in the response
     res
       .status(STATUS_CODE_SUCCESS)
@@ -69,7 +79,7 @@ module.exports = {
           STATUS_CODE_SUCCESS,
           MESSAGE_GET_CITIES_SUCCESS,
           cities,
-          pagination
+          total
         )
       );
   },
@@ -109,7 +119,13 @@ module.exports = {
    * @param {Function} next - Express next middleware function
    */
   GetCitiesByStateCode: async (req, res, next) => {
-    const { page = 1, perPage = 10 } = req.query; // Step 1: Extract pagination parameters
+    const {
+      page = 1,
+      perPage = 10,
+      sortField = "",
+      sortValue = "",
+      keyword = "",
+    } = req.query; // Step 1: Extract pagination parameters
 
     // Step 2: Find the state by its code
     const state = await findState({ query: { stateCode: req.body.stateCode } });
@@ -153,7 +169,13 @@ module.exports = {
    * @param {Function} next - Express next middleware function
    */
   GetCitiesByCountryCode: async (req, res, next) => {
-    const { page = 1, perPage = 10 } = req.query; // Step 1: Extract pagination parameters
+    const {
+      page = 1,
+      perPage = 10,
+      sortField = "",
+      sortValue = "",
+      keyword = "",
+    } = req.query; // Step 1: Extract pagination parameters
 
     // Step 2: Find the country by its code
     const country = await findCountry({

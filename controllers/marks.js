@@ -38,6 +38,7 @@ const {
   updateMarkObj,
   deleteMarkObj,
   getMarkPaginationObject,
+  getTotalMarks,
 } = require("../queries/marks");
 const { findExam } = require("../queries/exams");
 const { findStudent } = require("../queries/students");
@@ -53,16 +54,25 @@ module.exports = {
    */
   GetMarks: async (req, res, next) => {
     // Step 1: Extract pagination parameters from the query
-    const { page = 1, perPage = 10 } = req.query;
+    const {
+      page = 1,
+      perPage = 10,
+      sortField = "",
+      sortValue = "",
+      keyword = "",
+    } = req.query;
 
     // Step 2: Retrieve all marks from the database with the specified pagination
     const marks = await findMarks({
       page,
       perPage,
+      sortField,
+      sortValue,
+      keyword,
       options: true,
       populated: true,
     });
-    const pagination = await getMarkPaginationObject(page, perPage);
+    const total = await getTotalMarks(keyword);
     // Step 3: Send the retrieved marks in the response
     res
       .status(STATUS_CODE_SUCCESS)
@@ -71,7 +81,7 @@ module.exports = {
           STATUS_CODE_SUCCESS,
           MESSAGE_GET_MARKS_SUCCESS,
           marks,
-          pagination
+          total
         )
       );
   },
@@ -113,7 +123,13 @@ module.exports = {
    */
   GetMarksByExamCode: async (req, res, next) => {
     // Step 1: Extract pagination parameters from the query
-    const { page = 1, perPage = 10 } = req.query;
+    const {
+      page = 1,
+      perPage = 10,
+      sortField = "",
+      sortValue = "",
+      keyword = "",
+    } = req.query;
 
     // Step 2: Find the exam using the provided exam code
     const exam = await findExam({ query: { examCode: req.body.examCode } });
@@ -154,7 +170,13 @@ module.exports = {
    */
   GetMarksByStudentCode: async (req, res, next) => {
     // Step 1: Extract pagination parameters from the query
-    const { page = 1, perPage = 10 } = req.query;
+    const {
+      page = 1,
+      perPage = 10,
+      sortField = "",
+      sortValue = "",
+      keyword = "",
+    } = req.query;
 
     // Step 2: Find the student using the provided student code
     const student = await findStudent({
@@ -201,7 +223,13 @@ module.exports = {
    */
   GetMarksBySubjectCode: async (req, res, next) => {
     // Step 1: Extract pagination parameters from the query
-    const { page = 1, perPage = 10 } = req.query;
+    const {
+      page = 1,
+      perPage = 10,
+      sortField = "",
+      sortValue = "",
+      keyword = "",
+    } = req.query;
 
     // Step 2: Find the subject using the provided subject code
     const subject = await findSubject({

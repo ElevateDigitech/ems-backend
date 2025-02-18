@@ -1,4 +1,10 @@
-const { findAuditLogs, findAuditLog, getAuditLogPaginationObject } = require("../queries/auditLogs");
+const {
+  findAuditLogs,
+  findAuditLog,
+  getAuditLogPaginationObject,
+  getTotal,
+  getTotalAuditlogs,
+} = require("../queries/auditLogs");
 const { handleSuccess, handleError } = require("../utils/helpers");
 const {
   STATUS_CODE_SUCCESS,
@@ -20,18 +26,31 @@ module.exports = {
    */
   GetAudits: async (req, res, next) => {
     // Step 1: Destructure 'start' and 'end' from the query parameters, defaulting to 1 and 10 if not provided
-    const { page = 1, perPage = 10 } = req.query;
+    const {
+      page = 1,
+      perPage = 10,
+      sortField = "",
+      sortValue = "",
+      keyword = "",
+    } = req.query;
 
     // Step 2: Fetch audit logs from the database using the provided start and end range
-    const auditLogs = await findAuditLogs({ page, perPage, options: true });
-    const pagination = await getAuditLogPaginationObject(page, perPage);
+    const auditLogs = await findAuditLogs({
+      page,
+      perPage,
+      sortField,
+      sortValue,
+      keyword,
+      options: true,
+    });
+    const total = await getTotalAuditlogs(keyword);
     // Step 3: Send a successful HTTP response with the retrieved audit logs
     res.status(STATUS_CODE_SUCCESS).send(
       handleSuccess(
         STATUS_CODE_SUCCESS, // HTTP status code for success
         MESSAGE_GET_AUDITS_SUCCESS, // Success message
         auditLogs, // Data containing the audit logs
-        pagination,
+        total
       )
     );
   },

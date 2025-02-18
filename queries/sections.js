@@ -2,10 +2,10 @@ const moment = require("moment-timezone");
 const Section = require("../models/section");
 const {
   hiddenFieldsDefault,
-  getLimitAndSkip,
   toCapitalize,
   generateSectionCode,
 } = require("../utils/helpers");
+const searchFields = ["action", "module", "changes", "before", "after"];
 
 /**
  * Retrieves all sections from the database with pagination support.
@@ -24,11 +24,29 @@ const findSections = async ({
   page = 1,
   perPage = 10,
   populated = false,
+  sortField,
+  sortValue,
+  keyword,
 }) => {
-  const { limit, skip } = getLimitAndSkip(page, perPage); // Step 1: Calculate pagination parameters
+  const limit = parseInt(perPage); // Number of items to return
+  const skip = (parseInt(page) - 1) * parseInt(perPage); // Number of items to skip // Step 1: Calculate pagination parameters
+
+  if (keyword && keyword?.length > 0 && searchFields.length > 0) {
+    const keywordRegex = new RegExp(keyword, "i");
+    const filterQueries = searchFields.map((field) => ({
+      [field]: { $regex: keywordRegex },
+    }));
+    query.$or = query.$or ? [...query.$or, ...filterQueries] : filterQueries;
+  }
+
+  const sortOptions =
+    sortField && sortField?.length > 0 && sortValue && sortValue?.length > 0
+      ? { [sortField]: sortValue }
+      : { _id: -1 };
 
   // Step 2: Build the base query
   const sectionsQuery = Section.find(query, options ? hiddenFieldsDefault : {})
+    .sort(sortOptions)
     .skip(skip)
     .limit(limit);
 
@@ -122,11 +140,17 @@ const deleteSectionObj = async (sectionCode) => {
   return await Section.deleteOne({ sectionCode }); // Step 1: Delete the section by sectionCode
 };
 
-const getSectionPaginationObject = async (page, perPage) => ({
-  page,
-  perPage,
-  total: await Section.countDocuments(),
-});
+const getTotalSections = async (keyword) => {
+  const filter = {};
+  if (keyword && keyword?.length > 0 && searchFields.length > 0) {
+    const keywordRegex = new RegExp(keyword, "i");
+    filter.$or = searchFields.map((field) => ({
+      [field]: { $regex: keywordRegex },
+    }));
+  }
+  const total = await Section.countDocuments(filter);
+  return total;
+};
 
 module.exports = {
   findSections, // Export function to retrieve multiple sections
@@ -135,5 +159,5 @@ module.exports = {
   createSectionObj, // Export function to create a new section
   updateSectionObj, // Export function to update an existing section
   deleteSectionObj, // Export function to delete a section
-  getSectionPaginationObject,
+  getTotalSections,
 };

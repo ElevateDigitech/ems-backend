@@ -37,6 +37,7 @@ const {
   deleteClassObj,
   getClassPaginationObject,
 } = require("../queries/classes");
+const { getTotalCountries } = require("../queries/countries");
 
 module.exports = {
   /**
@@ -46,9 +47,22 @@ module.exports = {
    * @param {Object} res - Express response object
    */
   GetClasses: async (req, res, next) => {
-    const { page = 1, perPage = 10 } = req.query; // Step 1: Extract pagination parameters
-    const classes = await findClasses({ page, perPage, options: true }); // Step 2: Fetch classes from database
-    const pagination = await getClassPaginationObject(page, perPage);
+    const {
+      page = 1,
+      perPage = 10,
+      sortField = "",
+      sortValue = "",
+      keyword = "",
+    } = req.query; // Step 1: Extract pagination parameters
+    const classes = await findClasses({
+      page,
+      perPage,
+      sortField,
+      sortValue,
+      keyword,
+      options: true,
+    }); // Step 2: Fetch classes from database
+    const total = await getTotalCountries(keyword);
     // Step 3: Send the retrieved classes in the response
     res
       .status(STATUS_CODE_SUCCESS)
@@ -57,7 +71,7 @@ module.exports = {
           STATUS_CODE_SUCCESS,
           MESSAGE_GET_CLASSES_SUCCESS,
           classes,
-          pagination
+          total
         )
       );
   },

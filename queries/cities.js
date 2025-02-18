@@ -2,10 +2,10 @@ const moment = require("moment-timezone");
 const City = require("../models/city");
 const {
   hiddenFieldsDefault,
-  getLimitAndSkip,
   toCapitalize,
   generateCityCode,
 } = require("../utils/helpers");
+const searchFields = ["action", "module", "changes", "before", "after"];
 
 /**
  * Retrieves all cities from the database with pagination support.
@@ -24,11 +24,29 @@ const findCities = async ({
   page = 1,
   perPage = 10,
   populated = false,
+  sortField,
+  sortValue,
+  keyword,
 }) => {
-  const { limit, skip } = getLimitAndSkip(page, perPage); // Step 1: Calculate pagination parameters
+  const limit = parseInt(perPage); // Number of items to return
+  const skip = (parseInt(page) - 1) * parseInt(perPage); // Number of items to skip // Step 1: Calculate pagination parameters
+
+  if (keyword && keyword?.length > 0 && searchFields.length > 0) {
+    const keywordRegex = new RegExp(keyword, "i");
+    const filterQueries = searchFields.map((field) => ({
+      [field]: { $regex: keywordRegex },
+    }));
+    query.$or = query.$or ? [...query.$or, ...filterQueries] : filterQueries;
+  }
+
+  const sortOptions =
+    sortField && sortField?.length > 0 && sortValue && sortValue?.length > 0
+      ? { [sortField]: sortValue }
+      : { _id: -1 };
 
   // Step 2: Build the base query to find cities
   const citiesQuery = City.find(query, options ? hiddenFieldsDefault : {})
+    .sort(sortOptions)
     .skip(skip)
     .limit(limit);
 
@@ -137,11 +155,17 @@ const deleteCityObj = async (cityCode) => {
   return await City.deleteOne({ cityCode }); // Step 1: Delete the city document by cityCode
 };
 
-const getCityPaginationObject = async (page, perPage) => ({
-  page,
-  perPage,
-  total: await City.countDocuments(),
-});
+const getTotalCities = async (keyword) => {
+  const filter = {};
+  if (keyword && keyword?.length > 0 && searchFields.length > 0) {
+    const keywordRegex = new RegExp(keyword, "i");
+    filter.$or = searchFields.map((field) => ({
+      [field]: { $regex: keywordRegex },
+    }));
+  }
+  const total = await City.countDocuments(filter);
+  return total;
+};
 
 module.exports = {
   findCities, // Export function to retrieve multiple cities
@@ -150,5 +174,5 @@ module.exports = {
   createCityObj, // Export function to create a new city
   updateCityObj, // Export function to update an existing city
   deleteCityObj, // Export function to delete a city
-  getCityPaginationObject,
+  getTotalCities,
 };

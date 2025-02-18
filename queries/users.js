@@ -1,69 +1,49 @@
 const User = require("../models/user");
-const {
-  hiddenFieldsDefault,
-  hiddenFieldsUser,
-  getLimitAndSkip,
-} = require("../utils/helpers");
+const { hiddenFieldsUser, hiddenFieldsDefault } = require("../utils/helpers");
+const searchFields = ["action", "module", "changes", "before", "after"];
 
 /**
- * Retrieves multiple permissions from the database with pagination support.
+ * Retrieves multiple users from the database with pagination support.
  *
- * @param {Object} params - The parameters for querying permissions.
- * @param {Object} params.query - The MongoDB query object to filter permissions.
- * @param {Object} params.options - Fields to include or exclude from the result.
- * @param {number} params.start - The starting index for pagination (default is 1).
- * @param {number} params.end - The ending index for pagination (default is 10).
- * @returns {Promise<Array>} - A promise that resolves to an array of permissions.
+ * @param {Object} params - The parameters for querying users.
+ * @param {Object} params.query - The MongoDB query object to filter users.
+ * @param {boolean} params.options - Determines whether to exclude hidden fields.
+ * @param {number} params.page - Current page number for pagination (default is 1).
+ * @param {number} params.perPage - Number of users per page (default is 10).
+ * @param {boolean} params.populated - Determines if related data should be populated.
+ * @returns {Promise<Array>} - A promise that resolves to an array of users.
  */
 const findUsers = async ({
-  query = {}, // MongoDB query object to filter permissions
-  options = false, // Fields to include/exclude in the result
-  roleOptions = false,
-  rolePermissionOptions = false,
-  page = 1, // Current page for pagination (default is 1)
-  perPage = 10, // Items per page for pagination (default is 10)
+  query = {},
+  options = false,
+  page = 1,
+  perPage = 10,
   populated = false,
+  sortField,
+  sortValue,
+  keyword,
 }) => {
-  // Step 1: Calculate the limit and skip values for pagination
-  const { limit, skip } = getLimitAndSkip(page, perPage);
+  const limit = parseInt(perPage); // Number of items to return
+  const skip = (parseInt(page) - 1) * parseInt(perPage); // Number of items to skip
 
-  // Query the database with the provided filters
-  // Apply skip for pagination
-  // Apply limit to control the number of results returned
-  return populated
-    ? await User.find(query, options ? hiddenFieldsUser : {})
-        .skip(skip)
-        .limit(limit)
-        .populate({
-          path: "role",
-          select: roleOptions ? hiddenFieldsDefault : {},
-          populate: {
-            path: "rolePermissions",
-            select: rolePermissionOptions ? hiddenFieldsDefault : {},
-          },
-        })
-    : await User.find(query, options ? hiddenFieldsUser : {})
-        .skip(skip)
-        .limit(limit);
-};
+  if (keyword && keyword?.length > 0 && searchFields.length > 0) {
+    const keywordRegex = new RegExp(keyword, "i");
+    const filterQueries = searchFields.map((field) => ({
+      [field]: { $regex: keywordRegex },
+    }));
+    query.$or = query.$or ? [...query.$or, ...filterQueries] : filterQueries;
+  }
 
-/**
- * Retrieves a single permission from the database.
- *
- * @param {Object} params - The parameters for querying a User.
- * @param {Object} params.query - The MongoDB query object to filter the User.
- * @param {Object} params.options - Fields to include or exclude from the result.
- * @returns {Promise<Object|null>} - A promise that resolves to the permission object or null if not found.
- */
-const findUser = async ({
-  query = {}, // MongoDB query object to filter the permission
-  options = false, // Fields to include/exclude in the result
-  populated = false,
-}) => {
-  // Query the database to find a single permission
-  // Return the first document that matches the query criteria
+  const sortOptions =
+    sortField && sortField?.length > 0 && sortValue && sortValue?.length > 0
+      ? { [sortField]: sortValue }
+      : { _id: -1 };
+  const usersQuery = User.find(query, options ? hiddenFieldsUser : {})
+    .sort(sortOptions)
+    .skip(skip)
+    .limit(limit);
   return populated
-    ? await User.findOne(query, options ? hiddenFieldsUser : {}).populate({
+    ? usersQuery.populate({
         path: "role",
         select: hiddenFieldsDefault,
         populate: {
@@ -71,17 +51,47 @@ const findUser = async ({
           select: hiddenFieldsDefault,
         },
       })
-    : await User.findOne(query, options ? hiddenFieldsUser : {});
+    : usersQuery;
 };
 
-const getUserPaginationObject = async (page, perPage) => ({
-  page,
-  perPage,
-  total: await User.countDocuments(),
-});
+/**
+ * Retrieves a single user from the database.
+ *
+ * @param {Object} params - The parameters for querying a user.
+ * @param {Object} params.query - The MongoDB query object to filter the user.
+ * @param {boolean} params.options - Determines whether to exclude hidden fields.
+ * @param {boolean} params.populated - Determines if related data should be populated.
+ * @returns {Promise<Object|null>} - A promise that resolves to the user object or null if not found.
+ */
+const findUser = async ({ query = {}, options = false, populated = false }) => {
+  const userQuery = User.findOne(query, options ? hiddenFieldsUser : {});
+
+  return populated
+    ? userQuery.populate({
+        path: "role",
+        select: hiddenFieldsDefault,
+        populate: {
+          path: "rolePermissions",
+          select: hiddenFieldsDefault,
+        },
+      })
+    : userQuery;
+};
+
+const getTotalUsers = async (keyword) => {
+  const filter = {};
+  if (keyword && keyword?.length > 0 && searchFields.length > 0) {
+    const keywordRegex = new RegExp(keyword, "i");
+    filter.$or = searchFields.map((field) => ({
+      [field]: { $regex: keywordRegex },
+    }));
+  }
+  const total = await User.countDocuments(filter);
+  return total;
+};
 
 module.exports = {
-  findUsers, // Export function to retrieve multiple permissions
-  findUser, // Export function to retrieve a single permission
-  getUserPaginationObject,
+  findUsers,
+  findUser,
+  getTotalUsers,
 };

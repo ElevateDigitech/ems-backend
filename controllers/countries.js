@@ -36,6 +36,7 @@ const {
   updateCountryObj,
   deleteCountryObj,
   getCountryPaginationObject,
+  getTotalCountries,
 } = require("../queries/countries");
 
 module.exports = {
@@ -46,9 +47,22 @@ module.exports = {
    * @param {Object} res - Express response object
    */
   GetCountries: async (req, res, next) => {
-    const { page = 1, perPage = 10 } = req.query; // Step 1: Extract pagination parameters
-    const countries = await findCountries({ page, perPage, options: true }); // Step 2: Fetch countries from database
-    const pagination = await getCountryPaginationObject(page, perPage);
+    const {
+      page = 1,
+      perPage = 10,
+      sortField = "",
+      sortValue = "",
+      keyword = "",
+    } = req.query; // Step 1: Extract pagination parameters
+    const countries = await findCountries({
+      page,
+      perPage,
+      sortField,
+      sortValue,
+      keyword,
+      options: true,
+    }); // Step 2: Fetch countries from database
+    const total = await getTotalCountries(keyword);
     // Step 3: Send the retrieved countries in the response
     res
       .status(STATUS_CODE_SUCCESS)
@@ -57,7 +71,7 @@ module.exports = {
           STATUS_CODE_SUCCESS,
           MESSAGE_GET_COUNTRIES_SUCCESS,
           countries,
-          pagination
+          total
         )
       );
   },

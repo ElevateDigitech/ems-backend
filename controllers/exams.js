@@ -36,6 +36,7 @@ const {
   updateExamObj,
   deleteExamObj,
   getExamPaginationObject,
+  getTotalExams,
 } = require("../queries/exams");
 
 module.exports = {
@@ -46,9 +47,22 @@ module.exports = {
    * @param {Object} res - Express response object
    */
   GetExams: async (req, res, next) => {
-    const { page = 1, perPage = 10 } = req.query; // Step 1: Extract pagination parameters
-    const exams = await findExams({ page, perPage, options: true }); // Step 2: Fetch exams from database
-    const pagination = await getExamPaginationObject(page, perPage);
+    const {
+      page = 1,
+      perPage = 10,
+      sortField = "",
+      sortValue = "",
+      keyword = "",
+    } = req.query; // Step 1: Extract pagination parameters
+    const exams = await findExams({
+      page,
+      perPage,
+      sortField,
+      sortValue,
+      keyword,
+      options: true,
+    }); // Step 2: Fetch exams from database
+    const total = await getTotalExams(keyword);
     // Step 3: Return success response with fetched data
     res
       .status(STATUS_CODE_SUCCESS)
@@ -57,7 +71,7 @@ module.exports = {
           STATUS_CODE_SUCCESS,
           MESSAGE_GET_EXAMS_SUCCESS,
           exams,
-          pagination
+          total
         )
       );
   },

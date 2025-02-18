@@ -1,11 +1,11 @@
 const moment = require("moment-timezone");
 const State = require("../models/state");
 const {
-  getLimitAndSkip,
   toCapitalize,
   generateStateCode,
   hiddenFieldsDefault,
 } = require("../utils/helpers");
+const searchFields = ["action", "module", "changes", "before", "after"];
 
 /**
  * Retrieves all states from the database with pagination support.
@@ -24,11 +24,29 @@ const findStates = async ({
   page = 1,
   perPage = 10,
   populated = false,
+  sortField,
+  sortValue,
+  keyword,
 }) => {
-  const { limit, skip } = getLimitAndSkip(page, perPage); // Step 1: Calculate pagination parameters
+  const limit = parseInt(perPage); // Number of items to return
+  const skip = (parseInt(page) - 1) * parseInt(perPage); // Number of items to skip // Step 1: Calculate pagination parameters
+
+  if (keyword && keyword?.length > 0 && searchFields.length > 0) {
+    const keywordRegex = new RegExp(keyword, "i");
+    const filterQueries = searchFields.map((field) => ({
+      [field]: { $regex: keywordRegex },
+    }));
+    query.$or = query.$or ? [...query.$or, ...filterQueries] : filterQueries;
+  }
+
+  const sortOptions =
+    sortField && sortField?.length > 0 && sortValue && sortValue?.length > 0
+      ? { [sortField]: sortValue }
+      : { _id: -1 };
 
   // Step 2: Build the base query to find states
   const statesQuery = State.find(query, options ? hiddenFieldsDefault : {})
+    .sort(sortOptions)
     .skip(skip)
     .limit(limit);
 
@@ -128,11 +146,17 @@ const deleteStateObj = async (stateCode) => {
   return await State.deleteOne({ stateCode }); // Step 1: Delete the state document by stateCode
 };
 
-const getStatePaginationObject = async (page, perPage) => ({
-  page,
-  perPage,
-  total: await State.countDocuments(),
-});
+const getTotalStates = async (keyword) => {
+  const filter = {};
+  if (keyword && keyword?.length > 0 && searchFields.length > 0) {
+    const keywordRegex = new RegExp(keyword, "i");
+    filter.$or = searchFields.map((field) => ({
+      [field]: { $regex: keywordRegex },
+    }));
+  }
+  const total = await State.countDocuments(filter);
+  return total;
+};
 
 module.exports = {
   findStates, // Export function to retrieve multiple states
@@ -141,5 +165,5 @@ module.exports = {
   createStateObj, // Export function to create a new state
   updateStateObj, // Export function to update an existing state
   deleteStateObj, // Export function to delete a state
-  getStatePaginationObject,
+  getTotalStates,
 };

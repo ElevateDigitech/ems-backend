@@ -39,6 +39,7 @@ const {
   updateSectionObj,
   deleteSectionObj,
   getSectionPaginationObject,
+  getTotalSections,
 } = require("../queries/sections");
 const { findClass } = require("../queries/classes");
 
@@ -51,14 +52,23 @@ module.exports = {
    * @param {Function} next - Express next middleware function
    */
   GetSections: async (req, res, next) => {
-    const { page = 1, perPage = 10 } = req.query; // Step 1: Extract pagination parameters
+    const {
+      page = 1,
+      perPage = 10,
+      sortField = "",
+      sortValue = "",
+      keyword = "",
+    } = req.query; // Step 1: Extract pagination parameters
     const sections = await findSections({
       page,
       perPage,
+      sortField,
+      sortValue,
+      keyword,
       options: true,
       populated: true,
     }); // Step 2: Fetch sections from the database
-    const pagination = await getSectionPaginationObject(page, perPage);
+    const total = await getTotalSections(keyword);
     // Step 3: Send the retrieved sections in the response
     res
       .status(STATUS_CODE_SUCCESS)
@@ -67,7 +77,7 @@ module.exports = {
           STATUS_CODE_SUCCESS,
           MESSAGE_GET_SECTIONS_SUCCESS,
           sections,
-          pagination
+          total
         )
       );
   },
@@ -111,7 +121,13 @@ module.exports = {
    * @param {Function} next - Express next middleware function
    */
   GetSectionsByClassCode: async (req, res, next) => {
-    const { page = 1, perPage = 10 } = req.query; // Step 1: Extract pagination parameters
+    const {
+      page = 1,
+      perPage = 10,
+      sortField = "",
+      sortValue = "",
+      keyword = "",
+    } = req.query; // Step 1: Extract pagination parameters
     const { classCode } = req.body;
     const foundClass = await findClass({
       query: {

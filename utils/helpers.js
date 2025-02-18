@@ -16,8 +16,8 @@ const removeIdsForSubSchemas = { _id: 0, id: 0 };
 
 const handleError = (next, status, message) =>
   next(new ExpressResponse(STATUS_ERROR, status, message));
-const handleSuccess = (status, message, data = null, pagination = null) =>
-  new ExpressResponse(STATUS_SUCCESS, status, message, data, pagination);
+const handleSuccess = (status, message, data = null, total = null) =>
+  new ExpressResponse(STATUS_SUCCESS, status, message, data, total);
 
 const trimAndTestRegex = (value, regex) =>
   value?.trim() && regex?.test(value.trim());
@@ -117,12 +117,6 @@ const getCurrentUser = async (userCode) => {
   });
 };
 
-const getLimitAndSkip = (page, perPage) => {
-  const limit = perPage; // Number of items to return
-  const skip = (page - 1) * perPage; // Number of items to skip
-  return { limit, skip };
-};
-
 const getFileExtension = (filename) => path.extname(filename);
 
 module.exports = {
@@ -156,6 +150,5 @@ module.exports = {
   toCapitalize,
   writeToFile,
   getCurrentUser,
-  getLimitAndSkip,
   getFileExtension,
 };

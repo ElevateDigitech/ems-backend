@@ -36,6 +36,7 @@ const {
   updateGenderObj,
   deleteGenderObj,
   getGenderPaginationObject,
+  getTotalGenders,
 } = require("../queries/genders");
 
 module.exports = {
@@ -46,15 +47,28 @@ module.exports = {
    * @param {Object} res - Express response object
    */
   GetGenders: async (req, res, next) => {
-    const { page = 1, perPage = 10 } = req.query; // Step 1: Get pagination parameters
-    const genders = await findGenders({ page, perPage, options: true }); // Step 2: Fetch genders
-    const pagination = await getGenderPaginationObject(page, perPage);
+    const {
+      page = 1,
+      perPage = 10,
+      sortField = "",
+      sortValue = "",
+      keyword = "",
+    } = req.query; // Step 1: Get pagination parameters
+    const genders = await findGenders({
+      page,
+      perPage,
+      sortField,
+      sortValue,
+      keyword,
+      options: true,
+    }); // Step 2: Fetch genders
+    const total = await getTotalGenders(keyword);
     res.status(STATUS_CODE_SUCCESS).send(
       handleSuccess(
         STATUS_CODE_SUCCESS,
         MESSAGE_GET_GENDERS_SUCCESS,
         genders,
-        pagination
+        total
       ) // Step 3: Send success response
     );
   },

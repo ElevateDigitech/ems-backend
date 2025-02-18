@@ -38,6 +38,7 @@ const {
   updateStateObj,
   deleteStateObj,
   getStatePaginationObject,
+  getTotalStates,
 } = require("../queries/states");
 const { findCountry } = require("../queries/countries");
 
@@ -50,16 +51,25 @@ module.exports = {
    * @param {Function} next - Express next middleware function
    */
   GetStates: async (req, res, next) => {
-    const { page = 1, perPage = 10 } = req.query; // Step 1: Extract pagination parameters
+    const {
+      page = 1,
+      perPage = 10,
+      sortField = "",
+      sortValue = "",
+      keyword = "",
+    } = req.query; // Step 1: Extract pagination parameters
 
     // Step 2: Retrieve all states from the database
     const states = await findStates({
       page,
       perPage,
+      sortField,
+      sortValue,
+      keyword,
       options: true,
       populated: true,
     });
-    const pagination = await getStatePaginationObject(page, perPage);
+    const total = await getTotalStates(keyword);
     // Step 3: Send success response with the list of states
     res
       .status(STATUS_CODE_SUCCESS)
@@ -68,7 +78,7 @@ module.exports = {
           STATUS_CODE_SUCCESS,
           MESSAGE_GET_STATES_SUCCESS,
           states,
-          pagination
+          total
         )
       );
   },
@@ -114,7 +124,13 @@ module.exports = {
    * @param {Function} next - Express next middleware function
    */
   GetStatesByCountryCode: async (req, res, next) => {
-    const { page = 1, perPage = 10 } = req.query; // Step 1: Extract pagination parameters
+    const {
+      page = 1,
+      perPage = 10,
+      sortField = "",
+      sortValue = "",
+      keyword = "",
+    } = req.query; // Step 1: Extract pagination parameters
     const { countryCode } = req.body; // Step 2: Extract country code from request body
 
     // Step 3: Find the country by its code

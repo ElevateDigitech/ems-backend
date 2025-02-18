@@ -38,6 +38,7 @@ const {
   updateStudentObj,
   deleteStudentObj,
   getStudentPaginationObject,
+  getTotalStudents,
 } = require("../queries/students");
 const { findSection } = require("../queries/sections");
 
@@ -50,16 +51,25 @@ module.exports = {
    * @param {Function} next - Express next middleware function
    */
   GetStudents: async (req, res, next) => {
-    const { page = 1, perPage = 10 } = req.query; // Step 1: Extract pagination parameters
+    const {
+      page = 1,
+      perPage = 10,
+      sortField = "",
+      sortValue = "",
+      keyword = "",
+    } = req.query; // Step 1: Extract pagination parameters
 
     // Step 2: Retrieve all students from the database
     const students = await findStudents({
       page,
       perPage,
+      sortField,
+      sortValue,
+      keyword,
       options: true,
       populated: true,
     });
-    const pagination = await getStudentPaginationObject(page, perPage);
+    const total = await getTotalStudents(keyword);
     // Step 3: Send success response with the list of students
     res
       .status(STATUS_CODE_SUCCESS)
@@ -68,7 +78,7 @@ module.exports = {
           STATUS_CODE_SUCCESS,
           MESSAGE_GET_STUDENTS_SUCCESS,
           students,
-          pagination
+          total
         )
       );
   },
@@ -113,7 +123,13 @@ module.exports = {
    * @param {Function} next - Express next middleware function
    */
   GetStudentsBySectionCode: async (req, res, next) => {
-    const { page = 1, perPage = 10 } = req.query; // Step 1: Extract pagination parameters
+    const {
+      page = 1,
+      perPage = 10,
+      sortField = "",
+      sortValue = "",
+      keyword = "",
+    } = req.query; // Step 1: Extract pagination parameters
     const { sectionCode } = req.body; // Step 2: Extract section code from request body
 
     // Step 3: Find the section by its code

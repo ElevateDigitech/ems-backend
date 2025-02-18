@@ -1,10 +1,7 @@
 const moment = require("moment-timezone");
 const Gender = require("../models/gender");
-const {
-  hiddenFieldsDefault,
-  generateGenderCode,
-  getLimitAndSkip,
-} = require("../utils/helpers");
+const { hiddenFieldsDefault, generateGenderCode } = require("../utils/helpers");
+const searchFields = ["action", "module", "changes", "before", "after"];
 
 /**
  * Retrieves multiple genders from the database with pagination support.
@@ -21,12 +18,30 @@ const findGenders = async ({
   options = false, // Fields to include/exclude in the result
   page = 1, // Current page for pagination (default is 1)
   perPage = 10, // Items per page for pagination (default is 10)
+  sortField,
+  sortValue,
+  keyword,
 }) => {
   // Step 1: Calculate the limit and skip values for pagination
-  const { limit, skip } = getLimitAndSkip(page, perPage);
+  const limit = parseInt(perPage); // Number of items to return
+  const skip = (parseInt(page) - 1) * parseInt(perPage); // Number of items to skip
+
+  if (keyword && keyword?.length > 0 && searchFields.length > 0) {
+    const keywordRegex = new RegExp(keyword, "i");
+    const filterQueries = searchFields.map((field) => ({
+      [field]: { $regex: keywordRegex },
+    }));
+    query.$or = query.$or ? [...query.$or, ...filterQueries] : filterQueries;
+  }
+
+  const sortOptions =
+    sortField && sortField?.length > 0 && sortValue && sortValue?.length > 0
+      ? { [sortField]: sortValue }
+      : { _id: -1 };
 
   // Step 2: Query the database with provided filters, apply pagination (skip & limit)
   return await Gender.find(query, options ? hiddenFieldsDefault : {})
+    .sort(sortOptions)
     .skip(skip) // Apply skip
     .limit(limit); // Apply limit
 };
@@ -106,11 +121,17 @@ const deleteGenderObj = async (genderCode) => {
   return await Gender.deleteOne({ genderCode });
 };
 
-const getGenderPaginationObject = async (page, perPage) => ({
-  page,
-  perPage,
-  total: await Gender.countDocuments(),
-});
+const getTotalGenders = async (keyword) => {
+  const filter = {};
+  if (keyword && keyword?.length > 0 && searchFields.length > 0) {
+    const keywordRegex = new RegExp(keyword, "i");
+    filter.$or = searchFields.map((field) => ({
+      [field]: { $regex: keywordRegex },
+    }));
+  }
+  const total = await Gender.countDocuments(filter);
+  return total;
+};
 
 module.exports = {
   findGenders, // Export function to retrieve multiple genders
@@ -119,5 +140,5 @@ module.exports = {
   createGenderObj, // Export function to create a new gender object
   updateGenderObj, // Export function to update an existing gender
   deleteGenderObj, // Export function to delete a gender
-  getGenderPaginationObject,
+  getTotalGenders,
 };

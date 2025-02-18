@@ -40,6 +40,7 @@ const {
   deleteRoleObj,
   formatRoleFields,
   getRolePaginationObject,
+  getTotalRoles,
 } = require("../queries/roles");
 
 module.exports = {
@@ -50,14 +51,23 @@ module.exports = {
    * @param {Object} res - Express response object
    */
   GetRoles: async (req, res, next) => {
-    const { page = 1, perPage = 10 } = req.query; // Step 1: Extract pagination parameters
+    const {
+      page = 1,
+      perPage = 10,
+      sortField = "",
+      sortValue = "",
+      keyword = "",
+    } = req.query; // Step 1: Extract pagination parameters
     const roles = await findRoles({
       page,
       perPage,
+      sortField,
+      sortValue,
+      keyword,
       options: true,
       populated: true,
     }); // Step 2: Fetch roles from the database
-    const pagination = await getRolePaginationObject(page, perPage);
+    const total = await getTotalRoles(keyword);
     // Step 3: Send the retrieved roles in the response
     res
       .status(STATUS_CODE_SUCCESS)
@@ -66,7 +76,7 @@ module.exports = {
           STATUS_CODE_SUCCESS,
           MESSAGE_GET_ROLES_SUCCESS,
           roles,
-          pagination
+          total
         )
       );
   },

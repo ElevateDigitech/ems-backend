@@ -1,10 +1,7 @@
 const moment = require("moment-timezone");
 const Role = require("../models/role");
-const {
-  hiddenFieldsDefault,
-  getLimitAndSkip,
-  generateRoleCode,
-} = require("../utils/helpers");
+const { hiddenFieldsDefault, generateRoleCode } = require("../utils/helpers");
+const searchFields = ["action", "module", "changes", "before", "after"];
 
 /**
  * Retrieves all roles from the database with pagination support.
@@ -23,11 +20,29 @@ const findRoles = async ({
   page = 1,
   perPage = 10,
   populated = false,
+  sortField,
+  sortValue,
+  keyword,
 }) => {
-  const { limit, skip } = getLimitAndSkip(page, perPage); // Step 1: Calculate pagination parameters
+  const limit = parseInt(perPage); // Number of items to return
+  const skip = (parseInt(page) - 1) * parseInt(perPage); // Number of items to skip // Step 1: Calculate pagination parameters
+
+  if (keyword && keyword?.length > 0 && searchFields.length > 0) {
+    const keywordRegex = new RegExp(keyword, "i");
+    const filterQueries = searchFields.map((field) => ({
+      [field]: { $regex: keywordRegex },
+    }));
+    query.$or = query.$or ? [...query.$or, ...filterQueries] : filterQueries;
+  }
+
+  const sortOptions =
+    sortField && sortField?.length > 0 && sortValue && sortValue?.length > 0
+      ? { [sortField]: sortValue }
+      : { _id: -1 };
 
   // Step 2: Build the base query
   const rolesQuery = Role.find(query, options ? hiddenFieldsDefault : {})
+    .sort(sortOptions)
     .skip(skip)
     .limit(limit);
 
@@ -136,11 +151,17 @@ const deleteRoleObj = async (roleCode) => {
   return await Role.deleteOne({ roleCode }); // Step 1: Delete the role by roleCode
 };
 
-const getRolePaginationObject = async (page, perPage) => ({
-  page,
-  perPage,
-  total: await Role.countDocuments(),
-});
+const getTotalRoles = async (keyword) => {
+  const filter = {};
+  if (keyword && keyword?.length > 0 && searchFields.length > 0) {
+    const keywordRegex = new RegExp(keyword, "i");
+    filter.$or = searchFields.map((field) => ({
+      [field]: { $regex: keywordRegex },
+    }));
+  }
+  const total = await Role.countDocuments(filter);
+  return total;
+};
 
 module.exports = {
   findRoles, // Export function to retrieve multiple roles
@@ -149,5 +170,5 @@ module.exports = {
   createRoleObj, // Export function to create a new role
   updateRoleObj, // Export function to update an existing role
   deleteRoleObj, // Export function to delete a role
-  getRolePaginationObject,
+  getTotalRoles,
 };

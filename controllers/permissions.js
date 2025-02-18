@@ -2,6 +2,7 @@ const {
   findPermissions,
   findPermission,
   getPermissionPaginationObject,
+  getTotalPermissions,
 } = require("../queries/permissions");
 const { handleError, handleSuccess } = require("../utils/helpers");
 const {
@@ -26,18 +27,31 @@ module.exports = {
    */
   GetPermissions: async (req, res, next) => {
     // Step 1: Destructure 'start' and 'end' from the query parameters, defaulting to 1 and 10 if not provided
-    const { page = 1, perPage = 10 } = req.query;
+    const {
+      page = 1,
+      perPage = 10,
+      sortField = "",
+      sortValue = "",
+      keyword = "",
+    } = req.query;
 
     // Step 2: Query the database to retrieve all permission documents within the provided range
-    const permissions = await findPermissions({ page, perPage, options: true });
-    const pagination = await getPermissionPaginationObject(page, perPage); // Get total count
+    const permissions = await findPermissions({
+      page,
+      perPage,
+      sortField,
+      sortValue,
+      keyword,
+      options: true,
+    });
+    const total = await getTotalPermissions(keyword);
     // Step 3: Return a success response with the retrieved permissions
     res.status(STATUS_CODE_SUCCESS).send(
       handleSuccess(
         STATUS_CODE_SUCCESS, // HTTP status code for success
         MESSAGE_GET_PERMISSIONS_SUCCESS, // Success message
         permissions, // Data containing the permissions
-        pagination
+        total
       )
     );
   },
@@ -88,7 +102,13 @@ module.exports = {
    */
   GetPermissionsByRoleCode: async (req, res, next) => {
     // Step 1: Destructure 'start' and 'end' from the query parameters, defaulting to 1 and 10 if not provided
-    const { page = 1, perPage = 10 } = req.query;
+    const {
+      page = 1,
+      perPage = 10,
+      sortField = "",
+      sortValue = "",
+      keyword = "",
+    } = req.query;
     // Step 1: Extract the permissionCode from the request body
     const { roleCode } = req.body;
 

@@ -48,7 +48,11 @@ const {
   MESSAGE_UPDATE_USER_SUCCESS,
   MESSAGE_ACCESS_DENIED_NO_PERMISSION,
 } = require("../utils/messages");
-const { getUserPaginationObject } = require("../queries/users");
+const {
+  getUserPaginationObject,
+  findUsers,
+  getTotalUsers,
+} = require("../queries/users");
 
 /**
  * Retrieves the current user based on userCode.
@@ -463,20 +467,24 @@ module.exports = {
    * @param {Function} next - Express next middleware function
    */
   GetUsers: async (req, res, next) => {
-    // Destructure 'entries' from the query parameters, defaulting to 100 if not provided
-    const { entries = 100 } = req.query;
+    const {
+      page = 1,
+      perPage = 10,
+      sortField = "",
+      sortValue = "",
+      keyword = "",
+    } = req.query; // Step 1: Get pagination parameters
     // Fetch all users from the User collection, excluding hidden fields
-    const allUsers = await User.find({}, hiddenFieldsUser)
-      .populate({
-        path: "role", // Populate the 'role' field in the user documents
-        select: hiddenFieldsDefault, // Exclude hidden fields from the role
-        populate: {
-          path: "rolePermissions", // Further populate 'rolePermissions' within each role
-          select: hiddenFieldsDefault, // Exclude hidden fields from role permissions
-        },
-      })
-      .limit(entries);
-    const pagination = await getUserPaginationObject(page, perPage);
+    const allUsers = await findUsers({
+      page,
+      perPage,
+      sortField,
+      sortValue,
+      keyword,
+      options: true,
+      populated: true,
+    });
+    const total = await getTotalUsers(keyword);
     // Send a success response with the retrieved users
     res
       .status(STATUS_CODE_SUCCESS)
@@ -485,7 +493,7 @@ module.exports = {
           STATUS_CODE_SUCCESS,
           MESSAGE_GET_USERS_SUCCESS,
           allUsers,
-          pagination
+          total
         )
       );
   },

@@ -31,7 +31,7 @@ router.post(
 );
 
 router.get(
-  "/Getusers",
+  "/GetUsers",
   isLoggedIn,
   checkPermission(allPermissions?.VIEW_USERS),
   catchAsync(users.GetUsers)
