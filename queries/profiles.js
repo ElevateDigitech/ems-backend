@@ -5,87 +5,67 @@ const {
   generateProfileCode,
 } = require("../utils/helpers");
 const { cloudinary } = require("../cloudinary");
-const searchFields = ["action", "module", "changes", "before", "after"];
+const {
+  buildProfilePipeline,
+  buildProfileCountPipeline,
+} = require("../pipelines/profiles");
 
 /**
- * Retrieves all profiles from the database with pagination support.
+ * Retrieves all profiles from the database with pagination, filtering, sorting, population, and projection support.
  *
- * @param {Object} params - The parameters for querying profiles.
- * @param {Object} params.query - The MongoDB query object to filter profiles.
- * @param {Object} params.options - Fields to include or exclude from the result.
- * @param {number} params.start - The starting index for pagination (default is 1).
- * @param {number} params.end - The ending index for pagination (default is 10).
- * @param {boolean} params.populated - Determines if related data should be populated.
- * @returns {Promise<Array>} - A promise that resolves to an array of profiles.
+ * @param {Object} params - Parameters for querying profiles.
+ * @param {Object} [params.query={}] - The MongoDB query object to filter profiles.
+ * @param {string} [params.keyword=""] - A keyword for text-based search in profiles.
+ * @param {string} [params.sortField="_id"] - The field to sort the results by.
+ * @param {string} [params.sortValue="desc"] - The sorting order: 'asc' for ascending or 'desc' for descending.
+ * @param {number} [params.page=1] - The current page number for pagination.
+ * @param {number} [params.limit=10] - The number of records per page.
+ * @param {boolean} [params.populate=false] - Determines if related data should be populated.
+ * @param {boolean} [params.projection=false] - Whether to apply field projection.
+ * @param {boolean} [params.all=false] - Whether to query all without pagination.
+ * @returns {Promise<Object>} - A promise that resolves to an object containing the results and the total count.
  */
 const findProfiles = async ({
   query = {},
-  options = false,
+  keyword = "",
+  sortField = "_id",
+  sortValue = "desc",
   page = 1,
-  perPage = 10,
-  populated = false,
-  sortField,
-  sortValue,
-  keyword,
+  limit = 10,
+  populate = false,
+  projection = false,
+  all = false,
 }) => {
-  // Step 1: Calculate pagination parameters
-  const limit = parseInt(perPage); // Number of items to return
-  const skip = (parseInt(page) - 1) * parseInt(perPage); // Number of items to skip
+  // Execute two parallel aggregation queries using Promise.all:
+  // 1. Fetch paginated profile records with filters, sorting, field projection, and optional population of related data.
+  // 2. Fetch the total count of profiles that match the query.
+  const [results, countResult] = await Promise.all([
+    Profile.aggregate(
+      buildProfilePipeline({
+        query,
+        keyword,
+        sortField,
+        sortValue,
+        page,
+        limit,
+        populate,
+        projection,
+        all,
+      })
+    ),
+    Profile.aggregate(
+      buildProfileCountPipeline({
+        query,
+        keyword,
+      })
+    ),
+  ]);
 
-  if (keyword && keyword?.length > 0 && searchFields.length > 0) {
-    const keywordRegex = new RegExp(keyword, "i");
-    const filterQueries = searchFields.map((field) => ({
-      [field]: { $regex: keywordRegex },
-    }));
-    query.$or = query.$or ? [...query.$or, ...filterQueries] : filterQueries;
-  }
+  // Extract the total count from the aggregation result.
+  const totalCount = countResult[0]?.totalCount || 0;
 
-  const sortOptions =
-    sortField && sortField?.length > 0 && sortValue && sortValue?.length > 0
-      ? { [sortField]: sortValue }
-      : { _id: -1 };
-
-  // Step 2: Build the base query to find profiles
-  const profilesQuery = Profile.find(query, options ? hiddenFieldsDefault : {})
-    .sort(sortOptions)
-    .skip(skip)
-    .limit(limit);
-
-  // Step 3: Conditionally populate related data if populated flag is true
-  return populated
-    ? profilesQuery
-        .populate("gender", hiddenFieldsDefault)
-        .populate({
-          path: "user",
-          select: hiddenFieldsDefault,
-          populate: {
-            path: "role",
-            select: hiddenFieldsDefault,
-            populate: {
-              path: "rolePermissions",
-              select: hiddenFieldsDefault,
-            },
-          },
-        })
-        .populate({
-          path: "address.city",
-          select: hiddenFieldsDefault,
-          populate: [
-            {
-              path: "state",
-              select: hiddenFieldsDefault,
-              populate: { path: "country", select: hiddenFieldsDefault },
-            },
-            { path: "country", select: hiddenFieldsDefault },
-          ],
-        })
-        .populate({
-          path: "address.state",
-          select: hiddenFieldsDefault,
-          populate: { path: "country", select: hiddenFieldsDefault },
-        })
-        .populate({ path: "address.country", select: hiddenFieldsDefault })
-    : profilesQuery;
+  // Return the fetched profiles and the total count.
+  return { results, totalCount };
 };
 
 /**
@@ -244,18 +224,6 @@ const deleteProfileObj = async (profileCode) => {
   return await Profile.deleteOne({ profileCode });
 };
 
-const getTotalProfiles = async (keyword) => {
-  const filter = {};
-  if (keyword && keyword?.length > 0 && searchFields.length > 0) {
-    const keywordRegex = new RegExp(keyword, "i");
-    filter.$or = searchFields.map((field) => ({
-      [field]: { $regex: keywordRegex },
-    }));
-  }
-  const total = await Profile.countDocuments(filter);
-  return total;
-};
-
 module.exports = {
   findProfiles, // Export function to retrieve multiple profiles
   findProfile, // Export function to retrieve a single profile
@@ -263,5 +231,4 @@ module.exports = {
   createProfileObj, // Export function to create a new profile
   updateProfileObj, // Export function to update an existing profile
   deleteProfileObj, // Export function to delete a profile
-  getTotalProfiles,
 };

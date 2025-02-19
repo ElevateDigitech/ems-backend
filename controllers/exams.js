@@ -35,8 +35,6 @@ const {
   formatExamTitle,
   updateExamObj,
   deleteExamObj,
-  getExamPaginationObject,
-  getTotalExams,
 } = require("../queries/exams");
 
 module.exports = {
@@ -48,21 +46,21 @@ module.exports = {
    */
   GetExams: async (req, res, next) => {
     const {
-      page = 1,
-      perPage = 10,
-      sortField = "",
-      sortValue = "",
       keyword = "",
-    } = req.query; // Step 1: Extract pagination parameters
-    const exams = await findExams({
-      page,
-      perPage,
+      sortField = "_id",
+      sortValue = "desc",
+      page = 1,
+      limit = 10,
+    } = req.query;
+
+    const { results, totalCount } = await findExams({
+      keyword,
       sortField,
       sortValue,
-      keyword,
-      options: true,
-    }); // Step 2: Fetch exams from database
-    const total = await getTotalExams(keyword);
+      page,
+      limit,
+      projection: true,
+    });
     // Step 3: Return success response with fetched data
     res
       .status(STATUS_CODE_SUCCESS)
@@ -70,8 +68,8 @@ module.exports = {
         handleSuccess(
           STATUS_CODE_SUCCESS,
           MESSAGE_GET_EXAMS_SUCCESS,
-          exams,
-          total
+          results,
+          totalCount
         )
       );
   },
@@ -162,10 +160,10 @@ module.exports = {
       return handleError(next, STATUS_CODE_CONFLICT, MESSAGE_EXAM_NOT_FOUND);
 
     // Step 4: Check if new exam title is taken
-    const otherExams = await findExams({
+    const duplicateExam = await findExam({
       query: { examCode: { $ne: examCode }, title: formattedTitle },
     });
-    if (otherExams?.length)
+    if (duplicateExam)
       return handleError(next, STATUS_CODE_CONFLICT, MESSAGE_EXAM_TAKEN);
 
     // Step 5: Update exam data

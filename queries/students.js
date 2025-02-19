@@ -5,62 +5,70 @@ const {
   toCapitalize,
   generateStudentCode,
 } = require("../utils/helpers");
-const searchFields = ["action", "module", "changes", "before", "after"];
+const {
+  buildStudentPipeline,
+  buildStudentCountPipeline,
+} = require("../pipelines/students");
 
 /**
- * Retrieves all students from the database with pagination support.
+ * Retrieves all students from the database with pagination, filtering, sorting, and optional population of related data.
  *
  * @param {Object} params - The parameters for querying students.
- * @param {Object} params.query - The MongoDB query object to filter students.
- * @param {Object} params.options - Fields to include or exclude from the result.
- * @param {number} params.start - The starting index for pagination (default is 1).
- * @param {number} params.end - The ending index for pagination (default is 10).
- * @param {boolean} params.populated - Determines if related data should be populated.
- * @returns {Promise<Array>} - A promise that resolves to an array of students.
+ * @param {Object} [params.query={}] - The MongoDB query object to filter students.
+ * @param {string} [params.keyword=""] - Search keyword for text-based filtering.
+ * @param {string} [params.sortField="_id"] - Field name to sort by (default is '_id').
+ * @param {string} [params.sortValue="desc"] - Sort order ('asc' or 'desc'), default is 'desc'.
+ * @param {number} [params.page=1] - Page number for pagination (default is 1).
+ * @param {number} [params.limit=10] - Number of records per page (default is 10).
+ * @param {boolean} [params.populate=false] - Determines if related data should be populated.
+ * @param {boolean} [params.projection=false] - Whether to apply field projection.
+ * @param {boolean} [params.all=false] - Whether to query all without pagination.
+ *
+ * @returns {Promise<Object>} - A promise that resolves to an object containing:
+ *   - results {Array}: The list of students matching the query.
+ *   - totalCount {number}: The total number of matching students.
  */
 const findStudents = async ({
   query = {},
-  options = false,
+  keyword = "",
+  sortField = "_id",
+  sortValue = "desc",
   page = 1,
-  perPage = 10,
-  populated = false,
-  sortField,
-  sortValue,
-  keyword,
+  limit = 10,
+  populate = false,
+  projection = false,
+  all = false,
 }) => {
-  const limit = parseInt(perPage); // Number of items to return
-  const skip = (parseInt(page) - 1) * parseInt(perPage); // Number of items to skip // Step 1: Calculate pagination parameters
-
-  if (keyword && keyword?.length > 0 && searchFields.length > 0) {
-    const keywordRegex = new RegExp(keyword, "i");
-    const filterQueries = searchFields.map((field) => ({
-      [field]: { $regex: keywordRegex },
-    }));
-    query.$or = query.$or ? [...query.$or, ...filterQueries] : filterQueries;
-  }
-
-  const sortOptions =
-    sortField && sortField?.length > 0 && sortValue && sortValue?.length > 0
-      ? { [sortField]: sortValue }
-      : { _id: -1 };
-
-  // Step 2: Build the base query to find students
-  const studentsQuery = Student.find(query, options ? hiddenFieldsDefault : {})
-    .sort(sortOptions)
-    .skip(skip)
-    .limit(limit);
-
-  // Step 3: Conditionally populate related section and class data if populated flag is true
-  return populated
-    ? studentsQuery.populate({
-        path: "section",
-        select: hiddenFieldsDefault,
-        populate: {
-          path: "class",
-          select: hiddenFieldsDefault,
-        },
+  // Execute both the data retrieval and count queries concurrently using Promise.all for efficiency
+  const [results, countResult] = await Promise.all([
+    // Aggregate pipeline to fetch student records with filters, pagination, and optional population
+    Student.aggregate(
+      buildStudentPipeline({
+        query,
+        keyword,
+        sortField,
+        sortValue,
+        page,
+        limit,
+        populate,
+        projection,
+        all,
       })
-    : studentsQuery;
+    ),
+    // Aggregate pipeline to get the total count of matching student records (ignores pagination)
+    Student.aggregate(
+      buildStudentCountPipeline({
+        query,
+        keyword,
+      })
+    ),
+  ]);
+
+  // Extract the total count from the aggregation result, defaulting to 0 if not present
+  const totalCount = countResult[0]?.totalCount || 0;
+
+  // Return the results along with the total count
+  return { results, totalCount };
 };
 
 /**
@@ -163,18 +171,6 @@ const deleteStudentObj = async (studentCode) => {
   return await Student.deleteOne({ studentCode }); // Step 1: Delete the student document by studentCode
 };
 
-const getTotalStudents = async (keyword) => {
-  const filter = {};
-  if (keyword && keyword?.length > 0 && searchFields.length > 0) {
-    const keywordRegex = new RegExp(keyword, "i");
-    filter.$or = searchFields.map((field) => ({
-      [field]: { $regex: keywordRegex },
-    }));
-  }
-  const total = await Student.countDocuments(filter);
-  return total;
-};
-
 module.exports = {
   findStudents, // Export function to retrieve multiple students
   findStudent, // Export function to retrieve a single student
@@ -182,5 +178,4 @@ module.exports = {
   createStudentObj, // Export function to create a new student
   updateStudentObj, // Export function to update an existing student
   deleteStudentObj, // Export function to delete a student
-  getTotalStudents,
 };

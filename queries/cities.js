@@ -5,64 +5,67 @@ const {
   toCapitalize,
   generateCityCode,
 } = require("../utils/helpers");
-const searchFields = ["action", "module", "changes", "before", "after"];
+const {
+  buildCityPipeline,
+  buildCityCountPipeline,
+} = require("../pipelines/cities");
 
 /**
- * Retrieves all cities from the database with pagination support.
+ * Retrieves all cities from the database with support for filtering, searching, sorting, pagination, and optional population of related data.
  *
  * @param {Object} params - The parameters for querying cities.
- * @param {Object} params.query - The MongoDB query object to filter cities.
- * @param {Object} params.options - Fields to include or exclude from the result.
- * @param {number} params.start - The starting index for pagination (default is 1).
- * @param {number} params.end - The ending index for pagination (default is 10).
- * @param {boolean} params.populated - Determines if related data should be populated.
- * @returns {Promise<Array>} - A promise that resolves to an array of cities.
+ * @param {Object} [params.query={}] - The MongoDB query object to filter cities (e.g., { country: 'USA' }).
+ * @param {string} [params.keyword=""] - Search keyword for text-based search across city fields.
+ * @param {string} [params.sortField="_id"] - Field to sort results by (default is '_id').
+ * @param {string} [params.sortValue="desc"] - Sorting order: 'asc' for ascending, 'desc' for descending (default is 'desc').
+ * @param {number} [params.page=1] - Current page number for pagination (default is 1).
+ * @param {number} [params.limit=10] - Number of results per page (default is 10).
+ * @param {boolean} [params.populate=false] - Whether to populate related data in the results (default is false).
+ * @param {boolean} [params.projection=false] - Whether to apply field projection.
+ * @param {boolean} [params.all=false] - Whether to query all without pagination.
+ * @returns {Promise<{results: Array, totalCount: number}>} - A promise that resolves to an object containing an array of cities and the total count of matching documents.
  */
 const findCities = async ({
   query = {},
-  options = false,
+  keyword = "",
+  sortField = "_id",
+  sortValue = "desc",
   page = 1,
-  perPage = 10,
-  populated = false,
-  sortField,
-  sortValue,
-  keyword,
+  limit = 10,
+  populate = false,
+  projection = false,
+  all = false,
 }) => {
-  const limit = parseInt(perPage); // Number of items to return
-  const skip = (parseInt(page) - 1) * parseInt(perPage); // Number of items to skip // Step 1: Calculate pagination parameters
+  // Perform two concurrent aggregation operations:
+  // 1. Fetch paginated and sorted city data.
+  // 2. Count the total number of matching documents.
+  const [results, countResult] = await Promise.all([
+    City.aggregate(
+      buildCityPipeline({
+        query,
+        keyword,
+        sortField,
+        sortValue,
+        page,
+        limit,
+        populate,
+        projection,
+        all,
+      })
+    ),
+    City.aggregate(
+      buildCityCountPipeline({
+        query,
+        keyword,
+      })
+    ),
+  ]);
 
-  if (keyword && keyword?.length > 0 && searchFields.length > 0) {
-    const keywordRegex = new RegExp(keyword, "i");
-    const filterQueries = searchFields.map((field) => ({
-      [field]: { $regex: keywordRegex },
-    }));
-    query.$or = query.$or ? [...query.$or, ...filterQueries] : filterQueries;
-  }
+  // Extract total count from the aggregation result; fallback to 0 if not available
+  const totalCount = countResult[0]?.totalCount || 0;
 
-  const sortOptions =
-    sortField && sortField?.length > 0 && sortValue && sortValue?.length > 0
-      ? { [sortField]: sortValue }
-      : { _id: -1 };
-
-  // Step 2: Build the base query to find cities
-  const citiesQuery = City.find(query, options ? hiddenFieldsDefault : {})
-    .sort(sortOptions)
-    .skip(skip)
-    .limit(limit);
-
-  // Step 3: Conditionally populate related state and country data if populated flag is true
-  return populated
-    ? citiesQuery
-        .populate({
-          path: "state",
-          select: hiddenFieldsDefault,
-          populate: {
-            path: "country",
-            select: hiddenFieldsDefault,
-          },
-        })
-        .populate("country", hiddenFieldsDefault)
-    : citiesQuery;
+  // Return results along with the total document count
+  return { results, totalCount };
 };
 
 /**
@@ -155,18 +158,6 @@ const deleteCityObj = async (cityCode) => {
   return await City.deleteOne({ cityCode }); // Step 1: Delete the city document by cityCode
 };
 
-const getTotalCities = async (keyword) => {
-  const filter = {};
-  if (keyword && keyword?.length > 0 && searchFields.length > 0) {
-    const keywordRegex = new RegExp(keyword, "i");
-    filter.$or = searchFields.map((field) => ({
-      [field]: { $regex: keywordRegex },
-    }));
-  }
-  const total = await City.countDocuments(filter);
-  return total;
-};
-
 module.exports = {
   findCities, // Export function to retrieve multiple cities
   findCity, // Export function to retrieve a single city
@@ -174,5 +165,4 @@ module.exports = {
   createCityObj, // Export function to create a new city
   updateCityObj, // Export function to update an existing city
   deleteCityObj, // Export function to delete a city
-  getTotalCities,
 };

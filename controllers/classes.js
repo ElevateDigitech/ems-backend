@@ -35,9 +35,7 @@ const {
   createClassObj,
   updateClassObj,
   deleteClassObj,
-  getClassPaginationObject,
 } = require("../queries/classes");
-const { getTotalCountries } = require("../queries/countries");
 
 module.exports = {
   /**
@@ -48,21 +46,22 @@ module.exports = {
    */
   GetClasses: async (req, res, next) => {
     const {
-      page = 1,
-      perPage = 10,
-      sortField = "",
-      sortValue = "",
       keyword = "",
-    } = req.query; // Step 1: Extract pagination parameters
-    const classes = await findClasses({
-      page,
-      perPage,
+      sortField = "_id",
+      sortValue = "desc",
+      page = 1,
+      limit = 10,
+    } = req.query;
+
+    const { results, totalCount } = await findClasses({
+      keyword,
       sortField,
       sortValue,
-      keyword,
-      options: true,
-    }); // Step 2: Fetch classes from database
-    const total = await getTotalCountries(keyword);
+      page,
+      limit,
+      projection: true,
+    });
+
     // Step 3: Send the retrieved classes in the response
     res
       .status(STATUS_CODE_SUCCESS)
@@ -70,8 +69,8 @@ module.exports = {
         handleSuccess(
           STATUS_CODE_SUCCESS,
           MESSAGE_GET_CLASSES_SUCCESS,
-          classes,
-          total
+          results,
+          totalCount
         )
       );
   },
@@ -169,10 +168,10 @@ module.exports = {
       return handleError(next, STATUS_CODE_CONFLICT, MESSAGE_CLASS_NOT_FOUND);
 
     // Step 4: Check for name conflicts with other classes
-    const otherClasses = await findClasses({
+    const duplicateClass = await findClass({
       query: { classCode: { $ne: classCode }, name: formattedName },
     });
-    if (otherClasses?.length)
+    if (duplicateClass)
       return handleError(next, STATUS_CODE_CONFLICT, MESSAGE_CLASS_TAKEN);
 
     // Step 5: Capture current class data before update

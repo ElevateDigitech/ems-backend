@@ -5,49 +5,63 @@ const {
   generateCountryCode,
   toCapitalize,
 } = require("../utils/helpers");
-const searchFields = ["action", "module", "changes", "before", "after"];
+const {
+  buildCountryPipeline,
+  buildCountryCountPipeline,
+} = require("../pipelines/countries");
 
 /**
- * Retrieves multiple countries from the database with pagination support.
+ * Retrieves multiple countries from the database with pagination, search, sorting, and projection support.
  *
  * @param {Object} params - The parameters for querying countries.
- * @param {Object} params.query - The MongoDB query object to filter countries.
- * @param {Object} params.options - Fields to include or exclude from the result.
- * @param {number} params.start - The starting index for pagination (default is 1).
- * @param {number} params.end - The ending index for pagination (default is 10).
- * @returns {Promise<Array>} - A promise that resolves to an array of countries.
+ * @param {Object} [params.query={}] - The MongoDB query object to filter countries.
+ * @param {string} [params.keyword=""] - Search keyword for filtering countries based on specific fields.
+ * @param {string} [params.sortField="_id"] - Field to sort the results by.
+ * @param {string} [params.sortValue="desc"] - Sort direction, either 'asc' or 'desc'.
+ * @param {number} [params.page=1] - The page number for pagination.
+ * @param {number} [params.limit=10] - The number of countries to return per page.
+ * @param {boolean} [params.projection=false] - Whether to apply field projection.
+ * @param {boolean} [params.all=false] - Whether to query all without pagination.
+ * @returns {Promise<{results: Array, totalCount: number}>} - A promise resolving to an object containing the country results and the total count.
  */
 const findCountries = async ({
-  query = {}, // MongoDB query object to filter countries
-  options = false, // Fields to include/exclude in the result
-  page = 1, // Current page for pagination (default is 1)
-  perPage = 10, // Items per page for pagination (default is 10)
-  sortField,
-  sortValue,
-  keyword,
+  query = {},
+  keyword = "",
+  sortField = "_id",
+  sortValue = "desc",
+  page = 1,
+  limit = 10,
+  projection = false,
+  all = false,
 }) => {
-  // Step 1: Calculate the limit and skip values for pagination
-  const limit = parseInt(perPage); // Number of items to return
-  const skip = (parseInt(page) - 1) * parseInt(perPage); // Number of items to skip
+  // Perform parallel aggregation queries to improve performance
+  const [results, countResult] = await Promise.all([
+    Country.aggregate(
+      buildCountryPipeline({
+        query,
+        keyword,
+        sortField,
+        sortValue,
+        page,
+        limit,
+        populate,
+        projection,
+        all,
+      })
+    ),
+    Country.aggregate(
+      buildCountryCountPipeline({
+        query,
+        keyword,
+      })
+    ),
+  ]);
 
-  if (keyword && keyword?.length > 0 && searchFields.length > 0) {
-    const keywordRegex = new RegExp(keyword, "i");
-    const filterQueries = searchFields.map((field) => ({
-      [field]: { $regex: keywordRegex },
-    }));
-    query.$or = query.$or ? [...query.$or, ...filterQueries] : filterQueries;
-  }
+  // Extract the total count from the aggregation result
+  const totalCount = countResult[0]?.totalCount || 0;
 
-  const sortOptions =
-    sortField && sortField?.length > 0 && sortValue && sortValue?.length > 0
-      ? { [sortField]: sortValue }
-      : { _id: -1 };
-
-  // Step 2: Query the database with provided filters, apply pagination (skip & limit)
-  return await Country.find(query, options ? hiddenFieldsDefault : {})
-    .sort(sortOptions)
-    .skip(skip) // Apply skip for pagination
-    .limit(limit); // Apply limit to control number of results
+  // Return the results along with the total count
+  return { results, totalCount };
 };
 
 /**
@@ -139,18 +153,6 @@ const deleteCountryObj = async (countryCode) => {
   return await Country.deleteOne({ countryCode });
 };
 
-const getTotalCountries = async (keyword) => {
-  const filter = {};
-  if (keyword && keyword?.length > 0 && searchFields.length > 0) {
-    const keywordRegex = new RegExp(keyword, "i");
-    filter.$or = searchFields.map((field) => ({
-      [field]: { $regex: keywordRegex },
-    }));
-  }
-  const total = await Country.countDocuments(filter);
-  return total;
-};
-
 module.exports = {
   findCountries, // Export function to retrieve multiple countries
   findCountry, // Export function to retrieve a single country
@@ -158,5 +160,4 @@ module.exports = {
   createCountryObj, // Export function to create a new country object
   updateCountryObj, // Export function to update an existing country
   deleteCountryObj, // Export function to delete a country
-  getTotalCountries,
 };

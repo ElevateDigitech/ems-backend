@@ -1,73 +1,89 @@
 const moment = require("moment-timezone");
 const Role = require("../models/role");
-const { hiddenFieldsDefault, generateRoleCode } = require("../utils/helpers");
-const searchFields = ["action", "module", "changes", "before", "after"];
+const { generateRoleCode } = require("../utils/helpers");
+const {
+  buildRoleCountPipeline,
+  buildRolesPipeline,
+  buildRolePipeline,
+} = require("../pipelines/roles");
+
+/**
+ * Retrieves a single role from the database using an aggregation pipeline.
+ *
+ * @param {Object} params - The parameters for querying a role.
+ * @param {Object} [params.query={}] - The MongoDB query object to filter the role.
+ * @param {boolean} [params.projection=false] - Whether to apply field projection in the aggregation pipeline.
+ * @param {boolean} [params.populate=false] - Determines if related data should be populated.
+ * @returns {Promise<Object|null>} - A promise that resolves to the role object or null if not found.
+ */
+const findRole = async ({
+  query = {}, // The MongoDB query object to filter the role document..
+  projection = false, // Boolean indicating whether to apply field projection in the aggregation pipeline.
+  populate = false, // Boolean indicating whether to populate fields.
+}) => {
+  // Build the aggregation pipeline with the provided query and projection.
+  const pipeline = buildRolePipeline({ query, projection, populate });
+
+  // Execute the aggregation pipeline using the role model.
+  const result = await Role.aggregate(pipeline);
+
+  // Since we expect a single role, return the first document or null if not found.
+  return result.length > 0 ? result[0] : null;
+};
 
 /**
  * Retrieves all roles from the database with pagination support.
  *
  * @param {Object} params - The parameters for querying roles.
- * @param {Object} params.query - The MongoDB query object to filter roles.
- * @param {Object} params.options - Fields to include or exclude from the result.
- * @param {number} params.start - The starting index for pagination (default is 1).
- * @param {number} params.end - The ending index for pagination (default is 10).
- * @param {boolean} params.populated - Determines if related data should be populated.
- * @returns {Promise<Array>} - A promise that resolves to an array of roles.
+ * @param {Object} [params.query={}] - The MongoDB query object to filter roles.
+ * @param {String} [params.keyword=""] - Keyword to filter across all fields in roles.
+ * @param {String} [params.sortField="_id"] - Field to sort in roles.
+ * @param {String} [params.sortValue="desc"] - Sort direction: either 'asc' or 'desc'.
+ * @param {number} [params.page=1] - The page number for pagination (default is 1).
+ * @param {number} [params.limit=10] - The number of records per page (default is 10).
+ * @param {boolean} [params.projection=false] - Whether to apply field projection in the aggregation pipeline.
+ * @param {boolean} [params.populate=false] - Determines if related data should be populated.
+ * @param {boolean} [params.all=false] - Whether to query all without pagination.
+ * @returns {Promise<{results: Array, totalCount: number}>} - A promise that resolves to an object containing roles and total count.
  */
 const findRoles = async ({
   query = {},
-  options = false,
+  keyword = "",
+  sortField = "_id",
+  sortValue = "desc",
   page = 1,
-  perPage = 10,
-  populated = false,
-  sortField,
-  sortValue,
-  keyword,
+  limit = 10,
+  projection = false,
+  populate = false,
+  all = false,
 }) => {
-  const limit = parseInt(perPage); // Number of items to return
-  const skip = (parseInt(page) - 1) * parseInt(perPage); // Number of items to skip // Step 1: Calculate pagination parameters
+  // Execute both data query and total count query concurrently
+  const [results, countResult] = await Promise.all([
+    Role.aggregate(
+      buildRolesPipeline({
+        query,
+        keyword,
+        sortField,
+        sortValue,
+        page,
+        limit,
+        projection,
+        populate,
+        all,
+      })
+    ),
+    Role.aggregate(
+      buildRoleCountPipeline({
+        query,
+        keyword,
+      })
+    ),
+  ]);
 
-  if (keyword && keyword?.length > 0 && searchFields.length > 0) {
-    const keywordRegex = new RegExp(keyword, "i");
-    const filterQueries = searchFields.map((field) => ({
-      [field]: { $regex: keywordRegex },
-    }));
-    query.$or = query.$or ? [...query.$or, ...filterQueries] : filterQueries;
-  }
+  // Extract total count from aggregation result
+  const totalCount = countResult[0]?.totalCount || 0;
 
-  const sortOptions =
-    sortField && sortField?.length > 0 && sortValue && sortValue?.length > 0
-      ? { [sortField]: sortValue }
-      : { _id: -1 };
-
-  // Step 2: Build the base query
-  const rolesQuery = Role.find(query, options ? hiddenFieldsDefault : {})
-    .sort(sortOptions)
-    .skip(skip)
-    .limit(limit);
-
-  // Step 3: Conditionally populate related data
-  return populated
-    ? rolesQuery.populate("rolePermissions", hiddenFieldsDefault)
-    : rolesQuery;
-};
-
-/**
- * Retrieves a single role from the database.
- *
- * @param {Object} params - The parameters for querying a role.
- * @param {Object} params.query - The MongoDB query object to filter the role.
- * @param {Object} params.options - Fields to include or exclude from the result.
- * @param {boolean} params.populated - Determines if related data should be populated.
- * @returns {Promise<Object|null>} - A promise that resolves to the role object or null if not found.
- */
-const findRole = async ({ query = {}, options = false, populated = false }) => {
-  const roleQuery = Role.findOne(query, options ? hiddenFieldsDefault : {}); // Step 1: Build the base query
-
-  // Step 2: Conditionally populate related data
-  return populated
-    ? roleQuery.populate("rolePermissions", hiddenFieldsDefault)
-    : roleQuery;
+  return { results, totalCount };
 };
 
 /**
@@ -151,24 +167,11 @@ const deleteRoleObj = async (roleCode) => {
   return await Role.deleteOne({ roleCode }); // Step 1: Delete the role by roleCode
 };
 
-const getTotalRoles = async (keyword) => {
-  const filter = {};
-  if (keyword && keyword?.length > 0 && searchFields.length > 0) {
-    const keywordRegex = new RegExp(keyword, "i");
-    filter.$or = searchFields.map((field) => ({
-      [field]: { $regex: keywordRegex },
-    }));
-  }
-  const total = await Role.countDocuments(filter);
-  return total;
-};
-
 module.exports = {
-  findRoles, // Export function to retrieve multiple roles
   findRole, // Export function to retrieve a single role
+  findRoles, // Export function to retrieve multiple roles
   formatRoleFields, // Export function to format role fields
   createRoleObj, // Export function to create a new role
   updateRoleObj, // Export function to update an existing role
   deleteRoleObj, // Export function to delete a role
-  getTotalRoles,
 };

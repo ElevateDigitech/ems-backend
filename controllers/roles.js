@@ -39,8 +39,6 @@ const {
   updateRoleObj,
   deleteRoleObj,
   formatRoleFields,
-  getRolePaginationObject,
-  getTotalRoles,
 } = require("../queries/roles");
 
 module.exports = {
@@ -52,22 +50,23 @@ module.exports = {
    */
   GetRoles: async (req, res, next) => {
     const {
-      page = 1,
-      perPage = 10,
-      sortField = "",
-      sortValue = "",
       keyword = "",
-    } = req.query; // Step 1: Extract pagination parameters
-    const roles = await findRoles({
-      page,
-      perPage,
+      sortField = "_id",
+      sortValue = "desc",
+      page = 1,
+      limit = 10,
+    } = req.query;
+
+    const { results, totalCount } = await findRoles({
+      keyword,
       sortField,
       sortValue,
-      keyword,
-      options: true,
-      populated: true,
-    }); // Step 2: Fetch roles from the database
-    const total = await getTotalRoles(keyword);
+      page,
+      limit,
+      populate: true,
+      projection: true,
+    });
+
     // Step 3: Send the retrieved roles in the response
     res
       .status(STATUS_CODE_SUCCESS)
@@ -75,8 +74,8 @@ module.exports = {
         handleSuccess(
           STATUS_CODE_SUCCESS,
           MESSAGE_GET_ROLES_SUCCESS,
-          roles,
-          total
+          results,
+          totalCount
         )
       );
   },
@@ -91,8 +90,8 @@ module.exports = {
   GetOwnRole: async (req, res, next) => {
     const role = await findRole({
       query: { roleCode: req.user?.role?.roleCode },
-      options: true,
-      populated: true,
+      projection: true,
+      populate: true,
     }); // Step 1: Find the role of the current user
 
     if (!role)
@@ -114,8 +113,8 @@ module.exports = {
   GetRoleByCode: async (req, res, next) => {
     const role = await findRole({
       query: { roleCode: req.body.roleCode },
-      options: true,
-      populated: true,
+      projection: true,
+      populate: true,
     }); // Step 1: Find the role using the provided role code
 
     if (!role)
@@ -172,8 +171,8 @@ module.exports = {
 
     const createdRole = await findRole({
       query: { roleCode: newRole.roleCode },
-      options: true,
-      populated: true,
+      projection: true,
+      populate: true,
     }); // Step 6: Retrieve the newly created role
 
     const currentUser = await getCurrentUser(req.user.userCode);
@@ -216,10 +215,10 @@ module.exports = {
     if (!existingRole)
       return handleError(next, STATUS_CODE_BAD_REQUEST, MESSAGE_ROLE_NOT_FOUND); // Step 2: Find the existing role
 
-    const otherRoles = await findRoles({
+    const duplicateRole = await findRole({
       query: { roleCode: { $ne: roleCode }, roleName: formattedRoleName },
     });
-    if (otherRoles?.length)
+    if (duplicateRole)
       return handleError(next, STATUS_CODE_CONFLICT, MESSAGE_ROLE_TAKEN); // Step 3: Check for role name conflicts
 
     const invalidPermissions = await getInvalidPermissions(rolePermissions);
@@ -232,8 +231,8 @@ module.exports = {
 
     const previousData = await findRole({
       query: { roleCode },
-      options: true,
-      populated: true,
+      projection: true,
+      populate: true,
     });
 
     await updateRoleObj({
@@ -245,8 +244,8 @@ module.exports = {
 
     const updatedRole = await findRole({
       query: { roleCode },
-      options: true,
-      populated: true,
+      projection: true,
+      populate: true,
     });
 
     const currentUser = await getCurrentUser(req.user.userCode);
@@ -302,8 +301,8 @@ module.exports = {
 
     const previousData = await findRole({
       query: { roleCode },
-      options: true,
-      populated: true,
+      projection: true,
+      populate: true,
     });
 
     const deletionResult = await deleteRoleObj(roleCode);

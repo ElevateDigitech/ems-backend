@@ -38,8 +38,6 @@ const {
   createSectionObj,
   updateSectionObj,
   deleteSectionObj,
-  getSectionPaginationObject,
-  getTotalSections,
 } = require("../queries/sections");
 const { findClass } = require("../queries/classes");
 
@@ -53,22 +51,22 @@ module.exports = {
    */
   GetSections: async (req, res, next) => {
     const {
-      page = 1,
-      perPage = 10,
-      sortField = "",
-      sortValue = "",
       keyword = "",
-    } = req.query; // Step 1: Extract pagination parameters
-    const sections = await findSections({
-      page,
-      perPage,
+      sortField = "_id",
+      sortValue = "desc",
+      page = 1,
+      limit = 10,
+    } = req.query;
+
+    const { results, totalCount } = await findSections({
+      keyword,
       sortField,
       sortValue,
-      keyword,
-      options: true,
-      populated: true,
-    }); // Step 2: Fetch sections from the database
-    const total = await getTotalSections(keyword);
+      page,
+      limit,
+      populate: true,
+      projection: true,
+    });
     // Step 3: Send the retrieved sections in the response
     res
       .status(STATUS_CODE_SUCCESS)
@@ -76,8 +74,8 @@ module.exports = {
         handleSuccess(
           STATUS_CODE_SUCCESS,
           MESSAGE_GET_SECTIONS_SUCCESS,
-          sections,
-          total
+          results,
+          totalCount
         )
       );
   },
@@ -122,12 +120,12 @@ module.exports = {
    */
   GetSectionsByClassCode: async (req, res, next) => {
     const {
-      page = 1,
-      perPage = 10,
-      sortField = "",
-      sortValue = "",
       keyword = "",
-    } = req.query; // Step 1: Extract pagination parameters
+      sortField = "_id",
+      sortValue = "desc",
+      page = 1,
+      limit = 10,
+    } = req.query;
     const { classCode } = req.body;
     const foundClass = await findClass({
       query: {
@@ -142,22 +140,24 @@ module.exports = {
         MESSAGE_CLASS_NOT_FOUND
       ); // Step 3: Handle error if class not found
 
-    const sections = await findSections({
+    const { results, totalCount } = await findSections({
       query: { class: foundClass._id },
+      keyword,
+      sortField,
+      sortValue,
       page,
-      perPage,
-      options: true,
-      populated: true,
-    }); // Step 4: Fetch sections using the found class
+      limit,
+      populate: true,
+      projection: true,
+    });
 
-    if (!sections.length) {
+    if (!results.length) {
       return handleError(
         next,
         STATUS_CODE_BAD_REQUEST,
         MESSAGE_SECTIONS_NOT_FOUND
       );
     } // Step 5: Handle error if no section found
-    const pagination = await getSectionPaginationObject(page, perPage);
     // Step 3: Send the retrieved sections in the response
     res
       .status(STATUS_CODE_SUCCESS)
@@ -165,8 +165,8 @@ module.exports = {
         handleSuccess(
           STATUS_CODE_SUCCESS,
           MESSAGE_GET_STATE_SUCCESS,
-          sections,
-          pagination
+          results,
+          totalCount
         )
       );
   },
@@ -250,10 +250,10 @@ module.exports = {
       return handleError(next, STATUS_CODE_CONFLICT, MESSAGE_CLASS_NOT_FOUND);
     // Step 3: Validate class
 
-    const nameConflict = await findSection({
+    const duplicateSection = await findSection({
       query: { name: capitalizedName, sectionCode: { $ne: sectionCode } },
     });
-    if (nameConflict)
+    if (duplicateSection)
       return handleError(next, STATUS_CODE_CONFLICT, MESSAGE_SECTION_TAKEN);
     // Step 4: Check for section name conflicts
 

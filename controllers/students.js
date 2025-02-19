@@ -37,8 +37,6 @@ const {
   createStudentObj,
   updateStudentObj,
   deleteStudentObj,
-  getStudentPaginationObject,
-  getTotalStudents,
 } = require("../queries/students");
 const { findSection } = require("../queries/sections");
 
@@ -52,24 +50,22 @@ module.exports = {
    */
   GetStudents: async (req, res, next) => {
     const {
-      page = 1,
-      perPage = 10,
-      sortField = "",
-      sortValue = "",
       keyword = "",
-    } = req.query; // Step 1: Extract pagination parameters
+      sortField = "_id",
+      sortValue = "desc",
+      page = 1,
+      limit = 10,
+    } = req.query;
 
-    // Step 2: Retrieve all students from the database
-    const students = await findStudents({
-      page,
-      perPage,
+    const { results, totalCount } = await findStudents({
+      keyword,
       sortField,
       sortValue,
-      keyword,
-      options: true,
-      populated: true,
+      page,
+      limit,
+      populate: true,
+      projection: true,
     });
-    const total = await getTotalStudents(keyword);
     // Step 3: Send success response with the list of students
     res
       .status(STATUS_CODE_SUCCESS)
@@ -77,8 +73,8 @@ module.exports = {
         handleSuccess(
           STATUS_CODE_SUCCESS,
           MESSAGE_GET_STUDENTS_SUCCESS,
-          students,
-          total
+          results,
+          totalCount
         )
       );
   },
@@ -124,12 +120,12 @@ module.exports = {
    */
   GetStudentsBySectionCode: async (req, res, next) => {
     const {
-      page = 1,
-      perPage = 10,
-      sortField = "",
-      sortValue = "",
       keyword = "",
-    } = req.query; // Step 1: Extract pagination parameters
+      sortField = "_id",
+      sortValue = "desc",
+      page = 1,
+      limit = 10,
+    } = req.query;
     const { sectionCode } = req.body; // Step 2: Extract section code from request body
 
     // Step 3: Find the section by its code
@@ -143,23 +139,24 @@ module.exports = {
         MESSAGE_SECTION_NOT_FOUND
       );
 
-    // Step 5: Retrieve students associated with the section
-    const students = await findStudents({
+    const { results, totalCount } = await findStudents({
       query: { section: section._id },
+      keyword,
+      sortField,
+      sortValue,
       page,
-      perPage,
-      options: true,
-      populated: true,
+      limit,
+      populate: true,
+      projection: true,
     });
 
     // Step 6: Handle case when no students are found
-    if (!students?.length)
+    if (!results?.length)
       return handleError(
         next,
         STATUS_CODE_BAD_REQUEST,
         MESSAGE_STUDENTS_NOT_FOUND
       );
-    const pagination = await getStudentPaginationObject(page, perPage);
     // Step 7: Send success response with the list of students
     res
       .status(STATUS_CODE_SUCCESS)
@@ -167,8 +164,8 @@ module.exports = {
         handleSuccess(
           STATUS_CODE_SUCCESS,
           MESSAGE_GET_STUDENT_SUCCESS,
-          students,
-          pagination
+          results,
+          totalCount
         )
       );
   },
@@ -263,13 +260,13 @@ module.exports = {
       return handleError(next, STATUS_CODE_CONFLICT, MESSAGE_SECTION_NOT_FOUND);
 
     // Step 5: Check for duplicate student details
-    const otherStudents = await findStudent({
+    const duplicateStudent = await findStudent({
       query: {
         studentCode: { $ne: studentCode },
         rollNumber: formattedRollNumber,
       },
     });
-    if (otherStudents?.length)
+    if (duplicateStudent)
       return handleError(next, STATUS_CODE_CONFLICT, MESSAGE_STUDENT_TAKEN);
 
     // Step 6: Retrieve student before updating (for audit)

@@ -1,10 +1,4 @@
-const { cloudinary } = require("../cloudinary");
 const Profile = require("../models/profile");
-const Gender = require("../models/gender");
-const Country = require("../models/country");
-const State = require("../models/state");
-const City = require("../models/city");
-const User = require("../models/user");
 const { logAudit } = require("../queries/auditLogs");
 const {
   auditActions,
@@ -12,12 +6,8 @@ const {
   auditChanges,
 } = require("../utils/audit");
 const {
-  hiddenFieldsDefault,
-  hiddenFieldsUser,
   handleError,
   handleSuccess,
-  generateProfileCode,
-  generateAuditCode,
   IsObjectIdReferenced,
   getCurrentUser,
 } = require("../utils/helpers");
@@ -53,8 +43,6 @@ const {
   createProfileObj,
   updateProfileObj,
   removeUploadedProfilePicture,
-  getProfilePaginationObject,
-  getTotalProfiles,
 } = require("../queries/profiles");
 const { findUser } = require("../queries/users");
 const { findGender } = require("../queries/genders");
@@ -72,33 +60,29 @@ module.exports = {
    */
   getProfiles: async (req, res, next) => {
     const {
-      page = 1,
-      perPage = 10,
-      sortField = "",
-      sortValue = "",
       keyword = "",
-    } = req.query; // Step 1: Extract pagination parameters
-    // Retrieve all profiles from the database using an empty query object
-    const profiles = await findProfiles({
-      page,
-      perPage,
+      sortField = "_id",
+      sortValue = "desc",
+      page = 1,
+      limit = 10,
+    } = req.query;
+
+    const { results, totalCount } = await findProfiles({
+      keyword,
       sortField,
       sortValue,
-      keyword,
-      options: true,
-      populated: true,
+      page,
+      limit,
+      populate: true,
+      projection: true,
     });
-
-    // Convert each profile object to a plain JSON object for easier handling
-    const profilesJSON = profiles.map((profile) => profile.toJSON());
-    const total = await getTotalProfiles(keyword);
     // Send a success response to the client
     res.status(STATUS_CODE_SUCCESS).send(
       handleSuccess(
         STATUS_CODE_SUCCESS, // Status code indicating success
         MESSAGE_GET_PROFILES_SUCCESS, // Message indicating profiles fetched successfully
-        profilesJSON, // The actual data (array of profile JSON objects)
-        total
+        results, // The actual data (array of profile JSON objects)
+        totalCount
       )
     );
   },

@@ -17,6 +17,8 @@ const {
   getRoleId,
   IsObjectIdReferenced,
   generateUserCode,
+  validateRequiredFields,
+  getCurrentUser,
 } = require("../utils/helpers");
 const {
   STATUS_CODE_BAD_REQUEST,
@@ -48,36 +50,7 @@ const {
   MESSAGE_UPDATE_USER_SUCCESS,
   MESSAGE_ACCESS_DENIED_NO_PERMISSION,
 } = require("../utils/messages");
-const {
-  getUserPaginationObject,
-  findUsers,
-  getTotalUsers,
-} = require("../queries/users");
-
-/**
- * Retrieves the current user based on userCode.
- * @param {string} userCode - The unique code of the user.
- * @returns {Object} User details with role and permissions populated.
- */
-const getCurrentUser = async (userCode) => {
-  return User.findOne({ userCode }, hiddenFieldsUser).populate({
-    path: "role",
-    select: hiddenFieldsDefault,
-    populate: {
-      path: "rolePermissions",
-      select: hiddenFieldsDefault,
-    },
-  });
-};
-
-/**
- * Validates if all required fields are present and not empty.
- * @param {Array} fields - Array of fields to validate.
- * @returns {boolean} True if all fields are valid, false otherwise.
- */
-const validateRequiredFields = (fields) => {
-  return fields.every((field) => field?.trim()?.length);
-};
+const { findUsers, findUser, createUserObj } = require("../queries/users");
 
 module.exports = {
   /**
@@ -122,10 +95,10 @@ module.exports = {
         MESSAGE_PASSWORD_CONSTRAINTS_NOT_MET
       ); // Return error if password does not meet constraints
     }
-
-    // Check if the user already exists
-    const existingUser = await User.findOne({
-      $or: [{ email: email.trim().toLowerCase() }, { username }],
+    const existingUser = await findUser({
+      query: {
+        $or: [{ email: email.trim().toLowerCase() }, { username }],
+      },
     });
 
     if (existingUser) {
@@ -145,27 +118,25 @@ module.exports = {
     // Retrieve role ID based on role code
     const roleId = await getRoleId(roleCode);
 
-    // Create new user object
-    const user = new User({
-      userCode: generateUserCode(), // Generate unique user code
-      email: email.trim().toLowerCase(), // Normalize email
-      username, // Set username
-      userAllowDeletion, // Set deletion permission
-      role: roleId, // Assign role ID
+    const user = await createUserObj({
+      email,
+      username,
+      userAllowDeletion,
+      roleId,
     });
 
-    // Register the user with the provided password
-    await User.register(user, password);
-
     // Retrieve the newly created user
-    const createdUser = await getCurrentUser(user.userCode);
+    const createdUser = await findUser({
+      query: { userCode: user.userCode },
+      options: true,
+      populated: true,
+    });
 
     //: Retrieve the current user performing the registration
     const currentUser = await getCurrentUser(req.user.userCode);
 
     //: Log the audit for user creation
     await logAudit(
-      // Generate audit code
       auditActions.CREATE, // Specify audit action
       auditCollections.USERS, // Specify audit collection
       createdUser.userCode, // Reference created user's code
@@ -468,23 +439,22 @@ module.exports = {
    */
   GetUsers: async (req, res, next) => {
     const {
-      page = 1,
-      perPage = 10,
-      sortField = "",
-      sortValue = "",
       keyword = "",
-    } = req.query; // Step 1: Get pagination parameters
-    // Fetch all users from the User collection, excluding hidden fields
-    const allUsers = await findUsers({
-      page,
-      perPage,
+      sortField = "_id",
+      sortValue = "desc",
+      page = 1,
+      limit = 10,
+    } = req.query;
+
+    const { results, totalCount } = await findUsers({
+      keyword,
       sortField,
       sortValue,
-      keyword,
-      options: true,
-      populated: true,
+      page,
+      limit,
+      populate: true,
+      projection: true,
     });
-    const total = await getTotalUsers(keyword);
     // Send a success response with the retrieved users
     res
       .status(STATUS_CODE_SUCCESS)
@@ -492,8 +462,8 @@ module.exports = {
         handleSuccess(
           STATUS_CODE_SUCCESS,
           MESSAGE_GET_USERS_SUCCESS,
-          allUsers,
-          total
+          results,
+          totalCount
         )
       );
   },
@@ -573,15 +543,17 @@ module.exports = {
     }
 
     // Check if the user exists in the database
-    const existingUser = await User.findOne({ userCode });
+    const existingUser = await findUser({ query: { userCode } });
     if (!existingUser) {
       return handleError(next, STATUS_CODE_CONFLICT, MESSAGE_USER_NOT_FOUND);
     }
 
     // Check for duplicate email or username (excluding the current user)
-    const duplicateUser = await User.findOne({
-      userCode: { $ne: userCode },
-      $or: [{ email: email.trim().toLowerCase() }, { username }],
+    const duplicateUser = await findUser({
+      query: {
+        userCode: { $ne: userCode },
+        $or: [{ email: email.trim().toLowerCase() }, { username }],
+      },
     });
     if (duplicateUser) {
       return handleError(

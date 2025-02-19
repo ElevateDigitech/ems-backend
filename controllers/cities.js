@@ -38,8 +38,6 @@ const {
   createCityObj,
   updateCityObj,
   deleteCityObj,
-  getCityPaginationObject,
-  getTotalCities,
 } = require("../queries/cities");
 const { findState } = require("../queries/states");
 const { findCountry } = require("../queries/countries");
@@ -53,24 +51,22 @@ module.exports = {
    */
   GetCities: async (req, res, next) => {
     const {
-      page = 1,
-      perPage = 10,
-      sortField = "",
-      sortValue = "",
       keyword = "",
-    } = req.query; // Step 1: Extract pagination parameters
+      sortField = "_id",
+      sortValue = "desc",
+      page = 1,
+      limit = 10,
+    } = req.query;
 
-    // Step 2: Retrieve all cities from the database
-    const cities = await findCities({
-      page,
-      perPage,
+    const { results, totalCount } = await findCities({
+      keyword,
       sortField,
       sortValue,
-      keyword,
-      options: true,
-      populated: true,
+      page,
+      limit,
+      populate: true,
+      projection: true,
     });
-    const total = await getTotalCities(keyword);
     // Step 3: Send the retrieved cities in the response
     res
       .status(STATUS_CODE_SUCCESS)
@@ -78,8 +74,8 @@ module.exports = {
         handleSuccess(
           STATUS_CODE_SUCCESS,
           MESSAGE_GET_CITIES_SUCCESS,
-          cities,
-          total
+          results,
+          totalCount
         )
       );
   },
@@ -120,12 +116,12 @@ module.exports = {
    */
   GetCitiesByStateCode: async (req, res, next) => {
     const {
-      page = 1,
-      perPage = 10,
-      sortField = "",
-      sortValue = "",
       keyword = "",
-    } = req.query; // Step 1: Extract pagination parameters
+      sortField = "_id",
+      sortValue = "desc",
+      page = 1,
+      limit = 10,
+    } = req.query;
 
     // Step 2: Find the state by its code
     const state = await findState({ query: { stateCode: req.body.stateCode } });
@@ -136,16 +132,16 @@ module.exports = {
         MESSAGE_STATE_NOT_FOUND
       );
 
-    // Step 3: Find cities related to the state
-    const cities = await findCities({
+    const { results, totalCount } = await findCities({
       query: { state: state._id },
+      keyword,
+      sortField,
+      sortValue,
       page,
-      perPage,
-      options: true,
-      populated: true,
+      limit,
+      populate: true,
+      projection: true,
     });
-
-    const pagination = await getCityPaginationObject(page, perPage);
     // Step 4: Return the cities if found, else return an error
     return cities.length
       ? res
@@ -154,8 +150,8 @@ module.exports = {
             handleSuccess(
               STATUS_CODE_SUCCESS,
               MESSAGE_GET_CITY_SUCCESS,
-              cities,
-              pagination
+              results,
+              totalCount
             )
           )
       : handleError(next, STATUS_CODE_BAD_REQUEST, MESSAGE_CITIES_NOT_FOUND);
@@ -170,12 +166,12 @@ module.exports = {
    */
   GetCitiesByCountryCode: async (req, res, next) => {
     const {
-      page = 1,
-      perPage = 10,
-      sortField = "",
-      sortValue = "",
       keyword = "",
-    } = req.query; // Step 1: Extract pagination parameters
+      sortField = "_id",
+      sortValue = "desc",
+      page = 1,
+      limit = 10,
+    } = req.query;
 
     // Step 2: Find the country by its code
     const country = await findCountry({
@@ -188,16 +184,17 @@ module.exports = {
         MESSAGE_COUNTRY_NOT_FOUND
       );
 
-    // Step 3: Find cities related to the country
-    const cities = await findCities({
+    const { results, totalCount } = await findCities({
       query: { country: country._id },
+      keyword,
+      sortField,
+      sortValue,
       page,
-      perPage,
-      options: true,
-      populated: true,
+      limit,
+      populate: true,
+      projection: true,
     });
 
-    const pagination = await getCityPaginationObject(page, perPage);
     // Step 4: Return the cities if found, else return an error
     return cities.length
       ? res
@@ -206,8 +203,8 @@ module.exports = {
             handleSuccess(
               STATUS_CODE_SUCCESS,
               MESSAGE_GET_CITY_SUCCESS,
-              cities,
-              pagination
+              results,
+              totalCount
             )
           )
       : handleError(next, STATUS_CODE_BAD_REQUEST, MESSAGE_CITIES_NOT_FOUND);
@@ -301,10 +298,10 @@ module.exports = {
       return handleError(next, STATUS_CODE_CONFLICT, MESSAGE_COUNTRY_NOT_FOUND);
 
     // Step 4: Check for duplicate city name
-    const otherCities = await findCities({
+    const duplicateCity = await findCity({
       query: { cityCode: { $ne: cityCode }, name: formattedName },
     });
-    if (otherCities?.length)
+    if (duplicateCity)
       return handleError(next, STATUS_CODE_CONFLICT, MESSAGE_CITY_TAKEN);
 
     // Step 5: City details before update

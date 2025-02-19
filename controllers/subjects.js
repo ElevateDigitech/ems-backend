@@ -35,8 +35,6 @@ const {
   createSubjectObj,
   updateSubjectObj,
   deleteSubjectObj,
-  getSubjectPaginationObject,
-  getTotalSubjects,
 } = require("../queries/subjects");
 
 module.exports = {
@@ -49,21 +47,21 @@ module.exports = {
    */
   GetSubjects: async (req, res, next) => {
     const {
-      page = 1,
-      perPage = 10,
-      sortField = "",
-      sortValue = "",
       keyword = "",
-    } = req.query; // Step 1: Extract pagination parameters
-    const subjects = await findSubjects({
-      page,
-      perPage,
+      sortField = "_id",
+      sortValue = "desc",
+      page = 1,
+      limit = 10,
+    } = req.query;
+
+    const { results, totalCount } = await findSubjects({
+      keyword,
       sortField,
       sortValue,
-      keyword,
-      options: true,
-    }); // Step 2: Fetch subjects from the database
-    const total = await getTotalSubjects(keyword);
+      page,
+      limit,
+      projection: true,
+    });
     // Step 3: Send success response with the list of subjects
     res
       .status(STATUS_CODE_SUCCESS)
@@ -71,8 +69,8 @@ module.exports = {
         handleSuccess(
           STATUS_CODE_SUCCESS,
           MESSAGE_GET_SUBJECTS_SUCCESS,
-          subjects,
-          total
+          results,
+          totalCount
         )
       );
   },
@@ -183,10 +181,10 @@ module.exports = {
     }
 
     // Step 3: Ensure no other subject has the same new name
-    const duplicateSubjects = await findSubjects({
+    const duplicateSubject = await findSubject({
       query: { subjectCode: { $ne: subjectCode }, name: capitalizedName },
     });
-    if (duplicateSubjects.length > 0) {
+    if (duplicateSubject) {
       return handleError(next, STATUS_CODE_CONFLICT, MESSAGE_SUBJECT_TAKEN);
     }
 

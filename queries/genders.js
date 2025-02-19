@@ -1,49 +1,65 @@
 const moment = require("moment-timezone");
 const Gender = require("../models/gender");
 const { hiddenFieldsDefault, generateGenderCode } = require("../utils/helpers");
-const searchFields = ["action", "module", "changes", "before", "after"];
+const {
+  buildGenderPipeline,
+  buildGenderCountPipeline,
+} = require("../pipelines/genders");
 
 /**
- * Retrieves multiple genders from the database with pagination support.
+ * Retrieves multiple genders from the database with pagination, filtering, sorting, and optional projection support.
  *
  * @param {Object} params - The parameters for querying genders.
- * @param {Object} params.query - The MongoDB query object to filter genders.
- * @param {Object} params.options - Fields to include or exclude from the result.
- * @param {number} params.start - The starting index for pagination (default is 1).
- * @param {number} params.end - The ending index for pagination (default is 10).
- * @returns {Promise<Array>} - A promise that resolves to an array of genders.
+ * @param {Object} [params.query={}] - The MongoDB query object to filter genders.
+ * @param {string} [params.keyword=""] - Search keyword for filtering results based on text fields.
+ * @param {string} [params.sortField="_id"] - Field by which to sort the results.
+ * @param {string} [params.sortValue="desc"] - Sort order, either 'asc' or 'desc'.
+ * @param {number} [params.page=1] - Current page number for pagination.
+ * @param {number} [params.limit=10] - Number of results to return per page.
+ * @param {boolean} [params.projection=false] - Whether to apply field projection.
+ * @param {boolean} [params.all=false] - Whether to query all without pagination.
+ * @returns {Promise<Object>} - A promise that resolves to an object containing the results and totalCount.
  */
 const findGenders = async ({
-  query = {}, // MongoDB query object to filter genders
-  options = false, // Fields to include/exclude in the result
-  page = 1, // Current page for pagination (default is 1)
-  perPage = 10, // Items per page for pagination (default is 10)
-  sortField,
-  sortValue,
-  keyword,
+  query = {},
+  keyword = "",
+  sortField = "_id",
+  sortValue = "desc",
+  page = 1,
+  limit = 10,
+  projection = false,
+  all = false,
 }) => {
-  // Step 1: Calculate the limit and skip values for pagination
-  const limit = parseInt(perPage); // Number of items to return
-  const skip = (parseInt(page) - 1) * parseInt(perPage); // Number of items to skip
+  // Execute two parallel aggregation queries:
+  // 1. Fetch the gender records with filtering, sorting, pagination, and optional projection.
+  // 2. Count the total number of gender records matching the query and keyword filter.
+  const [results, countResult] = await Promise.all([
+    Gender.aggregate(
+      buildGenderPipeline({
+        query,
+        keyword,
+        sortField,
+        sortValue,
+        page,
+        limit,
+        populate, // Assuming this variable is defined elsewhere for populating references.
+        projection, // Apply field projection if requested.
+        all,
+      })
+    ),
+    Gender.aggregate(
+      buildGenderCountPipeline({
+        query,
+        keyword,
+      })
+    ),
+  ]);
 
-  if (keyword && keyword?.length > 0 && searchFields.length > 0) {
-    const keywordRegex = new RegExp(keyword, "i");
-    const filterQueries = searchFields.map((field) => ({
-      [field]: { $regex: keywordRegex },
-    }));
-    query.$or = query.$or ? [...query.$or, ...filterQueries] : filterQueries;
-  }
+  // Extract the total count from the count aggregation result.
+  const totalCount = countResult[0]?.totalCount || 0;
 
-  const sortOptions =
-    sortField && sortField?.length > 0 && sortValue && sortValue?.length > 0
-      ? { [sortField]: sortValue }
-      : { _id: -1 };
-
-  // Step 2: Query the database with provided filters, apply pagination (skip & limit)
-  return await Gender.find(query, options ? hiddenFieldsDefault : {})
-    .sort(sortOptions)
-    .skip(skip) // Apply skip
-    .limit(limit); // Apply limit
+  // Return the results and the total count.
+  return { results, totalCount };
 };
 
 /**
@@ -121,18 +137,6 @@ const deleteGenderObj = async (genderCode) => {
   return await Gender.deleteOne({ genderCode });
 };
 
-const getTotalGenders = async (keyword) => {
-  const filter = {};
-  if (keyword && keyword?.length > 0 && searchFields.length > 0) {
-    const keywordRegex = new RegExp(keyword, "i");
-    filter.$or = searchFields.map((field) => ({
-      [field]: { $regex: keywordRegex },
-    }));
-  }
-  const total = await Gender.countDocuments(filter);
-  return total;
-};
-
 module.exports = {
   findGenders, // Export function to retrieve multiple genders
   findGender, // Export function to retrieve a single gender
@@ -140,5 +144,4 @@ module.exports = {
   createGenderObj, // Export function to create a new gender object
   updateGenderObj, // Export function to update an existing gender
   deleteGenderObj, // Export function to delete a gender
-  getTotalGenders,
 };

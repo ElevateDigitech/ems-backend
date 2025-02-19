@@ -1,49 +1,66 @@
 const moment = require("moment-timezone");
 const Exam = require("../models/exam");
 const { hiddenFieldsDefault, generateExamCode } = require("../utils/helpers");
-const searchFields = ["action", "module", "changes", "before", "after"];
+const {
+  buildExamPipeline,
+  buildExamCountPipeline,
+} = require("../pipelines/exams");
 
 /**
- * Retrieves all exams from the database with pagination support.
+ * Retrieves all exams from the database with pagination, search, and sorting capabilities.
  *
  * @param {Object} params - The parameters for querying exams.
- * @param {Object} params.query - The MongoDB query object to filter exams.
- * @param {Object} params.options - Fields to include or exclude from the result.
- * @param {number} params.start - The starting index for pagination (default is 1).
- * @param {number} params.end - The ending index for pagination (default is 10).
- * @returns {Promise<Array>} - A promise that resolves to an array of exams.
+ * @param {Object} [params.query={}] - The MongoDB query object to filter exams.
+ * @param {string} [params.keyword=""] - A search keyword to filter exams based on text search.
+ * @param {string} [params.sortField="_id"] - The field to sort the results by.
+ * @param {string} [params.sortValue="desc"] - The sorting order, either 'asc' or 'desc'.
+ * @param {number} [params.page=1] - The current page number for pagination.
+ * @param {number} [params.limit=10] - The number of results per page.
+ * @param {boolean} [params.projection=false] - Whether to apply field projection.
+ * @param {boolean} [params.all=false] - Whether to query all without pagination.
+ * @returns {Promise<{results: Array, totalCount: number}>} - A promise that resolves to an object containing the results and total count.
  */
 const findExams = async ({
-  query = {}, // MongoDB query object to filter exams
-  options = false, // Fields to include/exclude in the result
-  page = 1, // Current page for pagination (default is 1)
-  perPage = 10, // Items per page for pagination (default is 10)
-  sortField,
-  sortValue,
-  keyword,
+  query = {},
+  keyword = "",
+  sortField = "_id",
+  sortValue = "desc",
+  page = 1,
+  limit = 10,
+  projection = false,
+  all = false,
 }) => {
-  // Step 1: Calculate the limit and skip values for pagination
-  const limit = parseInt(perPage); // Number of items to return
-  const skip = (parseInt(page) - 1) * parseInt(perPage); // Number of items to skip
+  // Execute two parallel database aggregation queries using Promise.all
+  const [results, countResult] = await Promise.all([
+    // Fetch exams based on provided filters, pagination, sorting, and projection
+    Exam.aggregate(
+      buildExamPipeline({
+        query, // Query filter object
+        keyword, // Search keyword for filtering
+        sortField, // Field to sort by
+        sortValue, // Sorting order ('asc' or 'desc')
+        page, // Current page number for pagination
+        limit, // Number of results per page
+        populate, // (Assuming this is a population parameter not defined in this snippet)
+        projection,
+        all,
+      })
+    ),
 
-  if (keyword && keyword?.length > 0 && searchFields.length > 0) {
-    const keywordRegex = new RegExp(keyword, "i");
-    const filterQueries = searchFields.map((field) => ({
-      [field]: { $regex: keywordRegex },
-    }));
-    query.$or = query.$or ? [...query.$or, ...filterQueries] : filterQueries;
-  }
+    // Get the total count of exams matching the filter
+    Exam.aggregate(
+      buildExamCountPipeline({
+        query, // Query filter object
+        keyword, // Search keyword for filtering
+      })
+    ),
+  ]);
 
-  const sortOptions =
-    sortField && sortField?.length > 0 && sortValue && sortValue?.length > 0
-      ? { [sortField]: sortValue }
-      : { _id: -1 };
+  // Extract the total count from the aggregation result (default to 0 if not found)
+  const totalCount = countResult[0]?.totalCount || 0;
 
-  // Step 2: Query the database with provided filters, apply pagination (skip & limit)
-  return await Exam.find(query, options ? hiddenFieldsDefault : {})
-    .sort(sortOptions)
-    .skip(skip) // Apply skip for pagination
-    .limit(limit); // Apply limit to control number of results
+  // Return the results along with the total count
+  return { results, totalCount };
 };
 
 /**
@@ -121,18 +138,6 @@ const deleteExamObj = async (examCode) => {
   return await Exam.deleteOne({ examCode });
 };
 
-const getTotalExams = async (keyword) => {
-  const filter = {};
-  if (keyword && keyword?.length > 0 && searchFields.length > 0) {
-    const keywordRegex = new RegExp(keyword, "i");
-    filter.$or = searchFields.map((field) => ({
-      [field]: { $regex: keywordRegex },
-    }));
-  }
-  const total = await Exam.countDocuments(filter);
-  return total;
-};
-
 module.exports = {
   findExams, // Export function to retrieve multiple exams
   findExam, // Export function to retrieve a single exam
@@ -140,5 +145,4 @@ module.exports = {
   createExamObj, // Export function to create a new exam object
   updateExamObj, // Export function to update an existing exam
   deleteExamObj, // Export function to delete an exam
-  getTotalExams,
 };

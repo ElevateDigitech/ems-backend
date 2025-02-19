@@ -37,16 +37,5 @@ const PermissionSchema = new Schema(
   defaultOptions
 );
 
-// Virtuals for timestamps
-PermissionSchema.virtual("createdAtEpochTimestamp").get(function () {
-  return moment(this.createdAt).valueOf();
-});
-
-// Pre-find middleware to sort results by _id descending
-PermissionSchema.pre(/^find/, function (next) {
-  this.sort({ _id: -1 });
-  next();
-});
-
 const Permission = mongoose.model("Permission", PermissionSchema);
 module.exports = Permission;

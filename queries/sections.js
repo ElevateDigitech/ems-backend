@@ -5,55 +5,67 @@ const {
   toCapitalize,
   generateSectionCode,
 } = require("../utils/helpers");
-const searchFields = ["action", "module", "changes", "before", "after"];
+const {
+  buildSectionPipeline,
+  buildSectionCountPipeline,
+} = require("../pipelines/sections");
 
 /**
- * Retrieves all sections from the database with pagination support.
+ * Retrieves sections from the database with support for keyword search, sorting, pagination, and optional population of related data.
  *
  * @param {Object} params - The parameters for querying sections.
- * @param {Object} params.query - The MongoDB query object to filter sections.
- * @param {Object} params.options - Fields to include or exclude from the result.
- * @param {number} params.start - The starting index for pagination (default is 1).
- * @param {number} params.end - The ending index for pagination (default is 10).
- * @param {boolean} params.populated - Determines if related data should be populated.
- * @returns {Promise<Array>} - A promise that resolves to an array of sections.
+ * @param {Object} [params.query={}] - The MongoDB query object to filter sections.
+ * @param {string} [params.keyword=""] - A search keyword for filtering sections based on relevant fields.
+ * @param {string} [params.sortField="_id"] - The field by which results will be sorted.
+ * @param {string} [params.sortValue="desc"] - The sort direction: 'asc' for ascending, 'desc' for descending.
+ * @param {number} [params.page=1] - The current page number for pagination.
+ * @param {number} [params.limit=10] - The number of results per page.
+ * @param {boolean} [params.populate=false] - Determines whether related data should be populated.
+ * @param {boolean} [params.projection=false] - Whether to apply field projection.
+ * @param {boolean} [params.all=false] - Whether to query all without pagination.
+ * @returns {Promise<{results: Array, totalCount: number}>} - A promise resolving to an object containing the results and total count.
  */
 const findSections = async ({
   query = {},
-  options = false,
+  keyword = "",
+  sortField = "_id",
+  sortValue = "desc",
   page = 1,
-  perPage = 10,
-  populated = false,
-  sortField,
-  sortValue,
-  keyword,
+  limit = 10,
+  populate = false,
+  projection = false,
+  all = false,
 }) => {
-  const limit = parseInt(perPage); // Number of items to return
-  const skip = (parseInt(page) - 1) * parseInt(perPage); // Number of items to skip // Step 1: Calculate pagination parameters
+  // Perform parallel aggregation queries:
+  // 1. Fetch paginated and filtered sections with optional population and projection.
+  // 2. Count the total number of sections matching the query and keyword (ignoring pagination).
+  const [results, countResult] = await Promise.all([
+    Section.aggregate(
+      buildSectionPipeline({
+        query,
+        keyword,
+        sortField,
+        sortValue,
+        page,
+        limit,
+        populate,
+        projection,
+        all,
+      })
+    ),
+    Section.aggregate(
+      buildSectionCountPipeline({
+        query,
+        keyword,
+      })
+    ),
+  ]);
 
-  if (keyword && keyword?.length > 0 && searchFields.length > 0) {
-    const keywordRegex = new RegExp(keyword, "i");
-    const filterQueries = searchFields.map((field) => ({
-      [field]: { $regex: keywordRegex },
-    }));
-    query.$or = query.$or ? [...query.$or, ...filterQueries] : filterQueries;
-  }
+  // Extract the total count from the aggregation result.
+  const totalCount = countResult[0]?.totalCount || 0;
 
-  const sortOptions =
-    sortField && sortField?.length > 0 && sortValue && sortValue?.length > 0
-      ? { [sortField]: sortValue }
-      : { _id: -1 };
-
-  // Step 2: Build the base query
-  const sectionsQuery = Section.find(query, options ? hiddenFieldsDefault : {})
-    .sort(sortOptions)
-    .skip(skip)
-    .limit(limit);
-
-  // Step 3: Conditionally populate related data
-  return populated
-    ? sectionsQuery.populate("class", hiddenFieldsDefault)
-    : sectionsQuery;
+  // Return both the results and the total count for pagination.
+  return { results, totalCount };
 };
 
 /**
@@ -140,18 +152,6 @@ const deleteSectionObj = async (sectionCode) => {
   return await Section.deleteOne({ sectionCode }); // Step 1: Delete the section by sectionCode
 };
 
-const getTotalSections = async (keyword) => {
-  const filter = {};
-  if (keyword && keyword?.length > 0 && searchFields.length > 0) {
-    const keywordRegex = new RegExp(keyword, "i");
-    filter.$or = searchFields.map((field) => ({
-      [field]: { $regex: keywordRegex },
-    }));
-  }
-  const total = await Section.countDocuments(filter);
-  return total;
-};
-
 module.exports = {
   findSections, // Export function to retrieve multiple sections
   findSection, // Export function to retrieve a single section
@@ -159,5 +159,4 @@ module.exports = {
   createSectionObj, // Export function to create a new section
   updateSectionObj, // Export function to update an existing section
   deleteSectionObj, // Export function to delete a section
-  getTotalSections,
 };

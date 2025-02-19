@@ -4,49 +4,62 @@ const {
   hiddenFieldsDefault,
   generateSubjectCode,
 } = require("../utils/helpers");
-const searchFields = ["action", "module", "changes", "before", "after"];
+const {
+  buildSubjectPipeline,
+  buildSubjectCountPipeline,
+} = require("../pipelines/subjects");
 
 /**
- * Retrieves multiple subjects from the database with pagination support.
+ * Retrieves multiple subjects from the database with pagination, search, and sorting support.
  *
  * @param {Object} params - The parameters for querying subjects.
- * @param {Object} params.query - The MongoDB query object to filter subjects.
- * @param {Object} params.options - Fields to include or exclude from the result.
- * @param {number} params.start - The starting index for pagination (default is 1).
- * @param {number} params.end - The ending index for pagination (default is 10).
- * @returns {Promise<Array>} - A promise that resolves to an array of subjects.
+ * @param {Object} [params.query={}] - The MongoDB query object to filter subjects.
+ * @param {string} [params.keyword=""] - The keyword for searching within subjects.
+ * @param {string} [params.sortField="_id"] - The field to sort results by (default is _id).
+ * @param {string} [params.sortValue="desc"] - The sorting order: 'asc' for ascending, 'desc' for descending (default is 'desc').
+ * @param {number} [params.page=1] - The page number for pagination (default is 1).
+ * @param {number} [params.limit=10] - The number of subjects per page (default is 10).
+ * @param {boolean} [params.projection=false] - Whether to apply field projection.
+ * @param {boolean} [params.all=false] - Whether to query all without pagination.
+ * @returns {Promise<{results: Array, totalCount: number}>} - A promise that resolves to an object containing the results array and total count of subjects.
  */
 const findSubjects = async ({
-  query = {}, // MongoDB query object to filter subjects
-  options = false, // Fields to include/exclude in the result
-  page = 1, // Current page for pagination (default is 1)
-  perPage = 10, // Items per page for pagination (default is 10)
-  sortField,
-  sortValue,
-  keyword,
+  query = {},
+  keyword = "",
+  sortField = "_id",
+  sortValue = "desc",
+  page = 1,
+  limit = 10,
+  projection = false,
+  all = false,
 }) => {
-  // Step 1: Calculate the limit and skip values for pagination
-  const limit = parseInt(perPage); // Number of items to return
-  const skip = (parseInt(page) - 1) * parseInt(perPage); // Number of items to skip
+  // Fetch both paginated results and the total count of matching subjects concurrently
+  const [results, countResult] = await Promise.all([
+    Subject.aggregate(
+      buildSubjectPipeline({
+        query,
+        keyword,
+        sortField,
+        sortValue,
+        page,
+        limit,
+        projection,
+        all,
+      })
+    ),
+    Subject.aggregate(
+      buildSubjectCountPipeline({
+        query,
+        keyword,
+      })
+    ),
+  ]);
 
-  if (keyword && keyword?.length > 0 && searchFields.length > 0) {
-    const keywordRegex = new RegExp(keyword, "i");
-    const filterQueries = searchFields.map((field) => ({
-      [field]: { $regex: keywordRegex },
-    }));
-    query.$or = query.$or ? [...query.$or, ...filterQueries] : filterQueries;
-  }
+  // Extract total count from aggregation result
+  const totalCount = countResult[0]?.totalCount || 0;
 
-  const sortOptions =
-    sortField && sortField?.length > 0 && sortValue && sortValue?.length > 0
-      ? { [sortField]: sortValue }
-      : { _id: -1 };
-
-  // Step 2: Query the database with provided filters, apply pagination (skip & limit)
-  return await Subject.find(query, options ? hiddenFieldsDefault : {})
-    .sort(sortOptions)
-    .skip(skip) // Apply skip for pagination
-    .limit(limit); // Apply limit to control number of results
+  // Return results and total count
+  return { results, totalCount };
 };
 
 /**
@@ -124,18 +137,6 @@ const deleteSubjectObj = async (subjectCode) => {
   return await Subject.deleteOne({ subjectCode });
 };
 
-const getTotalSubjects = async (keyword) => {
-  const filter = {};
-  if (keyword && keyword?.length > 0 && searchFields.length > 0) {
-    const keywordRegex = new RegExp(keyword, "i");
-    filter.$or = searchFields.map((field) => ({
-      [field]: { $regex: keywordRegex },
-    }));
-  }
-  const total = await Subject.countDocuments(filter);
-  return total;
-};
-
 module.exports = {
   findSubjects, // Export function to retrieve multiple subjects
   findSubject, // Export function to retrieve a single subject
@@ -143,5 +144,4 @@ module.exports = {
   createSubjectObj, // Export function to create a new subject object
   updateSubjectObj, // Export function to update an existing subject
   deleteSubjectObj, // Export function to delete a subject
-  getTotalSubjects,
 };

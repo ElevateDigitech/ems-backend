@@ -1,49 +1,63 @@
 const moment = require("moment-timezone");
 const Class = require("../models/class");
 const { hiddenFieldsDefault, generateClassCode } = require("../utils/helpers");
-const searchFields = ["action", "module", "changes", "before", "after"];
+const {
+  buildClassPipeline,
+  buildClassCountPipeline,
+} = require("../pipelines/classes");
 
 /**
- * Retrieves multiple classes from the database with pagination support.
+ * Retrieves multiple classes from the database with pagination, filtering, and sorting support.
  *
  * @param {Object} params - The parameters for querying classes.
- * @param {Object} params.query - The MongoDB query object to filter classes.
- * @param {Object} params.options - Fields to include or exclude from the result.
- * @param {number} params.start - The starting index for pagination (default is 1).
- * @param {number} params.end - The ending index for pagination (default is 10).
- * @returns {Promise<Array>} - A promise that resolves to an array of classes.
+ * @param {Object} [params.query={}] - The MongoDB query object to filter classes.
+ * @param {string} [params.keyword=""] - A keyword to search within classes.
+ * @param {string} [params.sortField="_id"] - The field to sort the results by.
+ * @param {string} [params.sortValue="desc"] - The sorting order, either 'asc' or 'desc'.
+ * @param {number} [params.page=1] - The current page number for pagination.
+ * @param {number} [params.limit=10] - The number of classes to retrieve per page.
+ * @param {boolean} [params.projection=false] - Whether to apply field projection.
+ * @param {boolean} [params.all=false] - Whether to query all without pagination.
+ * @returns {Promise<{results: Array, totalCount: number}>} - A promise that resolves to an object containing the classes and the total count.
  */
 const findClasses = async ({
-  query = {}, // MongoDB query object to filter classes
-  options = false, // Fields to include/exclude in the result
-  page = 1, // Current page for pagination (default is 1)
-  perPage = 10, // Items per page for pagination (default is 10)
-  sortField,
-  sortValue,
-  keyword,
+  query = {},
+  keyword = "",
+  sortField = "_id",
+  sortValue = "desc",
+  page = 1,
+  limit = 10,
+  projection = false,
+  all = false,
 }) => {
-  // Step 1: Calculate the limit and skip values for pagination
-  const limit = parseInt(perPage); // Number of items to return
-  const skip = (parseInt(page) - 1) * parseInt(perPage); // Number of items to skip
+  // Execute aggregation pipelines concurrently for efficiency.
+  const [results, countResult] = await Promise.all([
+    Class.aggregate(
+      buildClassPipeline({
+        query,
+        keyword,
+        sortField,
+        sortValue,
+        page,
+        limit,
+        populate,
+        projection,
+        all,
+      })
+    ),
+    Class.aggregate(
+      buildClassCountPipeline({
+        query,
+        keyword,
+      })
+    ),
+  ]);
 
-  if (keyword && keyword?.length > 0 && searchFields.length > 0) {
-    const keywordRegex = new RegExp(keyword, "i");
-    const filterQueries = searchFields.map((field) => ({
-      [field]: { $regex: keywordRegex },
-    }));
-    query.$or = query.$or ? [...query.$or, ...filterQueries] : filterQueries;
-  }
+  // Extract total class count from aggregation result, fallback to 0 if undefined.
+  const totalCount = countResult[0]?.totalCount || 0;
 
-  const sortOptions =
-    sortField && sortField?.length > 0 && sortValue && sortValue?.length > 0
-      ? { [sortField]: sortValue }
-      : { _id: -1 };
-
-  // Step 2: Query the database with provided filters, apply pagination (skip & limit)
-  return await Class.find(query, options ? hiddenFieldsDefault : {})
-    .sort(sortOptions)
-    .skip(skip) // Apply skip for pagination
-    .limit(limit); // Apply limit to control number of results
+  // Return retrieved classes and their total count.
+  return { results, totalCount };
 };
 
 /**
@@ -121,18 +135,6 @@ const deleteClassObj = async (classCode) => {
   return await Class.deleteOne({ classCode });
 };
 
-const getTotalClasses = async (keyword) => {
-  const filter = {};
-  if (keyword && keyword?.length > 0 && searchFields.length > 0) {
-    const keywordRegex = new RegExp(keyword, "i");
-    filter.$or = searchFields.map((field) => ({
-      [field]: { $regex: keywordRegex },
-    }));
-  }
-  const total = await Class.countDocuments(filter);
-  return total;
-};
-
 module.exports = {
   findClasses, // Export function to retrieve multiple classes
   findClass, // Export function to retrieve a single class
@@ -140,5 +142,4 @@ module.exports = {
   createClassObj, // Export function to create a new class object
   updateClassObj, // Export function to update an existing class
   deleteClassObj, // Export function to delete a class
-  getTotalClasses,
 };

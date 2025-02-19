@@ -10,6 +10,7 @@ const {
 } = require("../utils/helpers");
 const { basePermissions } = require("./basePermissions");
 const { baseRoles } = require("./baseRoles");
+const { findPermissions } = require("../queries/permissions");
 
 const DB_URL = process?.env?.DB_URL ?? "";
 mongoose.connect(DB_URL, {
@@ -62,7 +63,7 @@ const seedPermissions = async () => {
 const seedRoles = async () => {
   await Role.deleteMany({});
 
-  const permissions = await Permission.find({});
+  const permissions = await findPermissions({ all: true });
   const mappedRoles = parseRoles(baseRoles, permissions, true);
 
   await Role.insertMany(mappedRoles);

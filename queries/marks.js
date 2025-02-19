@@ -1,70 +1,68 @@
 const moment = require("moment-timezone");
 const Mark = require("../models/mark");
 const { hiddenFieldsDefault, generateMarkCode } = require("../utils/helpers");
-const searchFields = ["action", "module", "changes", "before", "after"];
+const {
+  buildMarkPipeline,
+  buildMarkCountPipeline,
+} = require("../pipelines/marks");
 
 /**
- * Retrieves all marks from the database with pagination support.
+ * Retrieves all marks from the database with support for pagination, sorting, keyword search, and population.
  *
  * @param {Object} params - The parameters for querying marks.
- * @param {Object} params.query - The MongoDB query object to filter marks.
- * @param {Object} params.options - Fields to include or exclude from the result.
- * @param {number} params.start - The starting index for pagination (default is 1).
- * @param {number} params.end - The ending index for pagination (default is 10).
- * @param {boolean} params.populated - Determines if related data should be populated.
- * @returns {Promise<Array>} - A promise that resolves to an array of marks.
+ * @param {Object} [params.query={}] - The MongoDB query object to filter marks.
+ * @param {string} [params.keyword=""] - A keyword to search within specific fields (optional).
+ * @param {string} [params.sortField="_id"] - The field to sort the results by (default is "_id").
+ * @param {string} [params.sortValue="desc"] - The sorting order ("asc" or "desc", default is "desc").
+ * @param {number} [params.page=1] - The current page number for pagination (default is 1).
+ * @param {number} [params.limit=10] - The number of items per page for pagination (default is 10).
+ * @param {boolean} [params.populate=false] - Determines if related data should be populated.
+ * @param {boolean} [params.projection=false] - Whether to apply field projection.
+ * @param {boolean} [params.all=false] - Whether to query all without pagination.
+ * @returns {Promise<{results: Array, totalCount: number}>} - A promise resolving to an object containing:
  */
 const findMarks = async ({
   query = {},
-  options = false,
+  keyword = "",
+  sortField = "_id",
+  sortValue = "desc",
   page = 1,
-  perPage = 10,
-  populated = false,
-  sortField,
-  sortValue,
-  keyword,
+  limit = 10,
+  populate = false,
+  projection = false,
+  all = false,
 }) => {
-  // Step 1: Calculate pagination parameters
-  const limit = parseInt(perPage); // Number of items to return
-  const skip = (parseInt(page) - 1) * parseInt(perPage); // Number of items to skip
+  // Executes two parallel aggregation pipelines using Promise.all for efficiency:
+  const [results, countResult] = await Promise.all([
+    // Pipeline to fetch the paginated and sorted marks based on filters.
+    Mark.aggregate(
+      buildMarkPipeline({
+        query,
+        keyword,
+        sortField,
+        sortValue,
+        page,
+        limit,
+        populate,
+        projection,
+        all,
+      })
+    ),
 
-  if (keyword && keyword?.length > 0 && searchFields.length > 0) {
-    const keywordRegex = new RegExp(keyword, "i");
-    const filterQueries = searchFields.map((field) => ({
-      [field]: { $regex: keywordRegex },
-    }));
-    query.$or = query.$or ? [...query.$or, ...filterQueries] : filterQueries;
-  }
+    // Pipeline to get the total count of matching marks based on filters (ignores pagination).
+    Mark.aggregate(
+      buildMarkCountPipeline({
+        query,
+        keyword,
+      })
+    ),
+  ]);
 
-  const sortOptions =
-    sortField && sortField?.length > 0 && sortValue && sortValue?.length > 0
-      ? { [sortField]: sortValue }
-      : { _id: -1 };
+  // Extract the total count from the result. Defaults to 0 if not found.
+  const totalCount = countResult[0]?.totalCount || 0;
 
-  // Step 2: Build the base query to find marks
-  const marksQuery = Mark.find(query, options ? hiddenFieldsDefault : {})
-    .sort(sortOptions)
-    .skip(skip)
-    .limit(limit);
-
-  // Step 3: Conditionally populate related exam, student, and subject data if populated flag is true
-  return populated
-    ? marksQuery
-        .populate("exam", hiddenFieldsDefault)
-        .populate({
-          path: "student",
-          select: hiddenFieldsDefault,
-          populate: {
-            path: "section",
-            select: hiddenFieldsDefault,
-            populate: {
-              path: "class",
-              select: hiddenFieldsDefault,
-            },
-          },
-        })
-        .populate("subject", hiddenFieldsDefault)
-    : marksQuery;
+  // Return both results and the total count for pagination support.
+  return { results, totalCount };
 };
 
 /**
@@ -177,23 +175,10 @@ const deleteMarkObj = async (markCode) => {
   return await Mark.deleteOne({ markCode });
 };
 
-const getTotalMarks = async (keyword) => {
-  const filter = {};
-  if (keyword && keyword?.length > 0 && searchFields.length > 0) {
-    const keywordRegex = new RegExp(keyword, "i");
-    filter.$or = searchFields.map((field) => ({
-      [field]: { $regex: keywordRegex },
-    }));
-  }
-  const total = await Mark.countDocuments(filter);
-  return total;
-};
-
 module.exports = {
   findMarks, // Export function to retrieve multiple marks
   findMark, // Export function to retrieve a single mark
   createMarkObj, // Export function to create a new mark
   updateMarkObj, // Export function to update an existing mark
   deleteMarkObj, // Export function to delete a mark
-  getTotalMarks,
 };

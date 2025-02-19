@@ -37,8 +37,6 @@ const {
   formatStateFields,
   updateStateObj,
   deleteStateObj,
-  getStatePaginationObject,
-  getTotalStates,
 } = require("../queries/states");
 const { findCountry } = require("../queries/countries");
 
@@ -52,24 +50,22 @@ module.exports = {
    */
   GetStates: async (req, res, next) => {
     const {
-      page = 1,
-      perPage = 10,
-      sortField = "",
-      sortValue = "",
       keyword = "",
-    } = req.query; // Step 1: Extract pagination parameters
+      sortField = "_id",
+      sortValue = "desc",
+      page = 1,
+      limit = 10,
+    } = req.query;
 
-    // Step 2: Retrieve all states from the database
-    const states = await findStates({
-      page,
-      perPage,
+    const { results, totalCount } = await findStates({
+      keyword,
       sortField,
       sortValue,
-      keyword,
-      options: true,
-      populated: true,
+      page,
+      limit,
+      populate: true,
+      projection: true,
     });
-    const total = await getTotalStates(keyword);
     // Step 3: Send success response with the list of states
     res
       .status(STATUS_CODE_SUCCESS)
@@ -77,8 +73,8 @@ module.exports = {
         handleSuccess(
           STATUS_CODE_SUCCESS,
           MESSAGE_GET_STATES_SUCCESS,
-          states,
-          total
+          results,
+          totalCount
         )
       );
   },
@@ -125,12 +121,12 @@ module.exports = {
    */
   GetStatesByCountryCode: async (req, res, next) => {
     const {
-      page = 1,
-      perPage = 10,
-      sortField = "",
-      sortValue = "",
       keyword = "",
-    } = req.query; // Step 1: Extract pagination parameters
+      sortField = "_id",
+      sortValue = "desc",
+      page = 1,
+      limit = 10,
+    } = req.query;
     const { countryCode } = req.body; // Step 2: Extract country code from request body
 
     // Step 3: Find the country by its code
@@ -145,22 +141,25 @@ module.exports = {
       );
 
     // Step 5: Retrieve states associated with the country
-    const states = await findStates({
+
+    const { results, totalCount } = await findStates({
       query: { country: country._id },
+      keyword,
+      sortField,
+      sortValue,
       page,
-      perPage,
-      options: true,
-      populated: true,
+      limit,
+      populate: true,
+      projection: true,
     });
 
     // Step 6: Handle case when no states are found
-    if (!states?.length)
+    if (!results?.length)
       return handleError(
         next,
         STATUS_CODE_BAD_REQUEST,
         MESSAGE_STATES_NOT_FOUND
       );
-    const pagination = await getStatePaginationObject(page, perPage);
     // Step 7: Send success response with the list of states
     res
       .status(STATUS_CODE_SUCCESS)
@@ -168,8 +167,8 @@ module.exports = {
         handleSuccess(
           STATUS_CODE_SUCCESS,
           MESSAGE_GET_STATE_SUCCESS,
-          states,
-          pagination
+          results,
+          totalCount
         )
       );
   },
@@ -258,13 +257,13 @@ module.exports = {
       return handleError(next, STATUS_CODE_CONFLICT, MESSAGE_COUNTRY_NOT_FOUND);
 
     // Step 5: Check for duplicate state details
-    const otherStates = await findStates({
+    const duplicateState = await findState({
       query: {
         stateCode: { $ne: stateCode },
         $or: [{ name: formattedName }, { iso: formattedISO }],
       },
     });
-    if (otherStates?.length)
+    if (duplicateState)
       return handleError(next, STATUS_CODE_CONFLICT, MESSAGE_STATE_TAKEN);
 
     // Step 6: Retrieve state before updating (for audit)

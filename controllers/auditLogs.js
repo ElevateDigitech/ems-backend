@@ -1,10 +1,4 @@
-const {
-  findAuditLogs,
-  findAuditLog,
-  getAuditLogPaginationObject,
-  getTotal,
-  getTotalAuditlogs,
-} = require("../queries/auditLogs");
+const { findAuditLogs, findAuditLog } = require("../queries/auditLogs");
 const { handleSuccess, handleError } = require("../utils/helpers");
 const {
   STATUS_CODE_SUCCESS,
@@ -27,30 +21,29 @@ module.exports = {
   GetAudits: async (req, res, next) => {
     // Step 1: Destructure 'start' and 'end' from the query parameters, defaulting to 1 and 10 if not provided
     const {
-      page = 1,
-      perPage = 10,
-      sortField = "",
-      sortValue = "",
       keyword = "",
+      sortField = "_id",
+      sortValue = "desc",
+      page = 1,
+      limit = 10,
     } = req.query;
 
     // Step 2: Fetch audit logs from the database using the provided start and end range
-    const auditLogs = await findAuditLogs({
-      page,
-      perPage,
+    const { results, totalCount } = await findAuditLogs({
+      keyword,
       sortField,
       sortValue,
-      keyword,
-      options: true,
+      page,
+      limit,
+      projection: true,
     });
-    const total = await getTotalAuditlogs(keyword);
     // Step 3: Send a successful HTTP response with the retrieved audit logs
     res.status(STATUS_CODE_SUCCESS).send(
       handleSuccess(
         STATUS_CODE_SUCCESS, // HTTP status code for success
         MESSAGE_GET_AUDITS_SUCCESS, // Success message
-        auditLogs, // Data containing the audit logs
-        total
+        results, // Data containing the audit logs
+        totalCount
       )
     );
   },
@@ -69,7 +62,7 @@ module.exports = {
     // Step 2: Find a single audit log that matches the provided audit code
     const auditLog = await findAuditLog({
       query: { auditCode },
-      options: true,
+      projection: true,
     });
 
     // Step 3: Check if the audit log exists in the database

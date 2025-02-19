@@ -1,82 +1,88 @@
 const Permission = require("../models/permission");
-const { hiddenFieldsDefault } = require("../utils/helpers");
-const searchFields = ["permissionName", "permissionDescription"];
+const {
+  buildPermissionsPipeline,
+  buildPermissionCountPipeline,
+  buildPermissionPipeline,
+} = require("../pipelines/permissions");
 
 /**
- * Retrieves multiple permissions from the database with pagination support.
- *
- * @param {Object} params - The parameters for querying permissions.
- * @param {Object} params.query - The MongoDB query object to filter permissions.
- * @param {Object} params.options - Fields to include or exclude from the result.
- * @param {number} params.start - The starting index for pagination (default is 1).
- * @param {number} params.end - The ending index for pagination (default is 10).
- * @returns {Promise<Array>} - A promise that resolves to an array of permissions.
- */
-const findPermissions = async ({
-  query = {}, // MongoDB query object to filter permissions
-  options = false, // Fields to include/exclude in the result
-  page = 1, // Current page for pagination (default is 1)
-  perPage = 10, // Items per page for pagination (default is 10)
-  sortField,
-  sortValue,
-  keyword,
-}) => {
-  // Step 1: Calculate the limit and skip values for pagination
-  const limit = parseInt(perPage); // Number of items to return
-  const skip = (parseInt(page) - 1) * parseInt(perPage); // Number of items to skip
-
-  if (keyword && keyword?.length > 0 && searchFields.length > 0) {
-    const keywordRegex = new RegExp(keyword, "i");
-    const filterQueries = searchFields.map((field) => ({
-      [field]: { $regex: keywordRegex },
-    }));
-    query.$or = query.$or ? [...query.$or, ...filterQueries] : filterQueries;
-  }
-
-  const sortOptions =
-    sortField && sortField?.length > 0 && sortValue && sortValue?.length > 0
-      ? { [sortField]: sortValue }
-      : { _id: -1 };
-
-  // Step 2: Query the database with provided filters
-  // Apply skip for pagination and limit to control the number of results returned
-  return await Permission.find(query, options ? hiddenFieldsDefault : {})
-    .sort(sortOptions)
-    .skip(skip) // Apply skip
-    .limit(limit); // Apply limit
-};
-
-/**
- * Retrieves a single permission from the database.
+ * Retrieves a single permission from the database using an aggregation pipeline.
  *
  * @param {Object} params - The parameters for querying a permission.
- * @param {Object} params.query - The MongoDB query object to filter the permission.
- * @param {Object} params.options - Fields to include or exclude from the result.
+ * @param {Object} [params.query={}] - The MongoDB query object to filter the permission.
+ * @param {boolean} [params.projection=false] - Whether to apply field projection in the aggregation pipeline.
  * @returns {Promise<Object|null>} - A promise that resolves to the permission object or null if not found.
  */
 const findPermission = async ({
-  query = {}, // MongoDB query object to filter the permission
-  options = false, // Fields to include/exclude in the result
+  query = {}, // The MongoDB query object to filter the permission document..
+  projection = false, // Boolean indicating whether to apply field projection in the aggregation pipeline.
 }) => {
-  // Step 1: Query the database to find a single permission
-  // Return the first document that matches the query criteria
-  return await Permission.findOne(query, options ? hiddenFieldsDefault : {});
+  // Build the aggregation pipeline with the provided query and projection.
+  const pipeline = buildPermissionPipeline({ query, projection });
+
+  // Execute the aggregation pipeline using the Permission model.
+  const result = await Permission.aggregate(pipeline);
+
+  // Since we expect a single permission, return the first document or null if not found.
+  return result.length > 0 ? result[0] : null;
 };
 
-const getTotalPermissions = async (keyword) => {
-  const filter = {};
-  if (keyword && keyword?.length > 0 && searchFields.length > 0) {
-    const keywordRegex = new RegExp(keyword, "i");
-    filter.$or = searchFields.map((field) => ({
-      [field]: { $regex: keywordRegex },
-    }));
-  }
-  const total = await Permission.countDocuments(filter);
-  return total;
+/**
+ * Retrieves multiple permissions from the database with pagination, filtering, sorting, and projection support.
+ *
+ * @param {Object} params - Parameters for querying permissions.
+ * @param {Object} [params.query={}] - The MongoDB query object to filter permissions.
+ * @param {string} [params.keyword=""] - A keyword for text-based search in permissions.
+ * @param {string} [params.sortField="_id"] - The field to sort the results by.
+ * @param {string} [params.sortValue="desc"] - The sorting order: 'asc' for ascending or 'desc' for descending.
+ * @param {number} [params.page=1] - The current page number for pagination.
+ * @param {number} [params.limit=10] - The number of records per page.
+ * @param {boolean} [params.projection=false] - Whether to apply field projection in the aggregation pipeline.
+ * @param {boolean} [params.all=false] - Whether to query all without pagination.
+ * @returns {Promise<Object>} - A promise that resolves to an object containing the results and the total count.
+ */
+const findPermissions = async ({
+  query = {},
+  keyword = "",
+  sortField = "_id",
+  sortValue = "desc",
+  page = 1,
+  limit = 10,
+  projection = false,
+  all = false,
+}) => {
+  // Execute two parallel aggregation queries using Promise.all:
+  // 1. Fetch paginated permission records with filters, sorting, and field projection.
+  // 2. Fetch the total count of permissions that match the query.
+  const [results, countResult] = await Promise.all([
+    Permission.aggregate(
+      buildPermissionsPipeline({
+        query,
+        keyword,
+        sortField,
+        sortValue,
+        page,
+        limit,
+        projection,
+        all,
+      })
+    ),
+    Permission.aggregate(
+      buildPermissionCountPipeline({
+        query,
+        keyword,
+      })
+    ),
+  ]);
+
+  // Extract the total count from the aggregation result.
+  const totalCount = countResult[0]?.totalCount || 0;
+
+  // Return the fetched permissions and the total count.
+  return { results, totalCount };
 };
 
 module.exports = {
-  findPermissions, // Export function to retrieve multiple permissions
   findPermission, // Export function to retrieve a single permission
-  getTotalPermissions,
+  findPermissions, // Export function to retrieve multiple permissions
 };

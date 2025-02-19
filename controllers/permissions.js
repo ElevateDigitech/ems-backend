@@ -1,9 +1,4 @@
-const {
-  findPermissions,
-  findPermission,
-  getPermissionPaginationObject,
-  getTotalPermissions,
-} = require("../queries/permissions");
+const { findPermissions, findPermission } = require("../queries/permissions");
 const { handleError, handleSuccess } = require("../utils/helpers");
 const {
   STATUS_CODE_SUCCESS,
@@ -28,30 +23,29 @@ module.exports = {
   GetPermissions: async (req, res, next) => {
     // Step 1: Destructure 'start' and 'end' from the query parameters, defaulting to 1 and 10 if not provided
     const {
-      page = 1,
-      perPage = 10,
-      sortField = "",
-      sortValue = "",
       keyword = "",
+      sortField = "_id",
+      sortValue = "desc",
+      page = 1,
+      limit = 10,
     } = req.query;
 
-    // Step 2: Query the database to retrieve all permission documents within the provided range
-    const permissions = await findPermissions({
-      page,
-      perPage,
+    // Step 2: Fetch audit logs from the database using the provided start and end range
+    const { results, totalCount } = await findPermissions({
+      keyword,
       sortField,
       sortValue,
-      keyword,
-      options: true,
+      page,
+      limit,
+      projection: true,
     });
-    const total = await getTotalPermissions(keyword);
     // Step 3: Return a success response with the retrieved permissions
     res.status(STATUS_CODE_SUCCESS).send(
       handleSuccess(
         STATUS_CODE_SUCCESS, // HTTP status code for success
         MESSAGE_GET_PERMISSIONS_SUCCESS, // Success message
-        permissions, // Data containing the permissions
-        total
+        results, // Data containing the permissions
+        totalCount
       )
     );
   },
@@ -70,7 +64,7 @@ module.exports = {
     // Step 2: Query the database to find the permission document by its unique code
     const permission = await findPermission({
       query: { permissionCode },
-      options: true,
+      projection: true,
     });
 
     // Step 3: Check if the permission exists in the database
@@ -103,11 +97,11 @@ module.exports = {
   GetPermissionsByRoleCode: async (req, res, next) => {
     // Step 1: Destructure 'start' and 'end' from the query parameters, defaulting to 1 and 10 if not provided
     const {
-      page = 1,
-      perPage = 10,
-      sortField = "",
-      sortValue = "",
       keyword = "",
+      sortField = "_id",
+      sortValue = "desc",
+      page = 1,
+      limit = 10,
     } = req.query;
     // Step 1: Extract the permissionCode from the request body
     const { roleCode } = req.body;
@@ -115,8 +109,8 @@ module.exports = {
     // Step 2: Query the database to find the permission document by its unique code
     const role = await findRole({
       query: { roleCode },
-      options: true,
-      populated: true,
+      projection: true,
+      populate: true,
     });
 
     // Step 3: Check if the permission exists in the database
@@ -133,16 +127,19 @@ module.exports = {
       (p) => p?.permissionCode
     );
 
-    // Step 2: Query the database to find the permission document by its unique code
-    const permissions = await findPermissions({
-      page,
-      perPage,
+    // Step 2: Fetch audit logs from the database using the provided start and end range
+    const { results, totalCount } = await findPermissions({
       query: { permissionCode: { $in: rolePermissions } },
-      options: true,
+      keyword,
+      sortField,
+      sortValue,
+      page,
+      limit,
+      projection: true,
     });
 
     // Step 3: Check if the permission exists in the database
-    if (!permissions) {
+    if (!results) {
       // Step 4: If the permission is not found, return an error response
       return handleError(
         next, // Pass the next middleware function to handle the error
@@ -150,15 +147,14 @@ module.exports = {
         MESSAGE_PERMISSION_NOT_FOUND // Error message indicating permission not found
       );
     }
-    const pagination = await getPermissionPaginationObject(page, perPage); // Get total count
 
     // Step 5: If the permission is found, return a success response with the permission data
     res.status(STATUS_CODE_SUCCESS).send(
       handleSuccess(
         STATUS_CODE_SUCCESS, // HTTP status code for success
         MESSAGE_GET_PERMISSION_SUCCESS, // Success message
-        permissions, // Data containing the specific permission
-        pagination
+        results, // Data containing the specific permission
+        totalCount
       )
     );
   },

@@ -9,6 +9,7 @@ const { STATUS_SUCCESS, STATUS_ERROR } = require("./status");
 const { referenceFields } = require("./referenceFields");
 const { findUser } = require("../queries/users");
 const path = require("path");
+const { findPermission } = require("../queries/permissions");
 
 const hiddenFieldsDefault = { __v: 0, _id: 0, id: 0 };
 const hiddenFieldsUser = { __v: 0, _id: 0, salt: 0, hash: 0 };
@@ -48,7 +49,9 @@ const validateDob = (value) => {
 const getInvalidPermissions = async (permissions) => {
   return await Promise.all(
     permissions.map(async (rp) => {
-      const permission = await Permission.findOne({ permissionCode: rp });
+      const permission = await findPermission({
+        query: { permissionCode: rp },
+      });
       return !permission;
     })
   );
@@ -57,7 +60,9 @@ const getInvalidPermissions = async (permissions) => {
 const getPermissionIds = async (permissions) => {
   return await Promise.all(
     permissions.map(async (rp) => {
-      const permission = await Permission.findOne({ permissionCode: rp });
+      const permission = await findPermission({
+        query: { permissionCode: rp },
+      });
       return permission?._id;
     })
   );
@@ -109,6 +114,10 @@ const writeToFile = async (path, content) => {
   }
 };
 
+const validateRequiredFields = (fields) => {
+  return fields.every((field) => field?.trim()?.length);
+};
+
 const getCurrentUser = async (userCode) => {
   return await findUser({
     query: { userCode },
@@ -149,6 +158,7 @@ module.exports = {
   getRoleId,
   toCapitalize,
   writeToFile,
+  validateRequiredFields,
   getCurrentUser,
   getFileExtension,
 };
