@@ -10,6 +10,7 @@ const { referenceFields } = require("./referenceFields");
 const { findUser } = require("../queries/users");
 const path = require("path");
 const { findPermission } = require("../queries/permissions");
+const { findRole } = require("../queries/roles");
 
 const hiddenFieldsDefault = { __v: 0, _id: 0, id: 0 };
 const hiddenFieldsUser = { __v: 0, _id: 0, salt: 0, hash: 0 };
@@ -89,12 +90,12 @@ const IsObjectIdReferenced = async (id) => {
 };
 
 const getInvalidRole = async (roleCode) => {
-  const permission = await Role.findOne({ roleCode });
+  const permission = await findRole({ query: { roleCode } });
   return !permission;
 };
 
 const getRoleId = async (roleCode) => {
-  const permission = await Role.findOne({ roleCode });
+  const permission = await findRole({ query: { roleCode } });
   return permission?._id;
 };
 

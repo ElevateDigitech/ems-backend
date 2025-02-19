@@ -256,8 +256,8 @@ module.exports = {
       city.cityCode,
       auditChanges.CREATE_CITY,
       null,
-      createdCity.toObject(),
-      currentUser.toObject()
+      createdCity ,
+      currentUser 
     );
 
     // Step 6: Return the created city
@@ -333,7 +333,7 @@ module.exports = {
       auditChanges.UPDATE_CITY,
       previousData,
       updatedCity,
-      currentUser.toObject()
+      currentUser 
     );
 
     // Step 8: Return the updated city
@@ -393,9 +393,9 @@ module.exports = {
       auditCollections.CITIES,
       city.cityCode,
       auditChanges.DELETE_CITY,
-      previousData.toObject(),
+      previousData ,
       null,
-      currentUser.toObject()
+      currentUser 
     );
 
     // Step 6: Return the success message

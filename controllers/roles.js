@@ -182,8 +182,8 @@ module.exports = {
       createdRole.roleCode,
       auditChanges.CREATE_ROLE,
       null,
-      createdRole.toObject(),
-      currentUser.toObject()
+      createdRole,
+      currentUser
     ); // Step 7: Log the creation action
 
     res
@@ -254,9 +254,9 @@ module.exports = {
       auditCollections.ROLES,
       updatedRole.roleCode,
       auditChanges.UPDATE_ROLE,
-      previousData.toObject(),
-      updatedRole.toObject(),
-      currentUser.toObject()
+      previousData,
+      updatedRole,
+      currentUser
     ); // Step 6: Log the update action
 
     res
@@ -319,9 +319,9 @@ module.exports = {
       auditCollections.ROLES,
       roleCode,
       auditChanges.DELETE_ROLE,
-      previousData.toObject(),
+      previousData,
       null,
-      currentUser.toObject()
+      currentUser
     ); // Step 5: Log the deletion action
 
     res

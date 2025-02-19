@@ -1,5 +1,4 @@
 const passport = require("passport");
-const User = require("../models/user");
 const allRegex = require("../utils/allRegex");
 const { logAudit } = require("../queries/auditLogs");
 const {
@@ -8,15 +7,12 @@ const {
   auditChanges,
 } = require("../utils/audit");
 const {
-  hiddenFieldsDefault,
-  hiddenFieldsUser,
   handleError,
   handleSuccess,
   trimAndTestRegex,
   getInvalidRole,
   getRoleId,
   IsObjectIdReferenced,
-  generateUserCode,
   validateRequiredFields,
   getCurrentUser,
 } = require("../utils/helpers");
@@ -50,7 +46,12 @@ const {
   MESSAGE_UPDATE_USER_SUCCESS,
   MESSAGE_ACCESS_DENIED_NO_PERMISSION,
 } = require("../utils/messages");
-const { findUsers, findUser, createUserObj } = require("../queries/users");
+const {
+  findUsers,
+  findUser,
+  createUserObj,
+  deleteUserObj,
+} = require("../queries/users");
 
 module.exports = {
   /**
@@ -142,8 +143,8 @@ module.exports = {
       createdUser.userCode, // Reference created user's code
       auditChanges.CREATE_USER, // Specify change type
       null, // No old data for creation
-      createdUser.toObject(), // New user data
-      currentUser.toObject() // Current user data
+      createdUser, // New user data
+      currentUser // Current user data
     );
 
     //: Send success response with created user details
@@ -208,7 +209,7 @@ module.exports = {
           auditChanges.LOGIN_USER, // Specify the change type (user login)
           null, // No old value for login action
           null, // No new value for login action
-          currentUser.toObject() // Include the current user's details
+          currentUser // Include the current user's details
         );
 
         // Send a successful login response with the current user's information
@@ -256,7 +257,7 @@ module.exports = {
           auditChanges.LOGOUT_USER, // Detail the specific change (logout)
           null, // No old value required for logout
           null, // No new value required for logout
-          currentUser.toObject() // Convert user data to plain object for logging
+          currentUser // Convert user data to plain object for logging
         );
 
         // Send a success response to the client confirming successful logout
@@ -299,8 +300,10 @@ module.exports = {
     }
 
     // Find the existing user using either email or username
-    const existingUser = await User.findOne({
-      $or: [{ email: email?.trim()?.toLowerCase() }, { username }],
+    const existingUser = await findUser({
+      query: {
+        $or: [{ email: email?.trim()?.toLowerCase() }, { username }],
+      },
     });
 
     // Handle case where user does not exist
@@ -341,7 +344,7 @@ module.exports = {
       auditChanges.CHANGE_PASSWORD,
       null,
       null,
-      currentUser.toObject()
+      currentUser
     );
 
     //: Send a success response indicating password change was successful
@@ -375,8 +378,10 @@ module.exports = {
     }
 
     // Check if the user exists in the database using email or username.
-    const existingUser = await User.findOne({
-      $or: [{ email: email?.trim()?.toLowerCase() }, { username }],
+    const existingUser = await findUser({
+      query: {
+        $or: [{ email: email?.trim()?.toLowerCase() }, { username }],
+      },
     });
 
     if (!existingUser) {
@@ -419,7 +424,7 @@ module.exports = {
       auditChanges.CHANGE_PASSWORD,
       null,
       null,
-      currentUser.toObject()
+      currentUser
     );
 
     // Send a success response to the client.
@@ -567,22 +572,13 @@ module.exports = {
     const userBeforeUpdate = await getCurrentUser(userCode);
 
     // Update the user's email and username
-    await User.findOneAndUpdate(
-      { userCode },
-      { username, email: email.trim().toLowerCase() }
-    );
+    await updatedUser({ userCode, username, email });
 
     // Retrieve the updated user data
-    const updatedUser = await User.findOne(
-      { userCode },
-      hiddenFieldsUser
-    ).populate({
-      path: "role",
-      select: hiddenFieldsDefault,
-      populate: {
-        path: "rolePermissions",
-        select: hiddenFieldsDefault,
-      },
+    const updatedUser = await findUser({
+      query: { userCode },
+      projection: true,
+      populate: true,
     });
 
     if (!updatedUser) {
@@ -598,9 +594,9 @@ module.exports = {
       auditCollections.USERS,
       updatedUser.userCode,
       auditChanges.UPDATE_USER,
-      userBeforeUpdate.toObject(),
-      updatedUser.toObject(),
-      currentUser.toObject()
+      userBeforeUpdate,
+      updatedUser,
+      currentUser
     );
 
     // Send a success response with the updated user data
@@ -636,7 +632,7 @@ module.exports = {
     }
 
     // Check if the user exists in the database
-    const existingUser = await User.findOne({ userCode });
+    const existingUser = await findUser({ query: { userCode } });
     if (!existingUser) {
       return handleError(next, STATUS_CODE_CONFLICT, MESSAGE_USER_NOT_FOUND);
     }
@@ -664,7 +660,7 @@ module.exports = {
     const previousData = await getCurrentUser(userCode);
 
     // Attempt to delete the user
-    const userDeletionResult = await User.deleteOne({ userCode });
+    const userDeletionResult = await deleteUserObj(userCode);
     if (userDeletionResult?.deletedCount === 0) {
       return handleError(
         next,
@@ -682,9 +678,9 @@ module.exports = {
       auditCollections.USERS,
       userCode,
       auditChanges.DELETE_USER,
-      previousData.toObject(),
+      previousData,
       null,
-      currentUser.toObject()
+      currentUser
     );
 
     // Send a success response to the client

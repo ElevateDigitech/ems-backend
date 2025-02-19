@@ -1,4 +1,82 @@
 const buildUserPipeline = ({
+  query = {},
+  projection = false,
+  populate = false,
+}) => {
+  const pipeline = [];
+
+  // 1. Match the query (usually filters like { permissionCode: 'SOME_CODE' })
+  pipeline.push({ $match: query });
+
+  // 2. Limit to 1 document
+  pipeline.push({ $limit: 1 });
+
+  // 2. Lookup (populate role)
+  if (populate) {
+    pipeline.push({
+      $lookup: {
+        from: "roles",
+        localField: "role",
+        foreignField: "_id",
+        as: "role",
+      },
+    });
+    pipeline.push({
+      $unwind: { path: "$role", preserveNullAndEmptyArrays: true },
+    });
+
+    pipeline.push({
+      $lookup: {
+        from: "permissions",
+        localField: "role.rolePermissions",
+        foreignField: "_id",
+        as: "role.rolePermissions",
+      },
+    });
+  }
+
+  // 4. Projection (Optional)
+  if (projection) {
+    const baseProjection = {
+      _id: 0,
+      userCode: 1,
+      username: 1,
+      email: 1,
+      userAllowDeletion: 1,
+      createdAtEpochTimestamp: { $toLong: "$createdAt" },
+      updatedAtEpochTimestamp: { $toLong: "$updatedAt" },
+      role: populate
+        ? {
+            roleCode: "$role.roleCode",
+            roleName: "$role.roleName",
+            roleDescription: "$role.roleDescription",
+            createdAtEpochTimestamp: { $toLong: "$rolecreatedAt" },
+            updatedAtEpochTimestamp: { $toLong: "$role.updatedAt" },
+          }
+        : 1,
+      rolePermissions: populate
+        ? {
+            $map: {
+              input: "$rolePermissions",
+              as: "perm",
+              in: {
+                permissionCode: "$$perm.permissionCode",
+                permissionName: "$$perm.permissionName",
+                permissionDescription: "$$perm.permissionDescription",
+                createdAtEpochTimestamp: { $toLong: "$$perm.createdAt" },
+              },
+            },
+          }
+        : 0,
+    };
+
+    pipeline.push({ $project: baseProjection });
+  }
+
+  return pipeline;
+};
+
+const buildUsersPipeline = ({
   keyword,
   query = {},
   sortField = "_id",
@@ -28,6 +106,15 @@ const buildUserPipeline = ({
     });
     pipeline.push({
       $unwind: { path: "$role", preserveNullAndEmptyArrays: true },
+    });
+
+    pipeline.push({
+      $lookup: {
+        from: "permissions",
+        localField: "role.rolePermissions",
+        foreignField: "_id",
+        as: "rolePermissions",
+      },
     });
   }
 
@@ -66,19 +153,34 @@ const buildUserPipeline = ({
     const baseProjection = {
       _id: 0,
       userCode: 1,
+      username: 1,
       email: 1,
       userAllowDeletion: 1,
-      createdAt: 1,
-      updatedAt: 1,
+      createdAtEpochTimestamp: { $toLong: "$createdAt" },
+      updatedAtEpochTimestamp: { $toLong: "$updatedAt" },
       role: populate
         ? {
             roleCode: "$role.roleCode",
             roleName: "$role.roleName",
             roleDescription: "$role.roleDescription",
-            createdAt: "$role.createdAt",
-            updatedAt: "$role.updatedAt",
+            createdAtEpochTimestamp: { $toLong: "$rolecreatedAt" },
+            updatedAtEpochTimestamp: { $toLong: "$role.updatedAt" },
           }
-        : "$$REMOVE",
+        : 1,
+      rolePermissions: populate
+        ? {
+            $map: {
+              input: "$rolePermissions",
+              as: "perm",
+              in: {
+                permissionCode: "$$perm.permissionCode",
+                permissionName: "$$perm.permissionName",
+                permissionDescription: "$$perm.permissionDescription",
+                createdAtEpochTimestamp: { $toLong: "$$perm.createdAt" },
+              },
+            },
+          }
+        : 0,
     };
 
     pipeline.push({ $project: baseProjection });
@@ -112,4 +214,8 @@ const buildUserCountPipeline = ({ keyword, query = {} }) => {
   return pipeline;
 };
 
-module.exports = { buildUserPipeline, buildUserCountPipeline };
+module.exports = {
+  buildUserPipeline,
+  buildUsersPipeline,
+  buildUserCountPipeline,
+};

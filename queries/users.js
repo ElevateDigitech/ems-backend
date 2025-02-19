@@ -1,13 +1,34 @@
 const User = require("../models/user");
 const {
-  buildUserPipeline,
+  buildUsersPipeline,
   buildUserCountPipeline,
+  buildUserPipeline,
 } = require("../pipelines/users");
-const {
-  hiddenFieldsUser,
-  hiddenFieldsDefault,
-  generateUserCode,
-} = require("../utils/helpers");
+const { generateUserCode } = require("../utils/helpers");
+
+/**
+ * Retrieves a single user from the database using an aggregation pipeline.
+ *
+ * @param {Object} params - The parameters for querying a user.
+ * @param {Object} [params.query={}] - The MongoDB query object to filter the user.
+ * @param {boolean} [params.projection=false] - Whether to apply field projection in the aggregation pipeline.
+ * @param {boolean} [params.populate=false] - Determines if related data should be populated.
+ * @returns {Promise<Object|null>} - A promise that resolves to the user object or null if not found.
+ */
+const findUser = async ({
+  query = {}, // The MongoDB query object to filter the user document..
+  projection = false, // Boolean indicating whether to apply field projection in the aggregation pipeline.
+  populate = false, // Boolean indicating whether to populate fields.
+}) => {
+  // Build the aggregation pipeline with the provided query and projection.
+  const pipeline = buildUserPipeline({ query, projection, populate });
+
+  // Execute the aggregation pipeline using the user model.
+  const result = await User.aggregate(pipeline);
+
+  // Since we expect a single user, return the first document or null if not found.
+  return result.length > 0 ? result[0] : null;
+};
 
 /**
  * Retrieves multiple users from the database with pagination, sorting, search, and population support.
@@ -39,7 +60,7 @@ const findUsers = async ({
   const [results, countResult] = await Promise.all([
     // Fetch paginated, sorted, and optionally populated results
     User.aggregate(
-      buildUserPipeline({
+      buildUsersPipeline({
         query, // MongoDB filter query
         keyword, // Search keyword
         sortField, // Sorting field
@@ -66,30 +87,6 @@ const findUsers = async ({
 
   // Return paginated results along with the total number of matching documents
   return { results, totalCount };
-};
-
-/**
- * Retrieves a single user from the database.
- *
- * @param {Object} params - The parameters for querying a user.
- * @param {Object} params.query - The MongoDB query object to filter the user.
- * @param {boolean} params.options - Determines whether to exclude hidden fields.
- * @param {boolean} params.populated - Determines if related data should be populated.
- * @returns {Promise<Object|null>} - A promise that resolves to the user object or null if not found.
- */
-const findUser = async ({ query = {}, options = false, populated = false }) => {
-  const userQuery = User.findOne(query, options ? hiddenFieldsUser : {});
-
-  return populated
-    ? userQuery.populate({
-        path: "role",
-        select: hiddenFieldsDefault,
-        populate: {
-          path: "rolePermissions",
-          select: hiddenFieldsDefault,
-        },
-      })
-    : userQuery;
 };
 
 /**
@@ -125,33 +122,11 @@ const createUserObj = async ({
  * @param {Object} params - The parameters for updating the profile.
  * @returns {Promise<Object|null>} - A promise that resolves to the updated profile object.
  */
-const updateUserObj = async ({
-  userCode,
-  firstName,
-  lastName,
-  profilePicture,
-  dob,
-  gender,
-  phoneNumber,
-  address,
-  notification,
-  social,
-}) => {
+const updateUserObj = async ({ userCode, username, email }) => {
   // Step 1: Find the profile by its code and update the fields
-  return await Profile.findOneAndUpdate(
+  return await User.findOneAndUpdate(
     { userCode },
-    {
-      firstName,
-      lastName,
-      profilePicture,
-      dob,
-      gender,
-      phoneNumber,
-      address,
-      notification,
-      social,
-      updatedAt: moment().valueOf(), // Step 2: Set the current timestamp for the update
-    }
+    { username, email: email.trim().toLowerCase() }
   );
 };
 
@@ -160,8 +135,8 @@ const deleteUserObj = async (userCode) => {
 };
 
 module.exports = {
-  findUsers,
   findUser,
+  findUsers,
   createUserObj,
   updateUserObj,
   deleteUserObj,

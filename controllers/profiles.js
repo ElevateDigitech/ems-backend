@@ -364,8 +364,8 @@ module.exports = {
       profile.profileCode,
       auditChanges.CREATE_PROFILE,
       null,
-      createdProfile.toObject(),
-      currentUser.toObject()
+      createdProfile ,
+      currentUser 
     );
 
     // Send a success response with the created profile details
@@ -528,9 +528,9 @@ module.exports = {
       auditCollections.PROFILES,
       existingProfile.profileCode,
       auditChanges.UPDATE_PROFILE,
-      previousData.toObject(),
-      updatedProfile.toObject(),
-      currentUser.toObject()
+      previousData ,
+      updatedProfile ,
+      currentUser 
     );
 
     // Send a success response with the updated profile data
@@ -603,9 +603,9 @@ module.exports = {
       auditCollections.PROFILES,
       existingProfile.profileCode,
       auditChanges.DELETE_PROFILE,
-      previousData.toObject(),
+      previousData ,
       null,
-      currentUser.toObject()
+      currentUser 
     );
 
     // Send a success response indicating the profile was deleted successfully

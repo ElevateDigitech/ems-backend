@@ -219,8 +219,8 @@ module.exports = {
       createdStudent.studentCode,
       auditChanges.CREATE_STUDENT,
       null,
-      createdStudent.toObject(),
-      currentUser.toObject()
+      createdStudent ,
+      currentUser 
     );
 
     // Step 8: Send success response with the created student
@@ -298,9 +298,9 @@ module.exports = {
       auditCollections.STUDENTS,
       updatedStudent.studentCode,
       auditChanges.UPDATE_STUDENT,
-      previousData.toObject(),
-      updatedStudent.toObject(),
-      currentUser.toObject()
+      previousData ,
+      updatedStudent ,
+      currentUser 
     );
 
     // Step 10: Send success response with the updated student
@@ -362,9 +362,9 @@ module.exports = {
       auditCollections.STUDENTS,
       previousData.studentCode,
       auditChanges.DELETE_STUDENT,
-      previousData.toObject(),
+      previousData ,
       null,
-      currentUser.toObject()
+      currentUser 
     );
 
     // Step 7: Send success response confirming deletion

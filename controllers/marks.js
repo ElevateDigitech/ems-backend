@@ -316,8 +316,8 @@ module.exports = {
       mark.markCode,
       auditChanges.CREATE_MARK,
       null,
-      createdMark.toObject(),
-      currentUser.toObject()
+      createdMark ,
+      currentUser 
     );
 
     // Step 7: Return the created mark
@@ -410,9 +410,9 @@ module.exports = {
       auditCollections.MARKS,
       markCode,
       auditChanges.UPDATE_MARK,
-      previousData.toObject(),
-      updatedMark.toObject(),
-      currentUser.toObject()
+      previousData ,
+      updatedMark ,
+      currentUser 
     );
 
     // Step 9: Return the updated mark
@@ -474,9 +474,9 @@ module.exports = {
       auditCollections.MARKS,
       mark.markCode,
       auditChanges.DELETE_MARK,
-      previousData.toObject(),
+      previousData ,
       null,
-      currentUser.toObject()
+      currentUser 
     );
 
     // Step 6: Return the success message

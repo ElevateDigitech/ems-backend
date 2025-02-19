@@ -116,8 +116,8 @@ module.exports = {
       createdGender.genderCode,
       auditChanges.CREATE_GENDER,
       null,
-      createdGender.toObject(),
-      currentUser.toObject() // Step 6: Log audit
+      createdGender ,
+      currentUser  // Step 6: Log audit
     );
     res.status(STATUS_CODE_SUCCESS).send(
       handleSuccess(
@@ -161,9 +161,9 @@ module.exports = {
       auditCollections.GENDERS,
       genderCode,
       auditChanges.UPDATE_GENDER,
-      previousData.toObject(),
-      updatedGender.toObject(),
-      currentUser.toObject() // Step 6: Log audit
+      previousData ,
+      updatedGender ,
+      currentUser  // Step 6: Log audit
     );
     res.status(STATUS_CODE_SUCCESS).send(
       handleSuccess(
@@ -210,9 +210,9 @@ module.exports = {
       auditCollections.GENDERS,
       genderCode,
       auditChanges.DELETE_GENDER,
-      previousData.toObject(),
+      previousData ,
       null,
-      currentUser.toObject() // Step 6: Log audit
+      currentUser  // Step 6: Log audit
     );
     res.status(STATUS_CODE_SUCCESS).send(
       handleSuccess(STATUS_CODE_SUCCESS, MESSAGE_DELETE_GENDERS_SUCCESS) // Step 7: Send response

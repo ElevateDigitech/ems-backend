@@ -10,6 +10,7 @@ const session = require("express-session");
 const passport = require("passport");
 const localStrategy = require("passport-local");
 const User = require("./models/user");
+const { findUser } = require("./queries/users");
 
 const MongoStore = require("connect-mongo");
 const helmet = require("helmet");
@@ -136,14 +137,7 @@ passport.serializeUser((user, done) => {
 });
 passport.deserializeUser(async (userCode, done) => {
   try {
-    const user = await User.findOne({ userCode }, hiddenFieldsUser).populate({
-      path: "role",
-      select: hiddenFieldsDefault,
-      populate: {
-        path: "rolePermissions",
-        select: hiddenFieldsDefault,
-      },
-    });
+    const user = await findUser({ query: { userCode }, populate: true });
     done(null, user);
   } catch (err) {
     done(err, null);

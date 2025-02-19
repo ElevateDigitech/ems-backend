@@ -219,8 +219,8 @@ module.exports = {
       createdState.stateCode,
       auditChanges.CREATE_STATE,
       null,
-      createdState.toObject(),
-      currentUser.toObject()
+      createdState ,
+      currentUser 
     );
 
     // Step 8: Send success response with the created state
@@ -295,9 +295,9 @@ module.exports = {
       auditCollections.STATES,
       updatedState.stateCode,
       auditChanges.UPDATE_STATE,
-      previousData.toObject(),
-      updatedState.toObject(),
-      currentUser.toObject()
+      previousData ,
+      updatedState ,
+      currentUser 
     );
 
     // Step 10: Send success response with the updated state
@@ -359,9 +359,9 @@ module.exports = {
       auditCollections.STATES,
       previousData.stateCode,
       auditChanges.DELETE_STATE,
-      previousData.toObject(),
+      previousData ,
       null,
-      currentUser.toObject()
+      currentUser 
     );
 
     // Step 7: Send success response confirming deletion

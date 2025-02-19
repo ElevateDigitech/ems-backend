@@ -11,6 +11,7 @@ const {
 const { basePermissions } = require("./basePermissions");
 const { baseRoles } = require("./baseRoles");
 const { findPermissions } = require("../queries/permissions");
+const { findRoles } = require("../queries/roles");
 
 const DB_URL = process?.env?.DB_URL ?? "";
 mongoose.connect(DB_URL, {
@@ -72,7 +73,7 @@ const seedRoles = async () => {
 const seedUsers = async () => {
   await User.deleteMany({});
 
-  const roles = await Role.find({});
+  const roles = await findRoles({ all: true });
   const adminRoleId = roles?.find((r) => r?.roleName === "ADMIN")?._id ?? "";
   const userObj = {
     userCode: generateUserCode(),

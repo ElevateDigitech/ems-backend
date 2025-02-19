@@ -147,8 +147,8 @@ module.exports = {
       createdSubject.subjectCode,
       auditChanges.CREATE_SUBJECT,
       null,
-      createdSubject.toObject(),
-      currentUser.toObject()
+      createdSubject ,
+      currentUser 
     );
 
     // Step 7: Send success response with created subject details
@@ -210,9 +210,9 @@ module.exports = {
       auditCollections.SUBJECTS,
       updatedSubject.subjectCode,
       auditChanges.UPDATE_SUBJECT,
-      previousData.toObject(),
-      updatedSubject.toObject(),
-      currentUser.toObject()
+      previousData ,
+      updatedSubject ,
+      currentUser 
     );
 
     // Step 8: Send success response with updated subject details
@@ -276,9 +276,9 @@ module.exports = {
       auditCollections.SUBJECTS,
       previousData.subjectCode,
       auditChanges.DELETE_SUBJECT,
-      previousData.toObject(),
+      previousData ,
       null,
-      currentUser.toObject()
+      currentUser 
     );
 
     // Step 7: Send success response confirming deletion

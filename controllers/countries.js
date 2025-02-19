@@ -143,8 +143,8 @@ module.exports = {
       createdCountry.countryCode,
       auditChanges.CREATE_COUNTRY,
       null,
-      createdCountry.toObject(),
-      currentUser.toObject()
+      createdCountry ,
+      currentUser 
     ); // Step 8: Log the creation audit
 
     res
@@ -211,9 +211,9 @@ module.exports = {
       auditCollections.COUNTRIES,
       countryCode,
       auditChanges.UPDATE_COUNTRY,
-      previousData.toObject(),
-      updatedCountry.toObject(),
-      currentUser.toObject()
+      previousData ,
+      updatedCountry ,
+      currentUser 
     ); // Step 10: Log the update audit
 
     res
@@ -268,9 +268,9 @@ module.exports = {
       auditCollections.COUNTRIES,
       countryCode,
       auditChanges.DELETE_COUNTRY,
-      previousData.toObject(),
+      previousData ,
       null,
-      currentUser.toObject()
+      currentUser 
     ); // Step 9: Log the deletion audit
 
     res

@@ -214,8 +214,8 @@ module.exports = {
       createdSection.sectionCode,
       auditChanges.CREATE_SECTION,
       null,
-      createdSection.toObject(),
-      currentUser.toObject()
+      createdSection ,
+      currentUser 
     ); // Step 7: Log the creation action
 
     res
@@ -281,9 +281,9 @@ module.exports = {
       auditCollections.SECTIONS,
       sectionCode,
       auditChanges.UPDATE_SECTION,
-      previousData.toObject(),
-      updatedSection.toObject(),
-      currentUser.toObject()
+      previousData ,
+      updatedSection ,
+      currentUser 
     ); // Step 6: Log the update action
 
     res
@@ -342,9 +342,9 @@ module.exports = {
       auditCollections.SECTIONS,
       sectionCode,
       auditChanges.DELETE_SECTION,
-      previousData.toObject(),
+      previousData ,
       null,
-      currentUser.toObject()
+      currentUser 
     ); // Step 4: Log the deletion action
 
     res

@@ -135,8 +135,8 @@ module.exports = {
       createdClass.classCode,
       auditChanges.CREATE_CLASS,
       null,
-      createdClass.toObject(),
-      currentUser.toObject()
+      createdClass ,
+      currentUser 
     );
 
     // Step 6: Send the created class as the response
@@ -194,9 +194,9 @@ module.exports = {
       auditCollections.CLASSES,
       classCode,
       auditChanges.UPDATE_CLASS,
-      previousData.toObject(),
-      updatedClass.toObject(),
-      currentUser.toObject()
+      previousData ,
+      updatedClass ,
+      currentUser 
     );
 
     // Step 8: Send the updated class as the response
@@ -255,9 +255,9 @@ module.exports = {
       auditCollections.CLASSES,
       classCode,
       auditChanges.DELETE_CLASS,
-      previousData.toObject(),
+      previousData ,
       null,
-      currentUser.toObject()
+      currentUser 
     );
 
     // Step 6: Send deletion success message

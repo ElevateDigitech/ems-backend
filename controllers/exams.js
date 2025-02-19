@@ -127,8 +127,8 @@ module.exports = {
       createdExam.examCode,
       auditChanges.CREATE_EXAM,
       null,
-      createdExam.toObject(),
-      currentUser.toObject()
+      createdExam ,
+      currentUser 
     );
 
     // Step 6: Return success response
@@ -178,9 +178,9 @@ module.exports = {
       auditCollections.EXAMS,
       examCode,
       auditChanges.UPDATE_EXAM,
-      previousData.toObject(),
-      updatedExam.toObject(),
-      currentUser.toObject()
+      previousData ,
+      updatedExam ,
+      currentUser 
     );
 
     // Step 7: Return success response
@@ -236,9 +236,9 @@ module.exports = {
       auditCollections.EXAMS,
       examCode,
       auditChanges.DELETE_EXAM,
-      previousData.toObject(),
+      previousData ,
       null,
-      currentUser.toObject()
+      currentUser 
     );
 
     // Step 6: Return success response
