@@ -32,8 +32,8 @@ const {
   MESSAGE_CITY_TAKEN,
 } = require("../utils/messages");
 const {
-  findCities,
   findCity,
+  findCities,
   formatCityName,
   createCityObj,
   updateCityObj,
@@ -93,8 +93,8 @@ module.exports = {
     // Step 2: Find the city by its code
     const city = await findCity({
       query: { cityCode },
-      options: true,
-      populated: true,
+      projection: true,
+      populate: true,
     });
 
     // Step 3: Return the city if found, else return an error
@@ -246,8 +246,8 @@ module.exports = {
     // Step 5: Log the audit
     const createdCity = await findCity({
       query: { cityCode: city.cityCode },
-      options: true,
-      populated: true,
+      projection: true,
+      populate: true,
     });
     const currentUser = await getCurrentUser(req.user.userCode);
     await logAudit(
@@ -256,8 +256,8 @@ module.exports = {
       city.cityCode,
       auditChanges.CREATE_CITY,
       null,
-      createdCity ,
-      currentUser 
+      createdCity,
+      currentUser
     );
 
     // Step 6: Return the created city
@@ -307,8 +307,8 @@ module.exports = {
     // Step 5: City details before update
     const previousData = await findCity({
       query: { cityCode },
-      options: true,
-      populated: true,
+      projection: true,
+      populate: true,
     });
 
     // Step 6: Update the city details
@@ -322,8 +322,8 @@ module.exports = {
     // Step 7: Log the audit
     const updatedCity = await findCity({
       query: { cityCode },
-      options: true,
-      populated: true,
+      projection: true,
+      populate: true,
     });
     const currentUser = await getCurrentUser(req.user.userCode);
     await logAudit(
@@ -333,7 +333,7 @@ module.exports = {
       auditChanges.UPDATE_CITY,
       previousData,
       updatedCity,
-      currentUser 
+      currentUser
     );
 
     // Step 8: Return the updated city
@@ -375,8 +375,8 @@ module.exports = {
     // Step 4: Delete the city
     const previousData = await findCity({
       query: { cityCode },
-      options: true,
-      populated: true,
+      projection: true,
+      populate: true,
     });
     const deletionResult = await deleteCityObj(cityCode);
     if (deletionResult.deletedCount === 0)
@@ -393,9 +393,9 @@ module.exports = {
       auditCollections.CITIES,
       city.cityCode,
       auditChanges.DELETE_CITY,
-      previousData ,
+      previousData,
       null,
-      currentUser 
+      currentUser
     );
 
     // Step 6: Return the success message

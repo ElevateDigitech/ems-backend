@@ -29,8 +29,8 @@ const {
   MESSAGE_GENDER_TAKEN,
 } = require("../utils/messages");
 const {
-  findGenders,
   findGender,
+  findGenders,
   formatGenderName,
   createGenderObj,
   updateGenderObj,
@@ -80,7 +80,10 @@ module.exports = {
    */
   GetGenderByCode: async (req, res, next) => {
     const { genderCode } = req.body; // Step 1: Extract genderCode from request
-    const gender = await findGender({ query: { genderCode }, options: true }); // Step 2: Find gender
+    const gender = await findGender({
+      query: { genderCode },
+      projection: true,
+    }); // Step 2: Find gender
     return gender
       ? res.status(STATUS_CODE_SUCCESS).send(
           handleSuccess(STATUS_CODE_SUCCESS, MESSAGE_GET_GENDER_SUCCESS, gender) // Step 3: Send success response
@@ -107,7 +110,7 @@ module.exports = {
     await newGender.save(); // Step 5: Save to database
     const createdGender = await findGender({
       query: { genderCode: newGender.genderCode },
-      options: true,
+      projection: true,
     });
     const currentUser = await getCurrentUser(req.user.userCode);
     await logAudit(
@@ -116,8 +119,8 @@ module.exports = {
       createdGender.genderCode,
       auditChanges.CREATE_GENDER,
       null,
-      createdGender ,
-      currentUser  // Step 6: Log audit
+      createdGender,
+      currentUser // Step 6: Log audit
     );
     res.status(STATUS_CODE_SUCCESS).send(
       handleSuccess(
@@ -148,12 +151,12 @@ module.exports = {
       return handleError(next, STATUS_CODE_CONFLICT, MESSAGE_GENDER_TAKEN);
     const previousData = await findGender({
       query: { genderCode },
-      options: true,
+      projection: true,
     }); // Step 4: Get previous data
     await updateGenderObj({ genderCode, genderName: formattedName }); // Step 5: Update
     const updatedGender = await findGender({
       query: { genderCode },
-      options: true,
+      projection: true,
     });
     const currentUser = await getCurrentUser(req.user.userCode);
     await logAudit(
@@ -161,9 +164,9 @@ module.exports = {
       auditCollections.GENDERS,
       genderCode,
       auditChanges.UPDATE_GENDER,
-      previousData ,
-      updatedGender ,
-      currentUser  // Step 6: Log audit
+      previousData,
+      updatedGender,
+      currentUser // Step 6: Log audit
     );
     res.status(STATUS_CODE_SUCCESS).send(
       handleSuccess(
@@ -195,7 +198,7 @@ module.exports = {
       );
     const previousData = await findGender({
       query: { genderCode },
-      options: true,
+      projection: true,
     }); // Step 4: Get previous data
     const deletionResult = await deleteGenderObj(genderCode); // Step 5: Delete
     if (deletionResult.deletedCount === 0)
@@ -204,15 +207,16 @@ module.exports = {
         STATUS_CODE_INTERNAL_SERVER_ERROR,
         MESSAGE_DELETE_GENDERS_ERROR
       );
+    console.log(req.user.userCode);
     const currentUser = await getCurrentUser(req.user.userCode);
     await logAudit(
       auditActions.DELETE,
       auditCollections.GENDERS,
       genderCode,
       auditChanges.DELETE_GENDER,
-      previousData ,
+      previousData,
       null,
-      currentUser  // Step 6: Log audit
+      currentUser // Step 6: Log audit
     );
     res.status(STATUS_CODE_SUCCESS).send(
       handleSuccess(STATUS_CODE_SUCCESS, MESSAGE_DELETE_GENDERS_SUCCESS) // Step 7: Send response

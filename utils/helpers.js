@@ -122,8 +122,8 @@ const validateRequiredFields = (fields) => {
 const getCurrentUser = async (userCode) => {
   return await findUser({
     query: { userCode },
-    options: true,
-    populated: true,
+    projection: true,
+    populate: true,
   });
 };
 

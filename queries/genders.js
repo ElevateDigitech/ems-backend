@@ -1,10 +1,33 @@
 const moment = require("moment-timezone");
 const Gender = require("../models/gender");
-const { hiddenFieldsDefault, generateGenderCode } = require("../utils/helpers");
+const { generateGenderCode } = require("../utils/helpers");
 const {
-  buildGenderPipeline,
+  buildGendersPipeline,
   buildGenderCountPipeline,
+  buildGenderPipeline,
 } = require("../pipelines/genders");
+
+/**
+ * Retrieves a single gender from the database.
+ *
+ * @param {Object} params - The parameters for querying a gender.
+ * @param {Object} params.query - The MongoDB query object to filter the gender.
+ * @param {Object} params.projection - Fields to include or exclude from the result.
+ * @returns {Promise<Object|null>} - A promise that resolves to the gender object or null if not found.
+ */
+const findGender = async ({
+  query = {}, // The MongoDB query object to filter the audit log document..
+  projection = false, // Boolean indicating whether to apply field projection in the aggregation pipeline.
+}) => {
+  // Build the aggregation pipeline with the provided query and projection.
+  const pipeline = buildGenderPipeline({ query, projection });
+
+  // Execute the aggregation pipeline using the audit log model.
+  const result = await Gender.aggregate(pipeline);
+
+  // Since we expect a single audit log, return the first document or null if not found.
+  return result.length > 0 ? result[0] : null;
+};
 
 /**
  * Retrieves multiple genders from the database with pagination, filtering, sorting, and optional projection support.
@@ -35,14 +58,13 @@ const findGenders = async ({
   // 2. Count the total number of gender records matching the query and keyword filter.
   const [results, countResult] = await Promise.all([
     Gender.aggregate(
-      buildGenderPipeline({
+      buildGendersPipeline({
         query,
         keyword,
         sortField,
         sortValue,
         page,
         limit,
-        populate, // Assuming this variable is defined elsewhere for populating references.
         projection, // Apply field projection if requested.
         all,
       })
@@ -60,22 +82,6 @@ const findGenders = async ({
 
   // Return the results and the total count.
   return { results, totalCount };
-};
-
-/**
- * Retrieves a single gender from the database.
- *
- * @param {Object} params - The parameters for querying a gender.
- * @param {Object} params.query - The MongoDB query object to filter the gender.
- * @param {Object} params.options - Fields to include or exclude from the result.
- * @returns {Promise<Object|null>} - A promise that resolves to the gender object or null if not found.
- */
-const findGender = async ({
-  query = {}, // MongoDB query object to filter the gender
-  options = false, // Fields to include/exclude in the result
-}) => {
-  // Step 1: Query the database to find a single gender based on the query criteria
-  return await Gender.findOne(query, options ? hiddenFieldsDefault : {});
 };
 
 /**
@@ -138,8 +144,8 @@ const deleteGenderObj = async (genderCode) => {
 };
 
 module.exports = {
-  findGenders, // Export function to retrieve multiple genders
   findGender, // Export function to retrieve a single gender
+  findGenders, // Export function to retrieve multiple genders
   formatGenderName, // Export function to format gender names
   createGenderObj, // Export function to create a new gender object
   updateGenderObj, // Export function to update an existing gender

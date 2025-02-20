@@ -1,29 +1,48 @@
 const moment = require("moment-timezone");
 const City = require("../models/city");
+const { toCapitalize, generateCityCode } = require("../utils/helpers");
 const {
-  hiddenFieldsDefault,
-  toCapitalize,
-  generateCityCode,
-} = require("../utils/helpers");
-const {
-  buildCityPipeline,
+  buildCitiesPipeline,
   buildCityCountPipeline,
 } = require("../pipelines/cities");
 
 /**
- * Retrieves all cities from the database with support for filtering, searching, sorting, pagination, and optional population of related data.
+ * Retrieves a single city from the database using an aggregation pipeline.
  *
- * @param {Object} params - The parameters for querying cities.
- * @param {Object} [params.query={}] - The MongoDB query object to filter cities (e.g., { country: 'USA' }).
- * @param {string} [params.keyword=""] - Search keyword for text-based search across city fields.
- * @param {string} [params.sortField="_id"] - Field to sort results by (default is '_id').
- * @param {string} [params.sortValue="desc"] - Sorting order: 'asc' for ascending, 'desc' for descending (default is 'desc').
- * @param {number} [params.page=1] - Current page number for pagination (default is 1).
- * @param {number} [params.limit=10] - Number of results per page (default is 10).
- * @param {boolean} [params.populate=false] - Whether to populate related data in the results (default is false).
- * @param {boolean} [params.projection=false] - Whether to apply field projection.
- * @param {boolean} [params.all=false] - Whether to query all without pagination.
- * @returns {Promise<{results: Array, totalCount: number}>} - A promise that resolves to an object containing an array of cities and the total count of matching documents.
+ * @param {Object} params - Parameters for querying a city.
+ * @param {Object} params.query - MongoDB query to filter the city.
+ * @param {Object} params.projection - Fields to include/exclude.
+ * @param {boolean} params.populate - Whether to populate related fields.
+ * @returns {Promise<Object|null>} - The city object or null if not found.
+ */
+const findCity = async ({
+  query = {},
+  projection = false,
+  populate = false,
+}) => {
+  const pipeline = buildAuditLogPipeline({ query, projection, populate });
+
+  // Execute aggregation pipeline
+  const result = await AuditLog.aggregate(pipeline);
+
+  // Return the first document or null if not found
+  return result.length > 0 ? result[0] : null;
+};
+
+/**
+ * Retrieves multiple cities with filtering, searching, sorting, and pagination.
+ *
+ * @param {Object} params - Query parameters.
+ * @param {Object} [params.query={}] - MongoDB query to filter cities.
+ * @param {string} [params.keyword=""] - Search term for city fields.
+ * @param {string} [params.sortField="_id"] - Field to sort by.
+ * @param {string} [params.sortValue="desc"] - Sort direction: 'asc' or 'desc'.
+ * @param {number} [params.page=1] - Page number for pagination.
+ * @param {number} [params.limit=10] - Number of results per page.
+ * @param {boolean} [params.populate=false] - Populate related fields.
+ * @param {boolean} [params.projection=false] - Apply field projection.
+ * @param {boolean} [params.all=false] - Fetch all without pagination.
+ * @returns {Promise<{results: Array, totalCount: number}>} - Cities and total count.
  */
 const findCities = async ({
   query = {},
@@ -36,12 +55,9 @@ const findCities = async ({
   projection = false,
   all = false,
 }) => {
-  // Perform two concurrent aggregation operations:
-  // 1. Fetch paginated and sorted city data.
-  // 2. Count the total number of matching documents.
   const [results, countResult] = await Promise.all([
     City.aggregate(
-      buildCityPipeline({
+      buildCitiesPipeline({
         query,
         keyword,
         sortField,
@@ -61,63 +77,34 @@ const findCities = async ({
     ),
   ]);
 
-  // Extract total count from the aggregation result; fallback to 0 if not available
+  // Extract total count or fallback to 0
   const totalCount = countResult[0]?.totalCount || 0;
 
-  // Return results along with the total document count
   return { results, totalCount };
 };
 
 /**
- * Retrieves a single city from the database.
+ * Capitalizes the city name.
  *
- * @param {Object} params - The parameters for querying a city.
- * @param {Object} params.query - The MongoDB query object to filter the city.
- * @param {Object} params.options - Fields to include or exclude from the result.
- * @param {boolean} params.populated - Determines if related data should be populated.
- * @returns {Promise<Object|null>} - A promise that resolves to the city object or null if not found.
- */
-const findCity = async ({ query = {}, options = false, populated = false }) => {
-  const cityQuery = City.findOne(query, options ? hiddenFieldsDefault : {}); // Step 1: Build the base query to find a city
-
-  // Step 2: Conditionally populate related state and country data if populated flag is true
-  return populated
-    ? cityQuery
-        .populate({
-          path: "state",
-          select: hiddenFieldsDefault,
-          populate: {
-            path: "country",
-            select: hiddenFieldsDefault,
-          },
-        })
-        .populate("country", hiddenFieldsDefault)
-    : cityQuery;
-};
-
-/**
- * Formats city name by capitalizing the input.
- *
- * @param {string} name - The city name to format.
- * @returns {string} - The formatted city name.
+ * @param {string} name - City name.
+ * @returns {string} - Capitalized city name.
  */
 const formatCityName = (name) => {
-  return toCapitalize(name); // Step 1: Capitalize the city name
+  return toCapitalize(name);
 };
 
 /**
  * Creates a new city object.
  *
- * @param {Object} params - The parameters to create the city object.
- * @param {string} params.name - The name of the city.
- * @param {string} params.state - The associated state ID.
- * @param {string} params.country - The associated country ID.
- * @returns {Object} - The newly created city object.
+ * @param {Object} params - City details.
+ * @param {string} params.name - City name.
+ * @param {string} params.state - State ID.
+ * @param {string} params.country - Country ID.
+ * @returns {Object} - New city object instance.
  */
 const createCityObj = async ({ name, state, country }) => {
-  const cityCode = generateCityCode(); // Step 1: Generate a unique city code
+  const cityCode = generateCityCode();
 
-  // Step 2: Create and return the new city object
   return new City({
     cityCode,
     name,
@@ -127,42 +114,43 @@ const createCityObj = async ({ name, state, country }) => {
 };
 
 /**
- * Updates an existing city in the database.
+ * Updates an existing city.
  *
- * @param {Object} params - The parameters for updating the city.
- * @param {string} params.cityCode - The unique code of the city to update.
- * @param {string} params.name - The new name for the city.
- * @param {string} params.state - The new associated state ID.
- * @param {string} params.country - The new associated country ID.
- * @returns {Promise<Object|null>} - A promise that resolves to the updated city object.
+ * @param {Object} params - Update details.
+ * @param {string} params.cityCode - City code to identify the city.
+ * @param {string} params.name - Updated city name.
+ * @param {string} params.state - Updated state ID.
+ * @param {string} params.country - Updated country ID.
+ * @returns {Promise<Object|null>} - Updated city object.
  */
 const updateCityObj = async ({ cityCode, name, state, country }) => {
   return await City.findOneAndUpdate(
-    { cityCode }, // Step 1: Identify the city by its code
+    { cityCode },
     {
-      name, // Step 2: Update city name
-      state, // Step 3: Update state
-      country, // Step 4: Update country
-      updatedAt: moment().valueOf(), // Step 5: Set the current timestamp for the update
-    }
+      name,
+      state,
+      country,
+      updatedAt: moment().valueOf(),
+    },
+    { new: true } // Return updated document
   );
 };
 
 /**
- * Deletes a city from the database.
+ * Deletes a city by cityCode.
  *
- * @param {string} cityCode - The unique code of the city to delete.
- * @returns {Promise<Object>} - A promise that resolves to the deletion result.
+ * @param {string} cityCode - City code.
+ * @returns {Promise<Object>} - Deletion result.
  */
 const deleteCityObj = async (cityCode) => {
-  return await City.deleteOne({ cityCode }); // Step 1: Delete the city document by cityCode
+  return await City.deleteOne({ cityCode });
 };
 
 module.exports = {
-  findCities, // Export function to retrieve multiple cities
-  findCity, // Export function to retrieve a single city
-  formatCityName, // Export function to format city name
-  createCityObj, // Export function to create a new city
-  updateCityObj, // Export function to update an existing city
-  deleteCityObj, // Export function to delete a city
+  findCity,
+  findCities,
+  formatCityName,
+  createCityObj,
+  updateCityObj,
+  deleteCityObj,
 };

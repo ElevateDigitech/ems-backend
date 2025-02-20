@@ -1,4 +1,128 @@
 const buildCityPipeline = ({
+  query = {},
+  projection = false,
+  populate = false,
+}) => {
+  const pipeline = [];
+
+  // 1. Match exact filters
+  if (Object.keys(query).length > 0) {
+    pipeline.push({ $match: query });
+  }
+  pipeline.push({ $limit: 1 });
+
+  // 2. Lookup (populate state and country)
+  if (populate) {
+    pipeline.push(
+      {
+        $lookup: {
+          from: "states",
+          localField: "state",
+          foreignField: "_id",
+          as: "state",
+        },
+      },
+      {
+        $unwind: {
+          path: "$state",
+          preserveNullAndEmptyArrays: true,
+        },
+      },
+      {
+        $lookup: {
+          from: "countries",
+          localField: "state.country",
+          foreignField: "_id",
+          as: "country",
+        },
+      },
+      {
+        $unwind: {
+          path: "$state.country",
+          preserveNullAndEmptyArrays: true,
+        },
+      },
+      {
+        $lookup: {
+          from: "countries",
+          localField: "country",
+          foreignField: "_id",
+          as: "country",
+        },
+      },
+      {
+        $unwind: {
+          path: "$country",
+          preserveNullAndEmptyArrays: true,
+        },
+      }
+    );
+  }
+
+  // 3. Keyword Search (LIKE Match on All Fields)
+  if (keyword && keyword.trim().length > 0) {
+    const keywordRegex = new RegExp(keyword, "i"); // Case-insensitive regex for "LIKE"
+
+    const searchConditions = [{ name: { $regex: keywordRegex } }];
+    if (populate) {
+      searchConditions.push(
+        ...[
+          { "state.name": { $regex: keywordRegex } },
+          { "country.name": { $regex: keywordRegex } },
+        ]
+      );
+    }
+
+    pipeline.push({
+      $match: {
+        $or: searchConditions,
+      },
+    });
+  }
+
+  // 4. Projection
+  if (projection) {
+    const baseProjection = {
+      cityCode: 1,
+      name: 1,
+      createdAtEpochTimestamp: { $toLong: "$createdAt" },
+      updatedAtEpochTimestamp: { $toLong: "$updatedAt" },
+      state: populate
+        ? {
+            stateCode: "$state.stateCode",
+            name: "$state.name",
+            iso: "$state.iso",
+            country: {
+              countryCode: "$country.countryCode",
+              name: "$country.name",
+              iso2: "$country.iso2",
+              iso3: "$country.iso3",
+              createdAtEpochTimestamp: { $toLong: "$country.createdAt" },
+              updatedAtEpochTimestamp: { $toLong: "$country.updatedAt" },
+            },
+            createdAtEpochTimestamp: { $toLong: "$state.createdAt" },
+            updatedAtEpochTimestamp: { $toLong: "$state.updatedAt" },
+          }
+        : 1,
+      country: populate
+        ? {
+            countryCode: "$country.countryCode",
+            name: "$country.name",
+            iso2: "$country.iso2",
+            iso3: "$country.iso3",
+            createdAtEpochTimestamp: { $toLong: "$country.createdAt" },
+            updatedAtEpochTimestamp: { $toLong: "$country.updatedAt" },
+          }
+        : 1,
+    };
+
+    pipeline.push({ $project: baseProjection });
+  }
+
+  return pipeline;
+};
+
+const buildCitiesPipeline = ({
   keyword,
   query = {},
   sortField = "_id",
@@ -36,6 +160,20 @@ const buildCityPipeline = ({
       {
         $lookup: {
           from: "countries",
+          localField: "state.country",
+          foreignField: "_id",
+          as: "country",
+        },
+      },
+      {
+        $unwind: {
+          path: "$state.country",
+          preserveNullAndEmptyArrays: true,
+        },
+      },
+      {
+        $lookup: {
+          from: "countries",
           localField: "country",
           foreignField: "_id",
           as: "country",
@@ -53,14 +191,15 @@ const buildCityPipeline = ({
   // 3. Keyword Search (LIKE Match on All Fields)
   if (keyword && keyword.trim().length > 0) {
     const keywordRegex = new RegExp(keyword, "i"); // Case-insensitive regex for "LIKE"
-
-    const searchConditions = [
-      { cityCode: { $regex: keywordRegex } },
-      { name: { $regex: keywordRegex } },
-      { "state.name": { $regex: keywordRegex } },
-      { "country.name": { $regex: keywordRegex } },
-    ];
-
+    const searchConditions = [{ name: { $regex: keywordRegex } }];
+    if (populate) {
+      searchConditions.push(
+        ...[
+          { "state.name": { $regex: keywordRegex } },
+          { "country.name": { $regex: keywordRegex } },
+        ]
+      );
+    }
     pipeline.push({
       $match: {
         $or: searchConditions,
@@ -85,10 +224,35 @@ const buildCityPipeline = ({
     const baseProjection = {
       cityCode: 1,
       name: 1,
-      createdAt: 1,
-      updatedAt: 1,
-      state: 1,
-      country: 1,
+      createdAtEpochTimestamp: { $toLong: "$createdAt" },
+      updatedAtEpochTimestamp: { $toLong: "$updatedAt" },
+      state: populate
+        ? {
+            stateCode: "$state.stateCode",
+            name: "$state.name",
+            iso: "$state.iso",
+            country: {
+              countryCode: "$country.countryCode",
+              name: "$country.name",
+              iso2: "$country.iso2",
+              iso3: "$country.iso3",
+              createdAtEpochTimestamp: { $toLong: "$country.createdAt" },
+              updatedAtEpochTimestamp: { $toLong: "$country.updatedAt" },
+            },
+            createdAtEpochTimestamp: { $toLong: "$state.createdAt" },
+            updatedAtEpochTimestamp: { $toLong: "$state.updatedAt" },
+          }
+        : 1,
+      country: populate
+        ? {
+            countryCode: "$country.countryCode",
+            name: "$country.name",
+            iso2: "$country.iso2",
+            iso3: "$country.iso3",
+            createdAtEpochTimestamp: { $toLong: "$country.createdAt" },
+            updatedAtEpochTimestamp: { $toLong: "$country.updatedAt" },
+          }
+        : 1,
     };
 
     pipeline.push({ $project: baseProjection });
@@ -97,21 +261,72 @@ const buildCityPipeline = ({
   return pipeline;
 };
 
-const buildCityCountPipeline = ({ keyword, query = {} }) => {
+const buildCityCountPipeline = ({ keyword, query = {}, populate = false }) => {
   const pipeline = [];
 
   if (Object.keys(query).length > 0) {
     pipeline.push({ $match: query });
   }
 
+  if (populate) {
+    pipeline.push(
+      {
+        $lookup: {
+          from: "states",
+          localField: "state",
+          foreignField: "_id",
+          as: "state",
+        },
+      },
+      {
+        $unwind: {
+          path: "$state",
+          preserveNullAndEmptyArrays: true,
+        },
+      },
+      {
+        $lookup: {
+          from: "countries",
+          localField: "state.country",
+          foreignField: "_id",
+          as: "country",
+        },
+      },
+      {
+        $unwind: {
+          path: "$state.country",
+          preserveNullAndEmptyArrays: true,
+        },
+      },
+      {
+        $lookup: {
+          from: "countries",
+          localField: "country",
+          foreignField: "_id",
+          as: "country",
+        },
+      },
+      {
+        $unwind: {
+          path: "$country",
+          preserveNullAndEmptyArrays: true,
+        },
+      }
+    );
+  }
+
+  // 3. Keyword Search (LIKE Match on All Fields)
   if (keyword && keyword.trim().length > 0) {
-    const keywordRegex = new RegExp(keyword, "i");
-
-    const searchConditions = [
-      { cityCode: { $regex: keywordRegex } },
-      { name: { $regex: keywordRegex } },
-    ];
-
+    const keywordRegex = new RegExp(keyword, "i"); // Case-insensitive regex for "LIKE"
+    const searchConditions = [{ name: { $regex: keywordRegex } }];
+    if (populate) {
+      searchConditions.push(
+        ...[
+          { "state.name": { $regex: keywordRegex } },
+          { "country.name": { $regex: keywordRegex } },
+        ]
+      );
+    }
     pipeline.push({
       $match: {
         $or: searchConditions,
@@ -124,4 +339,8 @@ const buildCityCountPipeline = ({ keyword, query = {} }) => {
   return pipeline;
 };
 
-module.exports = { buildCityPipeline, buildCityCountPipeline };
+module.exports = {
+  buildCityPipeline,
+  buildCitiesPipeline,
+  buildCityCountPipeline,
+};
