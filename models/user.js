@@ -42,21 +42,6 @@ const UserSchema = new Schema(
   { toJSON: { virtuals: true }, id: false }
 );
 
-// Virtuals for formatted timestamps
-UserSchema.virtual("createdAtEpochTimestamp").get(function () {
-  return moment(this.createdAt).valueOf();
-});
-
-UserSchema.virtual("updatedAtEpochTimestamp").get(function () {
-  return moment(this.updatedAt).valueOf();
-});
-
-// Middleware for sorting by latest entries
-UserSchema.pre(/^find/, function (next) {
-  this.sort({ _id: -1 });
-  next();
-});
-
 // Plugin for authentication
 UserSchema.plugin(passportLocalMongoose);
 

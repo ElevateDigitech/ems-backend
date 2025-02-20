@@ -36,21 +36,5 @@ const ExamSchema = new Schema(
   defaultOptions
 );
 
-// Virtuals for timestamps
-ExamSchema.virtual("createdAtEpochTimestamp").get(function () {
-  return moment(this.createdAt).valueOf();
-});
-
-ExamSchema.virtual("updatedAtEpochTimestamp").get(function () {
-  return moment(this.updatedAt).valueOf();
-});
-
-// Pre-find middleware to sort results by _id descending
-ExamSchema.pre(/^find/, function (next) {
-  this.sort({ _id: -1 });
-  next();
-});
-
-// Create and export the model
 const Exam = mongoose.model("Exam", ExamSchema);
 module.exports = Exam;

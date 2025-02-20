@@ -52,20 +52,5 @@ const RoleSchema = new Schema(
   defaultOptions
 );
 
-/** Virtuals for Formatted Dates */
-RoleSchema.virtual("createdAtEpochTimestamp").get(function () {
-  return moment(this.createdAt).valueOf();
-});
-
-RoleSchema.virtual("updatedAtEpochTimestamp").get(function () {
-  return moment(this.updatedAt).valueOf();
-});
-
-/** Pre-find Middleware to Sort by Latest */
-RoleSchema.pre(/^find/, function (next) {
-  this.sort({ _id: -1 });
-  next();
-});
-
 const Role = mongoose.model("Role", RoleSchema);
 module.exports = Role;

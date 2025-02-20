@@ -47,20 +47,5 @@ const StudentSchema = new Schema(
   defaultOptions
 );
 
-// Virtuals for timestamps
-StudentSchema.virtual("createdAtEpochTimestamp").get(function () {
-  return moment(this.createdAt).valueOf();
-});
-
-StudentSchema.virtual("updatedAtEpochTimestamp").get(function () {
-  return moment(this.updatedAt).valueOf();
-});
-
-// Pre-find middleware to sort results by _id descending
-StudentSchema.pre(/^find/, function (next) {
-  this.sort({ _id: -1 });
-  next();
-});
-
 const Student = mongoose.model("Student", StudentSchema);
 module.exports = Student;

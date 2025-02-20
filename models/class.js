@@ -36,20 +36,5 @@ const ClassSchema = new Schema(
   defaultOptions
 );
 
-// Virtuals for timestamps
-ClassSchema.virtual("createdAtEpochTimestamp").get(function () {
-  return moment(this.createdAt).valueOf();
-});
-
-ClassSchema.virtual("updatedAtEpochTimestamp").get(function () {
-  return moment(this.updatedAt).valueOf();
-});
-
-// Pre-find middleware to sort results by _id descending
-ClassSchema.pre(/^find/, function (next) {
-  this.sort({ _id: -1 });
-  next();
-});
-
 const Class = mongoose.model("Class", ClassSchema);
 module.exports = Class;

@@ -213,24 +213,5 @@ const ProfileSchema = new Schema(
   defaultOptions
 );
 
-/** Virtuals for Formatted Dates */
-ProfileSchema.virtual("dobEpochTimestamp").get(function () {
-  return moment(this.dob).valueOf();
-});
-
-ProfileSchema.virtual("createdAtEpochTimestamp").get(function () {
-  return moment(this.createdAt).valueOf();
-});
-
-ProfileSchema.virtual("updatedAtEpochTimestamp").get(function () {
-  return moment(this.updatedAt).valueOf();
-});
-
-/** Pre-find Middleware to Sort by Latest */
-ProfileSchema.pre(/^find/, function (next) {
-  this.sort({ _id: -1 });
-  next();
-});
-
 const Profile = mongoose.model("Profile", ProfileSchema);
 module.exports = Profile;

@@ -5,7 +5,8 @@ const {
   buildAuditLogPipeline,
 } = require("../pipelines/auditLogs");
 const { generateAuditCode } = require("../utils/helpers");
-
+const helpers = require("../utils/helpers");
+console.log(helpers);
 /**
  * Retrieves a single audit log from the database using an aggregation pipeline.
  *

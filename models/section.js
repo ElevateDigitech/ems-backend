@@ -41,20 +41,5 @@ const SectionSchema = new Schema(
   defaultOptions
 );
 
-// Virtuals for timestamps
-SectionSchema.virtual("createdAtEpochTimestamp").get(function () {
-  return moment(this.createdAt).valueOf();
-});
-
-SectionSchema.virtual("updatedAtEpochTimestamp").get(function () {
-  return moment(this.updatedAt).valueOf();
-});
-
-// Pre-find middleware to sort results by _id descending
-SectionSchema.pre(/^find/, function (next) {
-  this.sort({ _id: -1 });
-  next();
-});
-
 const Section = mongoose.model("Section", SectionSchema);
 module.exports = Section;

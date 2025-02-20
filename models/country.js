@@ -48,20 +48,5 @@ const CountrySchema = new Schema(
   defaultOptions
 );
 
-// Virtuals for timestamps
-CountrySchema.virtual("createdAtEpochTimestamp").get(function () {
-  return moment(this.createdAt).valueOf();
-});
-
-CountrySchema.virtual("updatedAtEpochTimestamp").get(function () {
-  return moment(this.updatedAt).valueOf();
-});
-
-// Pre-find middleware to sort results by _id descending
-CountrySchema.pre(/^find/, function (next) {
-  this.sort({ _id: -1 });
-  next();
-});
-
 const Country = mongoose.model("Country", CountrySchema);
 module.exports = Country;

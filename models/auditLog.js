@@ -63,14 +63,5 @@ const AuditSchema = new Schema(
   defaultOptions
 );
 
-AuditSchema.virtual("createdAtEpochTimestamp").get(function () {
-  return moment(this.createdAt).valueOf();
-});
-
-AuditSchema.pre(/^find/, function (next) {
-  this.sort({ _id: -1 });
-  next();
-});
-
 const AuditLog = mongoose.model("AuditLog", AuditSchema);
 module.exports = AuditLog;
