@@ -7,10 +7,10 @@ const ExpressResponse = require("./ExpressResponse");
 const fsPromises = require("fs").promises;
 const { STATUS_SUCCESS, STATUS_ERROR } = require("./status");
 const { referenceFields } = require("./referenceFields");
-const { findUser } = require("../queries/users");
 const path = require("path");
 const { findPermission } = require("../queries/permissions");
 const { findRole } = require("../queries/roles");
+const { findUser } = require("../queries/users");
 
 const hiddenFieldsDefault = { __v: 0, _id: 0, id: 0 };
 const hiddenFieldsUser = { __v: 0, _id: 0, salt: 0, hash: 0 };
@@ -120,11 +120,12 @@ const validateRequiredFields = (fields) => {
 };
 
 const getCurrentUser = async (userCode) => {
-  return await findUser({
+  const user = await findUser({
     query: { userCode },
     projection: true,
     populate: true,
   });
+  return user;
 };
 
 const getFileExtension = (filename) => path.extname(filename);

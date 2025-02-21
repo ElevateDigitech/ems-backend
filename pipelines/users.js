@@ -11,7 +11,7 @@ const buildUserPipeline = ({
   // 2. Limit to 1 document
   pipeline.push({ $limit: 1 });
 
-  // 2. Lookup (populate role)
+  // 3. Lookup (populate role)
   if (populate) {
     pipeline.push({
       $lookup: {
@@ -43,31 +43,31 @@ const buildUserPipeline = ({
       username: 1,
       email: 1,
       userAllowDeletion: 1,
-      createdAtEpochTimestamp: { $toLong: "$createdAt" },
+      createdAtEpochTimestamp: { $toLong: "$createdAt" }, // Replace $toLong with $toMillis if needed
       updatedAtEpochTimestamp: { $toLong: "$updatedAt" },
       role: populate
         ? {
             roleCode: "$role.roleCode",
             roleName: "$role.roleName",
             roleDescription: "$role.roleDescription",
-            createdAtEpochTimestamp: { $toLong: "$rolecreatedAt" },
+            rolePermissions: populate
+              ? {
+                  $map: {
+                    input: "$role.rolePermissions",
+                    as: "perm",
+                    in: {
+                      permissionCode: "$$perm.permissionCode",
+                      permissionName: "$$perm.permissionName",
+                      permissionDescription: "$$perm.permissionDescription",
+                      createdAtEpochTimestamp: { $toLong: "$$perm.createdAt" },
+                    },
+                  },
+                }
+              : 0,
+            createdAtEpochTimestamp: { $toLong: "$role.createdAt" },
             updatedAtEpochTimestamp: { $toLong: "$role.updatedAt" },
           }
         : 1,
-      rolePermissions: populate
-        ? {
-            $map: {
-              input: "$rolePermissions",
-              as: "perm",
-              in: {
-                permissionCode: "$$perm.permissionCode",
-                permissionName: "$$perm.permissionName",
-                permissionDescription: "$$perm.permissionDescription",
-                createdAtEpochTimestamp: { $toLong: "$$perm.createdAt" },
-              },
-            },
-          }
-        : 0,
     };
 
     pipeline.push({ $project: baseProjection });
@@ -139,13 +139,17 @@ const buildUsersPipeline = ({
   }
 
   // 4. Sorting
-  pipeline.push({ $sort: { [sortField]: sortValue === "asc" ? 1 : -1 } });
+  const sortDirection = sortValue === "asc" ? 1 : -1;
+  pipeline.push({ $sort: { [sortField]: sortDirection } });
 
   // 5. Pagination (skip if "all" is true)
   if (!all) {
-    const skip = (parseInt(page) - 1) * parseInt(limit);
+    const parsedLimit = parseInt(limit, 10) || 10;
+    const parsedPage = parseInt(page, 10) || 1;
+    const skip = (parsedPage - 1) * parsedLimit;
+
     pipeline.push({ $skip: skip });
-    pipeline.push({ $limit: parseInt(limit) });
+    pipeline.push({ $limit: parsedLimit });
   }
 
   // 6. Projection
@@ -156,31 +160,31 @@ const buildUsersPipeline = ({
       username: 1,
       email: 1,
       userAllowDeletion: 1,
-      createdAtEpochTimestamp: { $toLong: "$createdAt" },
+      createdAtEpochTimestamp: { $toLong: "$createdAt" }, // Use $toMillis if needed
       updatedAtEpochTimestamp: { $toLong: "$updatedAt" },
       role: populate
         ? {
             roleCode: "$role.roleCode",
             roleName: "$role.roleName",
             roleDescription: "$role.roleDescription",
-            createdAtEpochTimestamp: { $toLong: "$rolecreatedAt" },
+            rolePermissions: populate
+              ? {
+                  $map: {
+                    input: "$rolePermissions",
+                    as: "perm",
+                    in: {
+                      permissionCode: "$$perm.permissionCode",
+                      permissionName: "$$perm.permissionName",
+                      permissionDescription: "$$perm.permissionDescription",
+                      createdAtEpochTimestamp: { $toLong: "$$perm.createdAt" },
+                    },
+                  },
+                }
+              : 0,
+            createdAtEpochTimestamp: { $toLong: "$role.createdAt" },
             updatedAtEpochTimestamp: { $toLong: "$role.updatedAt" },
           }
         : 1,
-      rolePermissions: populate
-        ? {
-            $map: {
-              input: "$rolePermissions",
-              as: "perm",
-              in: {
-                permissionCode: "$$perm.permissionCode",
-                permissionName: "$$perm.permissionName",
-                permissionDescription: "$$perm.permissionDescription",
-                createdAtEpochTimestamp: { $toLong: "$$perm.createdAt" },
-              },
-            },
-          }
-        : 0,
     };
 
     pipeline.push({ $project: baseProjection });
@@ -189,22 +193,29 @@ const buildUsersPipeline = ({
   return pipeline;
 };
 
-const buildUserCountPipeline = ({ keyword, query = {} }) => {
+const buildUserCountPipeline = ({ keyword, query = {}, populate }) => {
   const pipeline = [];
 
   if (Object.keys(query).length > 0) {
     pipeline.push({ $match: query });
   }
 
+  // 3. Keyword Search
   if (keyword && keyword.trim().length > 0) {
     const keywordRegex = new RegExp(keyword, "i");
 
+    const userSearchConditions = [
+      { userCode: { $regex: keywordRegex } },
+      { email: { $regex: keywordRegex } },
+    ];
+
+    const roleSearchConditions = populate
+      ? [{ "role.roleName": { $regex: keywordRegex } }]
+      : [];
+
     pipeline.push({
       $match: {
-        $or: [
-          { userCode: { $regex: keywordRegex } },
-          { email: { $regex: keywordRegex } },
-        ],
+        $or: [...userSearchConditions, ...roleSearchConditions],
       },
     });
   }

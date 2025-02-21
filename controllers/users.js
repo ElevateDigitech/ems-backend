@@ -14,7 +14,6 @@ const {
   getRoleId,
   IsObjectIdReferenced,
   validateRequiredFields,
-  getCurrentUser,
 } = require("../utils/helpers");
 const {
   STATUS_CODE_BAD_REQUEST,
@@ -134,7 +133,11 @@ module.exports = {
     });
 
     //: Retrieve the current user performing the registration
-    const currentUser = await getCurrentUser(req.user.userCode);
+    const currentUser = await findUser({
+      query: { userCode: req.user.userCode },
+      projection: true,
+      populate: true,
+    });
 
     //: Log the audit for user creation
     await logAudit(
@@ -199,7 +202,11 @@ module.exports = {
         }
 
         // Retrieve the current user details using the user code
-        const currentUser = await getCurrentUser(user.userCode);
+        const currentUser = await findUser({
+          query: { userCode: user.userCode },
+          projection: true,
+          populate: true,
+        });
 
         // Log the login action in the audit log
         await logAudit(
@@ -236,7 +243,11 @@ module.exports = {
   logout: async (req, res, next) => {
     try {
       // Retrieve the current user using the user code from the request object
-      const currentUser = await getCurrentUser(req.user.userCode);
+      const currentUser = await findUser({
+        query: { userCode: req.user.userCode },
+        projection: true,
+        populate: true,
+      });
 
       // Call the logout function provided by the session handler (like Passport.js)
       req.logout(async (err) => {
@@ -334,7 +345,11 @@ module.exports = {
     await existingUser.save();
 
     // Retrieve the current user information for auditing purposes
-    const currentUser = await getCurrentUser(req.user.userCode);
+    const currentUser = await findUser({
+      query: { userCode: req.user.userCode },
+      projection: true,
+      populate: true,
+    });
 
     // Log the password change action in the audit logs
     await logAudit(
@@ -416,7 +431,11 @@ module.exports = {
     await existingUser.save();
 
     // Log the password change event for auditing purposes.
-    const currentUser = await getCurrentUser(req.user.userCode);
+    const currentUser = await findUser({
+      query: { userCode: req.user.userCode },
+      projection: true,
+      populate: true,
+    });
     await logAudit(
       auditActions.CHANGE,
       auditCollections.USERS,
@@ -509,7 +528,11 @@ module.exports = {
     }
 
     // Retrieve the user based on the provided user code
-    const requestedUser = await getCurrentUser(userCode);
+    const requestedUser = await findUser({
+      query: { userCode },
+      projection: true,
+      populate: true,
+    });
 
     // Check if the user exists
     if (!requestedUser) {
@@ -569,7 +592,11 @@ module.exports = {
     }
 
     // Retrieve current user data before the update for audit logging
-    const userBeforeUpdate = await getCurrentUser(userCode);
+    const userBeforeUpdate = await findUser({
+      query: { userCode },
+      projection: true,
+      populate: true,
+    });
 
     // Update the user's email and username
     await updatedUser({ userCode, username, email });
@@ -586,7 +613,11 @@ module.exports = {
     }
 
     // Retrieve current user information for audit logging
-    const currentUser = await getCurrentUser(req.user.userCode);
+    const currentUser = await findUser({
+      query: { userCode: req.user.userCode },
+      projection: true,
+      populate: true,
+    });
 
     // Log the update action in the audit log
     await logAudit(
@@ -657,7 +688,11 @@ module.exports = {
     }
 
     // Retrieve user details before deletion for audit purposes
-    const previousData = await getCurrentUser(userCode);
+    const previousData = await findUser({
+      query: { userCode },
+      projection: true,
+      populate: true,
+    });
 
     // Attempt to delete the user
     const userDeletionResult = await deleteUserObj(userCode);
@@ -670,7 +705,11 @@ module.exports = {
     }
 
     // Retrieve the current user performing the deletion for audit logging
-    const currentUser = await getCurrentUser(req.user.userCode);
+    const currentUser = await findUser({
+      query: { userCode: req.user.userCode },
+      projection: true,
+      populate: true,
+    });
 
     // Log the deletion action in the audit logs
     await logAudit(

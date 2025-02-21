@@ -8,7 +8,6 @@ const {
   handleError,
   handleSuccess,
   IsObjectIdReferenced,
-  getCurrentUser,
 } = require("../utils/helpers");
 const {
   STATUS_CODE_SUCCESS,
@@ -36,6 +35,7 @@ const {
   updateGenderObj,
   deleteGenderObj,
 } = require("../queries/genders");
+const { findUser } = require("../queries/users");
 
 module.exports = {
   /**
@@ -52,7 +52,7 @@ module.exports = {
       page = 1,
       limit = 10,
     } = req.query;
-
+    console.log(sortField, sortValue);
     const { results, totalCount } = await findGenders({
       keyword,
       sortField,
@@ -112,7 +112,12 @@ module.exports = {
       query: { genderCode: newGender.genderCode },
       projection: true,
     });
-    const currentUser = await getCurrentUser(req.user.userCode);
+
+    const currentUser = await findUser({
+      query: { userCode: req.user.userCode },
+      projection: true,
+      populate: true,
+    });
     await logAudit(
       auditActions.CREATE,
       auditCollections.GENDERS,
@@ -158,7 +163,11 @@ module.exports = {
       query: { genderCode },
       projection: true,
     });
-    const currentUser = await getCurrentUser(req.user.userCode);
+    const currentUser = await findUser({
+      query: { userCode: req.user.userCode },
+      projection: true,
+      populate: true,
+    });
     await logAudit(
       auditActions.UPDATE,
       auditCollections.GENDERS,
@@ -207,8 +216,11 @@ module.exports = {
         STATUS_CODE_INTERNAL_SERVER_ERROR,
         MESSAGE_DELETE_GENDERS_ERROR
       );
-    console.log(req.user.userCode);
-    const currentUser = await getCurrentUser(req.user.userCode);
+    const currentUser = await findUser({
+      query: { userCode: req.user.userCode },
+      projection: true,
+      populate: true,
+    });
     await logAudit(
       auditActions.DELETE,
       auditCollections.GENDERS,

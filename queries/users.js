@@ -78,6 +78,7 @@ const findUsers = async ({
       buildUserCountPipeline({
         query, // MongoDB filter query
         keyword, // Search keyword
+        populate,
       })
     ),
   ]);
