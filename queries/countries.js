@@ -16,7 +16,7 @@ const {
  *
  * @param {Object} params - The parameters for querying a country.
  * @param {Object} params.query - The MongoDB query object to filter the country.
- * @param {Object} params.options - Fields to include or exclude from the result.
+ * @param {Object} params.projection - Fields to include or exclude from the result.
  * @returns {Promise<Object|null>} - A promise that resolves to the country object or null if not found.
  */
 const findCountry = async ({

@@ -1,4 +1,64 @@
 const buildStatePipeline = ({
+  query = {},
+  projection = false,
+  populate = false,
+}) => {
+  const pipeline = [];
+
+  // 1. Apply exact match filters if any fields are provided in the query object
+  if (Object.keys(query).length > 0) {
+    pipeline.push({ $match: query });
+  }
+
+  // 2. Limit the result to only 1 document
+  pipeline.push({ $limit: 1 });
+
+  // 2. Lookup (populate country)
+  if (populate) {
+    pipeline.push({
+      $lookup: {
+        from: "countries",
+        localField: "country",
+        foreignField: "_id",
+        as: "country",
+      },
+    });
+
+    pipeline.push({
+      $unwind: {
+        path: "$country",
+        preserveNullAndEmptyArrays: true,
+      },
+    });
+  }
+
+  // 3. Apply projection if requested
+  if (projection) {
+    const baseProjection = {
+      _id: 0,
+      stateCode: 1,
+      name: 1,
+      iso: 1,
+      country: populate
+        ? {
+            countryCode: "$country.countryCode",
+            name: "$country.name",
+            iso2: "$country.iso2",
+            iso3: "$country.iso3",
+            createdAtEpochTimestamp: { $toLong: "$country.createdAt" },
+            updatedAtEpochTimestamp: { $toLong: "$country.updatedAt" },
+          }
+        : 1,
+      createdAtEpochTimestamp: { $toLong: "$createdAt" }, // Convert createdAt field to long integer
+      updatedAtEpochTimestamp: { $toLong: "$updatedAt" }, // Convert updatedAt field to long integer
+    };
+    pipeline.push({ $project: baseProjection });
+  }
+
+  return pipeline;
+};
+
+const buildStatesPipeline = ({
   keyword,
   query = {},
   sortField = "_id",
@@ -6,7 +66,7 @@ const buildStatePipeline = ({
   page = 1,
   limit = 10,
   projection = false,
-  populate = true,
+  populate = false,
   all = false,
 }) => {
   const pipeline = [];
@@ -40,18 +100,12 @@ const buildStatePipeline = ({
     const keywordRegex = new RegExp(keyword, "i");
 
     const stateSearchConditions = [
-      { stateCode: { $regex: keywordRegex } },
       { name: { $regex: keywordRegex } },
       { iso: { $regex: keywordRegex } },
     ];
 
     const countrySearchConditions = populate
-      ? [
-          { "country.name": { $regex: keywordRegex } },
-          { "country.countryCode": { $regex: keywordRegex } },
-          { "country.iso2": { $regex: keywordRegex } },
-          { "country.iso3": { $regex: keywordRegex } },
-        ]
+      ? [{ "country.name": { $regex: keywordRegex } }]
       : [];
 
     pipeline.push({
@@ -73,48 +127,72 @@ const buildStatePipeline = ({
     pipeline.push({ $limit: parseInt(limit) });
   }
 
+  // 3. Apply projection if requested
   if (projection) {
-    // 6. Projection (Include-Only Fields)
     const baseProjection = {
+      _id: 0,
       stateCode: 1,
       name: 1,
       iso: 1,
-      createdAt: 1,
-      updatedAt: 1,
       country: populate
         ? {
             countryCode: "$country.countryCode",
             name: "$country.name",
             iso2: "$country.iso2",
             iso3: "$country.iso3",
-            createdAt: "$country.createdAt",
+            createdAtEpochTimestamp: { $toLong: "$country.createdAt" },
+            updatedAtEpochTimestamp: { $toLong: "$country.updatedAt" },
           }
-        : "$$REMOVE",
+        : 1,
+      createdAtEpochTimestamp: { $toLong: "$createdAt" }, // Convert createdAt field to long integer
+      updatedAtEpochTimestamp: { $toLong: "$updatedAt" }, // Convert updatedAt field to long integer
     };
-
     pipeline.push({ $project: baseProjection });
   }
 
   return pipeline;
 };
 
-const buildStateCountPipeline = ({ keyword, query = {} }) => {
+const buildStateCountPipeline = ({ keyword, query = {}, populate }) => {
   const pipeline = [];
 
   if (Object.keys(query).length > 0) {
     pipeline.push({ $match: query });
   }
 
+  if (populate) {
+    pipeline.push({
+      $lookup: {
+        from: "countries",
+        localField: "country",
+        foreignField: "_id",
+        as: "country",
+      },
+    });
+
+    pipeline.push({
+      $unwind: {
+        path: "$country",
+        preserveNullAndEmptyArrays: true,
+      },
+    });
+  }
+
   if (keyword && keyword.trim().length > 0) {
     const keywordRegex = new RegExp(keyword, "i");
 
+    const stateSearchConditions = [
+      { name: { $regex: keywordRegex } },
+      { iso: { $regex: keywordRegex } },
+    ];
+
+    const countrySearchConditions = populate
+      ? [{ "country.name": { $regex: keywordRegex } }]
+      : [];
+
     pipeline.push({
       $match: {
-        $or: [
-          { stateCode: { $regex: keywordRegex } },
-          { name: { $regex: keywordRegex } },
-          { iso: { $regex: keywordRegex } },
-        ],
+        $or: [...stateSearchConditions, ...countrySearchConditions],
       },
     });
   }
@@ -128,5 +206,6 @@ const buildStateCountPipeline = ({ keyword, query = {} }) => {
 
 module.exports = {
   buildStatePipeline,
+  buildStatesPipeline,
   buildStateCountPipeline,
 };

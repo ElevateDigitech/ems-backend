@@ -6,9 +6,34 @@ const {
   hiddenFieldsDefault,
 } = require("../utils/helpers");
 const {
-  buildStatePipeline,
+  buildStatesPipeline,
   buildStateCountPipeline,
+  buildStatePipeline,
 } = require("../pipelines/states");
+
+/**
+ * Retrieves a single state from the database.
+ *
+ * @param {Object} params - The parameters for querying a state.
+ * @param {Object} params.query - The MongoDB query object to filter the state.
+ * @param {Object} params.options - Fields to include or exclude from the result.
+ * @param {boolean} params.populated - Determines if related data should be populated.
+ * @returns {Promise<Object|null>} - A promise that resolves to the state object or null if not found.
+ */
+const findState = async ({
+  query = {},
+  projection = false,
+  populate = false,
+}) => {
+  // Build the aggregation pipeline with the provided query and projection.
+  const pipeline = buildStatePipeline({ query, projection, populate });
+
+  // Execute the aggregation pipeline using the audit log model.
+  const result = await State.aggregate(pipeline);
+
+  // Since we expect a single audit log, return the first document or null if not found.
+  return result.length > 0 ? result[0] : null;
+};
 
 /**
  * Retrieves all states from the database with pagination, sorting, filtering, and population support.
@@ -40,7 +65,7 @@ const findStates = async ({
   const [results, countResult] = await Promise.all([
     // Fetch paginated, sorted, and optionally populated results
     State.aggregate(
-      buildStatePipeline({
+      buildStatesPipeline({
         query,
         keyword,
         sortField,
@@ -58,6 +83,7 @@ const findStates = async ({
       buildStateCountPipeline({
         query,
         keyword,
+        populate,
       })
     ),
   ]);
@@ -67,28 +93,6 @@ const findStates = async ({
 
   // Return the results and the total number of matching documents
   return { results, totalCount };
-};
-
-/**
- * Retrieves a single state from the database.
- *
- * @param {Object} params - The parameters for querying a state.
- * @param {Object} params.query - The MongoDB query object to filter the state.
- * @param {Object} params.options - Fields to include or exclude from the result.
- * @param {boolean} params.populated - Determines if related data should be populated.
- * @returns {Promise<Object|null>} - A promise that resolves to the state object or null if not found.
- */
-const findState = async ({
-  query = {},
-  options = false,
-  populated = false,
-}) => {
-  const stateQuery = State.findOne(query, options ? hiddenFieldsDefault : {}); // Step 1: Build the base query to find a state
-
-  // Step 2: Conditionally populate related country data if populated flag is true
-  return populated
-    ? stateQuery.populate("country", hiddenFieldsDefault)
-    : stateQuery;
 };
 
 /**

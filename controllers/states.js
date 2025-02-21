@@ -8,7 +8,6 @@ const {
   IsObjectIdReferenced,
   handleError,
   handleSuccess,
-  getCurrentUser,
 } = require("../utils/helpers");
 const {
   STATUS_CODE_CONFLICT,
@@ -39,6 +38,7 @@ const {
   deleteStateObj,
 } = require("../queries/states");
 const { findCountry } = require("../queries/countries");
+const { findUser } = require("../queries/users");
 
 module.exports = {
   /**
@@ -92,8 +92,8 @@ module.exports = {
     // Step 2: Find the state by its code
     const state = await findState({
       query: { stateCode },
-      options: true,
-      populated: true,
+      projection: true,
+      populate: true,
     });
 
     // Step 3: Handle case when state is not found
@@ -207,20 +207,24 @@ module.exports = {
     // Step 6: Retrieve the newly created state
     const createdState = await findState({
       query: { stateCode: newState.stateCode },
-      options: true,
-      populated: true,
+      projection: true,
+      populate: true,
     });
 
     // Step 7: Log the creation action for auditing
-    const currentUser = await getCurrentUser(req.user.userCode);
+    const currentUser = await findUser({
+      query: { userCode: req.user.userCode },
+      projection: true,
+      populate: true,
+    });
     await logAudit(
       auditActions.CREATE,
       auditCollections.STATES,
       createdState.stateCode,
       auditChanges.CREATE_STATE,
       null,
-      createdState ,
-      currentUser 
+      createdState,
+      currentUser
     );
 
     // Step 8: Send success response with the created state
@@ -269,8 +273,8 @@ module.exports = {
     // Step 6: Retrieve state before updating (for audit)
     const previousData = await findState({
       query: { stateCode },
-      options: true,
-      populated: true,
+      projection: true,
+      populate: true,
     });
 
     // Step 7: Update state details
@@ -284,20 +288,24 @@ module.exports = {
     // Step 8: Retrieve updated state
     const updatedState = await findState({
       query: { stateCode },
-      options: true,
-      populated: true,
+      projection: true,
+      populate: true,
     });
 
     // Step 9: Log the update action for auditing
-    const currentUser = await getCurrentUser(req.user.userCode);
+    const currentUser = await findUser({
+      query: { userCode: req.user.userCode },
+      projection: true,
+      populate: true,
+    });
     await logAudit(
       auditActions.UPDATE,
       auditCollections.STATES,
       updatedState.stateCode,
       auditChanges.UPDATE_STATE,
-      previousData ,
-      updatedState ,
-      currentUser 
+      previousData,
+      updatedState,
+      currentUser
     );
 
     // Step 10: Send success response with the updated state
@@ -339,8 +347,8 @@ module.exports = {
     // Step 4: Retrieve state before deletion (for audit)
     const previousData = await findState({
       query: { stateCode },
-      options: true,
-      populated: true,
+      projection: true,
+      populate: true,
     });
 
     // Step 5: Delete the state
@@ -353,15 +361,19 @@ module.exports = {
       );
 
     // Step 6: Log the deletion action for auditing
-    const currentUser = await getCurrentUser(req.user.userCode);
+    const currentUser = await findUser({
+      query: { userCode: req.user.userCode },
+      projection: true,
+      populate: true,
+    });
     await logAudit(
       auditActions.DELETE,
       auditCollections.STATES,
       previousData.stateCode,
       auditChanges.DELETE_STATE,
-      previousData ,
+      previousData,
       null,
-      currentUser 
+      currentUser
     );
 
     // Step 7: Send success response confirming deletion

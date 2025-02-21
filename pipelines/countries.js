@@ -12,6 +12,7 @@ const buildCountryPipeline = ({ query = {}, projection = false }) => {
   // 3. Apply projection if requested
   if (projection) {
     const baseProjection = {
+      _id: 0,
       countryCode: 1, // Include countryCode field
       name: 1, // Include name field
       iso2: 1, // Include iso2 field
@@ -75,6 +76,7 @@ const buildCountriesPipeline = ({
   // 5. Projection
   if (projection) {
     const baseProjection = {
+      _id: 0,
       countryCode: 1, // Include countryCode field
       name: 1, // Include name field
       iso2: 1, // Include iso2 field

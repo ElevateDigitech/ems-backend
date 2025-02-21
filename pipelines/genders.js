@@ -20,6 +20,7 @@ const buildGenderPipeline = ({ query = {}, projection = false }) => {
   // 3. Apply projection if requested
   if (projection) {
     const baseProjection = {
+      _id: 0,
       genderCode: 1, // Include genderCode field
       genderName: 1, // Include genderName field
       createdAtEpochTimestamp: { $toLong: "$createdAt" }, // Convert createdAt field to long integer
@@ -93,6 +94,7 @@ const buildGendersPipeline = ({
   // 5. Apply projection if requested
   if (projection) {
     const baseProjection = {
+      _id: 0,
       genderCode: 1, // Include genderCode field
       genderName: 1, // Include genderName field
       createdAtEpochTimestamp: { $toLong: "$createdAt" }, // Convert createdAt field to long integer
