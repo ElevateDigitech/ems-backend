@@ -36,6 +36,7 @@ const {
   updateCountryObj,
   deleteCountryObj,
 } = require("../queries/countries");
+const { findUser } = require("../queries/users");
 
 module.exports = {
   /**
@@ -136,15 +137,19 @@ module.exports = {
       query: { countryCode: newCountry.countryCode },
       options: true,
     }); // Step 7: Retrieve the newly created country
-    const currentUser = await getCurrentUser(req.user.userCode);
+    const currentUser = await findUser({
+      query: { userCode: req.user.userCode },
+      projection: true,
+      populate: true,
+    });
     await logAudit(
       auditActions.CREATE,
       auditCollections.COUNTRIES,
       createdCountry.countryCode,
       auditChanges.CREATE_COUNTRY,
       null,
-      createdCountry ,
-      currentUser 
+      createdCountry,
+      currentUser
     ); // Step 8: Log the creation audit
 
     res
@@ -205,15 +210,19 @@ module.exports = {
       query: { countryCode },
       options: true,
     }); // Step 9: Retrieve the updated country
-    const currentUser = await getCurrentUser(req.user.userCode);
+    const currentUser = await findUser({
+      query: { userCode: req.user.userCode },
+      projection: true,
+      populate: true,
+    });
     await logAudit(
       auditActions.UPDATE,
       auditCollections.COUNTRIES,
       countryCode,
       auditChanges.UPDATE_COUNTRY,
-      previousData ,
-      updatedCountry ,
-      currentUser 
+      previousData,
+      updatedCountry,
+      currentUser
     ); // Step 10: Log the update audit
 
     res
@@ -262,15 +271,19 @@ module.exports = {
         MESSAGE_DELETE_COUNTRY_ERROR
       ); // Step 8: Handle deletion error
 
-    const currentUser = await getCurrentUser(req.user.userCode);
+    const currentUser = await findUser({
+      query: { userCode: req.user.userCode },
+      projection: true,
+      populate: true,
+    });
     await logAudit(
       auditActions.DELETE,
       auditCollections.COUNTRIES,
       countryCode,
       auditChanges.DELETE_COUNTRY,
-      previousData ,
+      previousData,
       null,
-      currentUser 
+      currentUser
     ); // Step 9: Log the deletion audit
 
     res

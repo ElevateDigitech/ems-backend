@@ -6,9 +6,32 @@ const {
   toCapitalize,
 } = require("../utils/helpers");
 const {
-  buildCountryPipeline,
+  buildCountriesPipeline,
   buildCountryCountPipeline,
+  buildCountryPipeline,
 } = require("../pipelines/countries");
+
+/**
+ * Retrieves a single country from the database.
+ *
+ * @param {Object} params - The parameters for querying a country.
+ * @param {Object} params.query - The MongoDB query object to filter the country.
+ * @param {Object} params.options - Fields to include or exclude from the result.
+ * @returns {Promise<Object|null>} - A promise that resolves to the country object or null if not found.
+ */
+const findCountry = async ({
+  query = {}, // MongoDB query object to filter the country
+  projection = false, // Fields to include/exclude in the result
+}) => {
+  // Build the aggregation pipeline with the provided query and projection.
+  const pipeline = buildCountryPipeline({ query, projection });
+
+  // Execute the aggregation pipeline using the audit log model.
+  const result = await Country.aggregate(pipeline);
+
+  // Since we expect a single audit log, return the first document or null if not found.
+  return result.length > 0 ? result[0] : null;
+};
 
 /**
  * Retrieves multiple countries from the database with pagination, search, sorting, and projection support.
@@ -37,14 +60,13 @@ const findCountries = async ({
   // Perform parallel aggregation queries to improve performance
   const [results, countResult] = await Promise.all([
     Country.aggregate(
-      buildCountryPipeline({
+      buildCountriesPipeline({
         query,
         keyword,
         sortField,
         sortValue,
         page,
         limit,
-        populate,
         projection,
         all,
       })
@@ -62,22 +84,6 @@ const findCountries = async ({
 
   // Return the results along with the total count
   return { results, totalCount };
-};
-
-/**
- * Retrieves a single country from the database.
- *
- * @param {Object} params - The parameters for querying a country.
- * @param {Object} params.query - The MongoDB query object to filter the country.
- * @param {Object} params.options - Fields to include or exclude from the result.
- * @returns {Promise<Object|null>} - A promise that resolves to the country object or null if not found.
- */
-const findCountry = async ({
-  query = {}, // MongoDB query object to filter the country
-  options = false, // Fields to include/exclude in the result
-}) => {
-  // Step 1: Query the database to find a single country based on the query criteria
-  return await Country.findOne(query, options ? hiddenFieldsDefault : {});
 };
 
 /**

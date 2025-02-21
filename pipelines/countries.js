@@ -1,4 +1,31 @@
-const buildCountryPipeline = ({
+const buildCountryPipeline = ({ query = {}, projection = false }) => {
+  const pipeline = [];
+
+  // 1. Apply exact match filters if any fields are provided in the query object
+  if (Object.keys(query).length > 0) {
+    pipeline.push({ $match: query });
+  }
+
+  // 2. Limit the result to only 1 document
+  pipeline.push({ $limit: 1 });
+
+  // 3. Apply projection if requested
+  if (projection) {
+    const baseProjection = {
+      countryCode: 1, // Include countryCode field
+      name: 1, // Include name field
+      iso2: 1, // Include iso2 field
+      iso3: 1, // Include iso3 field
+      createdAtEpochTimestamp: { $toLong: "$createdAt" }, // Convert createdAt field to long integer
+      updatedAtEpochTimestamp: { $toLong: "$updatedAt" }, // Convert updatedAt field to long integer
+    };
+    pipeline.push({ $project: baseProjection });
+  }
+
+  return pipeline;
+};
+
+const buildCountriesPipeline = ({
   keyword,
   query = {},
   sortField = "_id",
@@ -46,8 +73,16 @@ const buildCountryPipeline = ({
   }
 
   // 5. Projection
-  if (projection && Object.keys(projection).length > 0) {
-    pipeline.push({ $project: projection });
+  if (projection) {
+    const baseProjection = {
+      countryCode: 1, // Include countryCode field
+      name: 1, // Include name field
+      iso2: 1, // Include iso2 field
+      iso3: 1, // Include iso3 field
+      createdAtEpochTimestamp: { $toLong: "$createdAt" }, // Convert createdAt field to long integer
+      updatedAtEpochTimestamp: { $toLong: "$updatedAt" }, // Convert updatedAt field to long integer
+    };
+    pipeline.push({ $project: baseProjection });
   }
 
   return pipeline;
@@ -81,4 +116,8 @@ const buildCountryCountPipeline = ({ keyword, query = {} }) => {
   return pipeline;
 };
 
-module.exports = { buildCountryPipeline, buildCountryCountPipeline };
+module.exports = {
+  buildCountryPipeline,
+  buildCountriesPipeline,
+  buildCountryCountPipeline,
+};
