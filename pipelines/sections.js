@@ -1,4 +1,64 @@
 const buildSectionPipeline = ({
+  query = {},
+  projection = false,
+  populate = true,
+}) => {
+  const pipeline = [];
+
+  // 1. Match exact filters
+  if (Object.keys(query).length > 0) {
+    pipeline.push({ $match: query });
+  }
+
+  // 2. Limit the result to only 1 document
+  pipeline.push({ $limit: 1 });
+
+  // 2. Lookup (populate class)
+  if (populate) {
+    pipeline.push({
+      $lookup: {
+        from: "classes",
+        localField: "class",
+        foreignField: "_id",
+        as: "class",
+      },
+    });
+
+    pipeline.push({
+      $unwind: {
+        path: "$class",
+        preserveNullAndEmptyArrays: true,
+      },
+    });
+  }
+
+  // 6. Projection (Include-Only Fields)
+  if (projection) {
+    const baseProjection = {
+      _id: 0,
+      sectionCode: 1,
+      name: 1,
+      createdAt: 1,
+      updatedAt: 1,
+      class: populate
+        ? {
+            classCode: "$class.classCode",
+            name: "$class.name",
+            createdAtEpochTimestamp: { $toLong: "$country.createdAt" },
+            updatedAtEpochTimestamp: { $toLong: "$country.updatedAt" },
+          }
+        : 1,
+      createdAtEpochTimestamp: { $toLong: "$country.createdAt" },
+      updatedAtEpochTimestamp: { $toLong: "$country.updatedAt" },
+    };
+
+    pipeline.push({ $project: baseProjection });
+  }
+
+  return pipeline;
+};
+
+const buildSectionsPipeline = ({
   keyword,
   query = {},
   sortField = "_id",
@@ -39,10 +99,7 @@ const buildSectionPipeline = ({
   if (keyword && keyword.trim().length > 0) {
     const keywordRegex = new RegExp(keyword, "i");
 
-    const sectionSearchConditions = [
-      { sectionCode: { $regex: keywordRegex } },
-      { name: { $regex: keywordRegex } },
-    ];
+    const sectionSearchConditions = [{ name: { $regex: keywordRegex } }];
 
     const classSearchConditions = populate
       ? [{ "class.name": { $regex: keywordRegex } }]
@@ -70,6 +127,7 @@ const buildSectionPipeline = ({
   // 6. Projection (Include-Only Fields)
   if (projection) {
     const baseProjection = {
+      _id: 0,
       sectionCode: 1,
       name: 1,
       createdAt: 1,
@@ -78,9 +136,12 @@ const buildSectionPipeline = ({
         ? {
             classCode: "$class.classCode",
             name: "$class.name",
-            createdAt: "$class.createdAt",
+            createdAtEpochTimestamp: { $toLong: "$country.createdAt" },
+            updatedAtEpochTimestamp: { $toLong: "$country.updatedAt" },
           }
-        : "$$REMOVE",
+        : 1,
+      createdAtEpochTimestamp: { $toLong: "$country.createdAt" },
+      updatedAtEpochTimestamp: { $toLong: "$country.updatedAt" },
     };
 
     pipeline.push({ $project: baseProjection });
@@ -89,21 +150,49 @@ const buildSectionPipeline = ({
   return pipeline;
 };
 
-const buildSectionCountPipeline = ({ keyword, query = {} }) => {
+const buildSectionCountPipeline = ({
+  keyword,
+  query = {},
+  populate = false,
+}) => {
   const pipeline = [];
 
   if (Object.keys(query).length > 0) {
     pipeline.push({ $match: query });
   }
 
+  // 2. Lookup (populate class)
+  if (populate) {
+    pipeline.push({
+      $lookup: {
+        from: "classes",
+        localField: "class",
+        foreignField: "_id",
+        as: "class",
+      },
+    });
+
+    pipeline.push({
+      $unwind: {
+        path: "$class",
+        preserveNullAndEmptyArrays: true,
+      },
+    });
+  }
+
+  // 3. Keyword Search (LIKE Match on All Fields)
   if (keyword && keyword.trim().length > 0) {
     const keywordRegex = new RegExp(keyword, "i");
+
+    const sectionSearchConditions = [{ name: { $regex: keywordRegex } }];
+
+    const classSearchConditions = populate
+      ? [{ "class.name": { $regex: keywordRegex } }]
+      : [];
+
     pipeline.push({
       $match: {
-        $or: [
-          { sectionCode: { $regex: keywordRegex } },
-          { name: { $regex: keywordRegex } },
-        ],
+        $or: [...sectionSearchConditions, ...classSearchConditions],
       },
     });
   }
@@ -117,5 +206,6 @@ const buildSectionCountPipeline = ({ keyword, query = {} }) => {
 
 module.exports = {
   buildSectionPipeline,
+  buildSectionsPipeline,
   buildSectionCountPipeline,
 };

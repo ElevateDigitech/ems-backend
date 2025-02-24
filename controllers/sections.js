@@ -40,6 +40,7 @@ const {
   deleteSectionObj,
 } = require("../queries/sections");
 const { findClass } = require("../queries/classes");
+const { findUser } = require("../queries/users");
 
 module.exports = {
   /**
@@ -91,8 +92,8 @@ module.exports = {
     const { sectionCode } = req.body;
     const section = await findSection({
       query: { sectionCode },
-      options: true,
-      populated: true,
+      projection: true,
+      populate: true,
     }); // Step 1: Find the section using the provided section code
 
     if (!section) {
@@ -150,23 +151,17 @@ module.exports = {
       populate: true,
       projection: true,
     });
-
-    if (!results.length) {
-      return handleError(
-        next,
-        STATUS_CODE_BAD_REQUEST,
-        MESSAGE_SECTIONS_NOT_FOUND
-      );
-    } // Step 5: Handle error if no section found
     // Step 3: Send the retrieved sections in the response
     res
       .status(STATUS_CODE_SUCCESS)
       .send(
         handleSuccess(
           STATUS_CODE_SUCCESS,
-          MESSAGE_GET_STATE_SUCCESS,
-          results,
-          totalCount
+          results?.length === 0
+            ? MESSAGE_SECTIONS_NOT_FOUND
+            : MESSAGE_GET_STATE_SUCCESS,
+          results?.length === 0 ? [] : results,
+          results?.length === 0 ? 0 : totalCount
         )
       );
   },
@@ -194,7 +189,7 @@ module.exports = {
       return handleError(next, STATUS_CODE_CONFLICT, MESSAGE_CLASS_NOT_FOUND);
     // Step 3: Validate class
 
-    const section = await createSectionObj({
+    const section = createSectionObj({
       name: capitalizedName,
       classId: existingClass._id,
     }); // Step 4: Create new section
@@ -203,19 +198,24 @@ module.exports = {
 
     const createdSection = await findSection({
       query: { sectionCode: section.sectionCode },
-      options: true,
-      populated: true,
+      projection: true,
+      populate: true,
     }); // Step 6: Retrieve the newly created section
 
-    const currentUser = await getCurrentUser(req.user.userCode);
+    const currentUser = await findUser({
+      query: { userCode: req.user.userCode },
+      projection: true,
+      populate: true,
+    });
+
     await logAudit(
       auditActions.CREATE,
       auditCollections.SECTIONS,
       createdSection.sectionCode,
       auditChanges.CREATE_SECTION,
       null,
-      createdSection ,
-      currentUser 
+      createdSection,
+      currentUser
     ); // Step 7: Log the creation action
 
     res
@@ -259,31 +259,36 @@ module.exports = {
 
     const previousData = await findSection({
       query: { sectionCode },
-      options: true,
-      populated: true,
+      projection: true,
+      populate: true,
     });
 
     await updateSectionObj({
       sectionCode,
       name: capitalizedName,
-      class: existingClass._id,
+      classId: existingClass._id,
     }); // Step 5: Update the role in the database
 
     const updatedSection = await findSection({
       query: { sectionCode },
-      options: true,
-      populated: true,
+      projection: true,
+      populate: true,
     }); // Step 6: Log the update action
 
-    const currentUser = await getCurrentUser(req.user.userCode);
+    const currentUser = await findUser({
+      query: { userCode: req.user.userCode },
+      projection: true,
+      populate: true,
+    });
+
     await logAudit(
       auditActions.UPDATE,
       auditCollections.SECTIONS,
       sectionCode,
       auditChanges.UPDATE_SECTION,
-      previousData ,
-      updatedSection ,
-      currentUser 
+      previousData,
+      updatedSection,
+      currentUser
     ); // Step 6: Log the update action
 
     res
@@ -322,8 +327,8 @@ module.exports = {
 
     const previousData = await findSection({
       query: { sectionCode },
-      options: true,
-      populated: true,
+      projection: true,
+      populate: true,
     });
 
     const deletionResult = await deleteSectionObj(sectionCode);
@@ -336,15 +341,20 @@ module.exports = {
       );
     } // Step 3: Handle deletion error
 
-    const currentUser = await getCurrentUser(req.user.userCode);
+    const currentUser = await findUser({
+      query: { userCode: req.user.userCode },
+      projection: true,
+      populate: true,
+    });
+
     await logAudit(
       auditActions.DELETE,
       auditCollections.SECTIONS,
       sectionCode,
       auditChanges.DELETE_SECTION,
-      previousData ,
+      previousData,
       null,
-      currentUser 
+      currentUser
     ); // Step 4: Log the deletion action
 
     res

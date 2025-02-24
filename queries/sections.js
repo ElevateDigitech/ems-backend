@@ -1,14 +1,35 @@
 const moment = require("moment-timezone");
 const Section = require("../models/section");
+const { toCapitalize, generateSectionCode } = require("../utils/helpers");
 const {
-  hiddenFieldsDefault,
-  toCapitalize,
-  generateSectionCode,
-} = require("../utils/helpers");
-const {
-  buildSectionPipeline,
+  buildSectionsPipeline,
   buildSectionCountPipeline,
+  buildSectionPipeline,
 } = require("../pipelines/sections");
+
+/**
+ * Retrieves a single section from the database.
+ *
+ * @param {Object} params - The parameters for querying a section.
+ * @param {Object} params.query - The MongoDB query object to filter the section.
+ * @param {Object} params.options - Fields to include or exclude from the result.
+ * @param {boolean} params.populated - Determines if related data should be populated.
+ * @returns {Promise<Object|null>} - A promise that resolves to the section object or null if not found.
+ */
+const findSection = async ({
+  query = {},
+  projection = false,
+  populate = false,
+}) => {
+  // Build the aggregation pipeline with the provided query and projection.
+  const pipeline = buildSectionPipeline({ query, projection, populate });
+
+  // Execute the aggregation pipeline using the audit log model.
+  const result = await Section.aggregate(pipeline);
+
+  // Since we expect a single audit log, return the first document or null if not found.
+  return result.length > 0 ? result[0] : null;
+};
 
 /**
  * Retrieves sections from the database with support for keyword search, sorting, pagination, and optional population of related data.
@@ -41,7 +62,7 @@ const findSections = async ({
   // 2. Count the total number of sections matching the query and keyword (ignoring pagination).
   const [results, countResult] = await Promise.all([
     Section.aggregate(
-      buildSectionPipeline({
+      buildSectionsPipeline({
         query,
         keyword,
         sortField,
@@ -57,6 +78,7 @@ const findSections = async ({
       buildSectionCountPipeline({
         query,
         keyword,
+        populate,
       })
     ),
   ]);
@@ -66,31 +88,6 @@ const findSections = async ({
 
   // Return both the results and the total count for pagination.
   return { results, totalCount };
-};
-
-/**
- * Retrieves a single section from the database.
- *
- * @param {Object} params - The parameters for querying a section.
- * @param {Object} params.query - The MongoDB query object to filter the section.
- * @param {Object} params.options - Fields to include or exclude from the result.
- * @param {boolean} params.populated - Determines if related data should be populated.
- * @returns {Promise<Object|null>} - A promise that resolves to the section object or null if not found.
- */
-const findSection = async ({
-  query = {},
-  options = false,
-  populated = false,
-}) => {
-  const sectionQuery = Section.findOne(
-    query,
-    options ? hiddenFieldsDefault : {}
-  ); // Step 1: Build the base query
-
-  // Step 2: Conditionally populate related data
-  return populated
-    ? sectionQuery.populate("class", hiddenFieldsDefault)
-    : sectionQuery;
 };
 
 /**
@@ -111,7 +108,7 @@ const formatSectionName = (name) => {
  * @param {string} params.classId - The class ID to associate with the section.
  * @returns {Object} - The newly created section object.
  */
-const createSectionObj = async ({ name, classId }) => {
+const createSectionObj = ({ name, classId }) => {
   const sectionCode = generateSectionCode(); // Step 1: Generate a unique section code
 
   // Step 2: Create and return the new section object
