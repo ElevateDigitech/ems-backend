@@ -36,6 +36,7 @@ const {
   updateClassObj,
   deleteClassObj,
 } = require("../queries/classes");
+const { findUser } = require("../queries/users");
 
 module.exports = {
   /**
@@ -86,7 +87,7 @@ module.exports = {
     const { classCode } = req.body; // Step 1: Extract class code from request
     const classDetails = await findClass({
       query: { classCode },
-      options: true,
+      projection: true,
     }); // Step 2: Find class in database
 
     // Step 3: Return the class details if found, otherwise handle error
@@ -126,17 +127,23 @@ module.exports = {
     // Step 5: Log the creation in audit logs
     const createdClass = await findClass({
       query: { classCode: newClass.classCode },
-      options: true,
+      projection: true,
     });
-    const currentUser = await getCurrentUser(req.user.userCode);
+
+    const currentUser = await findUser({
+      query: { userCode: req.user.userCode },
+      projection: true,
+      populate: true,
+    });
+
     await logAudit(
       auditActions.CREATE,
       auditCollections.CLASSES,
       createdClass.classCode,
       auditChanges.CREATE_CLASS,
       null,
-      createdClass ,
-      currentUser 
+      createdClass,
+      currentUser
     );
 
     // Step 6: Send the created class as the response
@@ -177,7 +184,7 @@ module.exports = {
     // Step 5: Capture current class data before update
     const previousData = await findClass({
       query: { classCode },
-      options: true,
+      projection: true,
     });
 
     // Step 6: Update the class details
@@ -186,17 +193,21 @@ module.exports = {
     // Step 7: Log the update in the audit logs
     const updatedClass = await findClass({
       query: { classCode },
-      options: true,
+      projection: true,
     });
-    const currentUser = await getCurrentUser(req.user.userCode);
+    const currentUser = await findUser({
+      query: { userCode: req.user.userCode },
+      projection: true,
+      populate: true,
+    });
     await logAudit(
       auditActions.UPDATE,
       auditCollections.CLASSES,
       classCode,
       auditChanges.UPDATE_CLASS,
-      previousData ,
-      updatedClass ,
-      currentUser 
+      previousData,
+      updatedClass,
+      currentUser
     );
 
     // Step 8: Send the updated class as the response
@@ -238,7 +249,7 @@ module.exports = {
     // Step 4: Delete the class
     const previousData = await findClass({
       query: { classCode },
-      options: true,
+      projection: true,
     });
     const deletionResult = await deleteClassObj(classCode);
     if (deletionResult.deletedCount === 0)
@@ -249,15 +260,19 @@ module.exports = {
       );
 
     // Step 5: Log the deletion in the audit logs
-    const currentUser = await getCurrentUser(req.user.userCode);
+    const currentUser = await findUser({
+      query: { userCode: req.user.userCode },
+      projection: true,
+      populate: true,
+    });
     await logAudit(
       auditActions.DELETE,
       auditCollections.CLASSES,
       classCode,
       auditChanges.DELETE_CLASS,
-      previousData ,
+      previousData,
       null,
-      currentUser 
+      currentUser
     );
 
     // Step 6: Send deletion success message

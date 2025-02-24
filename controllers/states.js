@@ -152,23 +152,17 @@ module.exports = {
       populate: true,
       projection: true,
     });
-
-    // Step 6: Handle case when no states are found
-    if (!results?.length)
-      return res
-        .status(STATUS_CODE_SUCCESS)
-        .send(
-          handleSuccess(STATUS_CODE_SUCCESS, MESSAGE_STATES_NOT_FOUND, [], 0)
-        );
     // Step 7: Send success response with the list of states
     res
       .status(STATUS_CODE_SUCCESS)
       .send(
         handleSuccess(
           STATUS_CODE_SUCCESS,
-          MESSAGE_GET_STATE_SUCCESS,
-          results,
-          totalCount
+          results?.length === 0
+            ? MESSAGE_STATES_NOT_FOUND
+            : MESSAGE_GET_STATE_SUCCESS,
+          results?.length === 0 ? [] : results,
+          results?.length === 0 ? 0 : totalCount
         )
       );
   },

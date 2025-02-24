@@ -1,4 +1,30 @@
-const buildClassPipeline = ({
+const buildClassPipeline = ({ query = {}, projection = false }) => {
+  const pipeline = [];
+
+  // 1. Match exact filters
+  if (Object.keys(query).length > 0) {
+    pipeline.push({ $match: query });
+  }
+
+  if (projection) {
+    // 5. Projection (Include-Only Fields)
+    const baseProjection = {
+      classCode: 1,
+      name: 1,
+      createdAtEpochTimestamp: { $toLong: "$createdAt" },
+      updatedAtEpochTimestamp: { $toLong: "$updatedAt" },
+    };
+
+    pipeline.push({ $project: baseProjection });
+  }
+
+  // 5. Limit the results to 1 document
+  pipeline.push({ $limit: 1 });
+
+  return pipeline;
+};
+
+const buildClassesPipeline = ({
   keyword,
   query = {},
   sortField = "_id",
@@ -20,10 +46,7 @@ const buildClassPipeline = ({
     const keywordRegex = new RegExp(keyword, "i"); // Case-insensitive regex for "LIKE"
 
     // Dynamic search conditions for class fields
-    const classSearchConditions = [
-      { classCode: { $regex: keywordRegex } },
-      { name: { $regex: keywordRegex } },
-    ];
+    const classSearchConditions = [{ name: { $regex: keywordRegex } }];
 
     pipeline.push({
       $match: {
@@ -49,11 +72,11 @@ const buildClassPipeline = ({
     const baseProjection = {
       classCode: 1,
       name: 1,
-      createdAt: 1,
-      updatedAt: 1,
+      createdAtEpochTimestamp: { $toLong: "$createdAt" },
+      updatedAtEpochTimestamp: { $toLong: "$updatedAt" },
     };
 
-    pipeline.push({ $project: { ...baseProjection, ...projection } });
+    pipeline.push({ $project: baseProjection });
   }
 
   return pipeline;
@@ -85,4 +108,8 @@ const buildClassCountPipeline = ({ keyword, query = {} }) => {
   return pipeline;
 };
 
-module.exports = { buildClassPipeline, buildClassCountPipeline };
+module.exports = {
+  buildClassPipeline,
+  buildClassesPipeline,
+  buildClassCountPipeline,
+};

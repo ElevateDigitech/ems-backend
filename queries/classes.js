@@ -1,10 +1,32 @@
 const moment = require("moment-timezone");
 const Class = require("../models/class");
-const { hiddenFieldsDefault, generateClassCode } = require("../utils/helpers");
+const { generateClassCode } = require("../utils/helpers");
 const {
-  buildClassPipeline,
+  buildClassesPipeline,
   buildClassCountPipeline,
+  buildClassPipeline,
 } = require("../pipelines/classes");
+
+/**
+ * Retrieves a single class from the database.
+ *
+ * @param {Object} params - The parameters for querying a class.
+ * @param {Object} params.query - The MongoDB query object to filter the class.
+ * @param {Boolean} params.projection - Fields to include or exclude from the result.
+ * @returns {Promise<Object|null>} - A promise that resolves to the class object or null if not found.
+ */
+const findClass = async ({
+  query = {}, // MongoDB query object to filter the class
+  projection = false, // Fields to include/exclude in the result
+}) => {
+  const pipeline = buildClassPipeline({ query, projection });
+
+  // Execute aggregation pipeline
+  const result = await Class.aggregate(pipeline);
+
+  // Return the first document or null if not found
+  return result.length > 0 ? result[0] : null;
+};
 
 /**
  * Retrieves multiple classes from the database with pagination, filtering, and sorting support.
@@ -33,14 +55,13 @@ const findClasses = async ({
   // Execute aggregation pipelines concurrently for efficiency.
   const [results, countResult] = await Promise.all([
     Class.aggregate(
-      buildClassPipeline({
+      buildClassesPipeline({
         query,
         keyword,
         sortField,
         sortValue,
         page,
         limit,
-        populate,
         projection,
         all,
       })
@@ -61,22 +82,6 @@ const findClasses = async ({
 };
 
 /**
- * Retrieves a single class from the database.
- *
- * @param {Object} params - The parameters for querying a class.
- * @param {Object} params.query - The MongoDB query object to filter the class.
- * @param {Object} params.options - Fields to include or exclude from the result.
- * @returns {Promise<Object|null>} - A promise that resolves to the class object or null if not found.
- */
-const findClass = async ({
-  query = {}, // MongoDB query object to filter the class
-  options = false, // Fields to include/exclude in the result
-}) => {
-  // Step 1: Query the database to find a single class based on the query criteria
-  return await Class.findOne(query, options ? hiddenFieldsDefault : {});
-};
-
-/**
  * Formats a class name by trimming whitespace and converting it to uppercase.
  *
  * @param {string} name - The class name to format.
@@ -94,7 +99,7 @@ const formatClassName = (name) => {
  * @param {string} params.name - The name of the class.
  * @returns {Object} - The newly created class object.
  */
-const createClassObj = async ({ name }) => {
+const createClassObj = ({ name }) => {
   // Step 1: Generate a unique class code
   const classCode = generateClassCode();
 
