@@ -4,6 +4,7 @@ const { toCapitalize, generateCityCode } = require("../utils/helpers");
 const {
   buildCitiesPipeline,
   buildCityCountPipeline,
+  buildCityPipeline,
 } = require("../pipelines/cities");
 
 /**
@@ -20,10 +21,10 @@ const findCity = async ({
   projection = false,
   populate = false,
 }) => {
-  const pipeline = buildAuditLogPipeline({ query, projection, populate });
+  const pipeline = buildCityPipeline({ query, projection, populate });
 
   // Execute aggregation pipeline
-  const result = await AuditLog.aggregate(pipeline);
+  const result = await City.aggregate(pipeline);
 
   // Return the first document or null if not found
   return result.length > 0 ? result[0] : null;

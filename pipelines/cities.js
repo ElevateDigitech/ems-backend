@@ -9,7 +9,6 @@ const buildCityPipeline = ({
   if (Object.keys(query).length > 0) {
     pipeline.push({ $match: query });
   }
-  pipeline.push({ $limit: 1 });
 
   // 2. Lookup (populate state and country)
   if (populate) {
@@ -31,20 +30,6 @@ const buildCityPipeline = ({
       {
         $lookup: {
           from: "countries",
-          localField: "state.country",
-          foreignField: "_id",
-          as: "country",
-        },
-      },
-      {
-        $unwind: {
-          path: "$state.country",
-          preserveNullAndEmptyArrays: true,
-        },
-      },
-      {
-        $lookup: {
-          from: "countries",
           localField: "country",
           foreignField: "_id",
           as: "country",
@@ -59,27 +44,6 @@ const buildCityPipeline = ({
     );
   }
 
-  // 3. Keyword Search (LIKE Match on All Fields)
-  if (keyword && keyword.trim().length > 0) {
-    const keywordRegex = new RegExp(keyword, "i"); // Case-insensitive regex for "LIKE"
-
-    const searchConditions = [{ name: { $regex: keywordRegex } }];
-    if (populate) {
-      searchConditions.push(
-        ...[
-          { "state.name": { $regex: keywordRegex } },
-          { "country.name": { $regex: keywordRegex } },
-        ]
-      );
-    }
-
-    pipeline.push({
-      $match: {
-        $or: searchConditions,
-      },
-    });
-  }
-
   // 4. Projection
   if (projection) {
     const baseProjection = {
@@ -92,14 +56,6 @@ const buildCityPipeline = ({
             stateCode: "$state.stateCode",
             name: "$state.name",
             iso: "$state.iso",
-            country: {
-              countryCode: "$country.countryCode",
-              name: "$country.name",
-              iso2: "$country.iso2",
-              iso3: "$country.iso3",
-              createdAtEpochTimestamp: { $toLong: "$country.createdAt" },
-              updatedAtEpochTimestamp: { $toLong: "$country.updatedAt" },
-            },
             createdAtEpochTimestamp: { $toLong: "$state.createdAt" },
             updatedAtEpochTimestamp: { $toLong: "$state.updatedAt" },
           }
@@ -119,8 +75,13 @@ const buildCityPipeline = ({
     pipeline.push({ $project: baseProjection });
   }
 
+  // 5. Limit the results to 1 document
+  pipeline.push({ $limit: 1 });
+
   return pipeline;
 };
+
+module.exports = buildCityPipeline;
 
 const buildCitiesPipeline = ({
   keyword,
@@ -154,20 +115,6 @@ const buildCitiesPipeline = ({
       {
         $unwind: {
           path: "$state",
-          preserveNullAndEmptyArrays: true,
-        },
-      },
-      {
-        $lookup: {
-          from: "countries",
-          localField: "state.country",
-          foreignField: "_id",
-          as: "country",
-        },
-      },
-      {
-        $unwind: {
-          path: "$state.country",
           preserveNullAndEmptyArrays: true,
         },
       },
@@ -231,14 +178,6 @@ const buildCitiesPipeline = ({
             stateCode: "$state.stateCode",
             name: "$state.name",
             iso: "$state.iso",
-            country: {
-              countryCode: "$country.countryCode",
-              name: "$country.name",
-              iso2: "$country.iso2",
-              iso3: "$country.iso3",
-              createdAtEpochTimestamp: { $toLong: "$country.createdAt" },
-              updatedAtEpochTimestamp: { $toLong: "$country.updatedAt" },
-            },
             createdAtEpochTimestamp: { $toLong: "$state.createdAt" },
             updatedAtEpochTimestamp: { $toLong: "$state.updatedAt" },
           }

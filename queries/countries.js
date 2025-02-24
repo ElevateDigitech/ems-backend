@@ -1,10 +1,6 @@
 const moment = require("moment-timezone");
 const Country = require("../models/country");
-const {
-  hiddenFieldsDefault,
-  generateCountryCode,
-  toCapitalize,
-} = require("../utils/helpers");
+const { generateCountryCode, toCapitalize } = require("../utils/helpers");
 const {
   buildCountriesPipeline,
   buildCountryCountPipeline,

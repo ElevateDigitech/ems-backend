@@ -111,7 +111,7 @@ const MESSAGE_CITY_NOT_FOUND = "The selected city could not be found";
 const MESSAGE_CITY_NOT_FOUND_UNDER_STATE =
   "The selected city could not be found in the selected state";
 const MESSAGE_CITIES_NOT_FOUND =
-  "There are no cities available under the given country";
+  "There are no cities available under the given country (or) state";
 const MESSAGE_UPDATE_CITY_SUCCESS = "City updated successfully";
 const MESSAGE_CITY_NOT_ALLOWED_DELETE_REFERENCE_EXIST =
   "The selected city is in use and not allowed to be deleted.";

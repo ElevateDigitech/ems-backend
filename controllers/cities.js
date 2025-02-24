@@ -8,7 +8,6 @@ const {
   handleError,
   handleSuccess,
   IsObjectIdReferenced,
-  getCurrentUser,
 } = require("../utils/helpers");
 const {
   STATUS_CODE_CONFLICT,
@@ -41,6 +40,7 @@ const {
 } = require("../queries/cities");
 const { findState } = require("../queries/states");
 const { findCountry } = require("../queries/countries");
+const { findUser } = require("../queries/users");
 
 module.exports = {
   /**
@@ -126,11 +126,11 @@ module.exports = {
     // Step 2: Find the state by its code
     const state = await findState({ query: { stateCode: req.body.stateCode } });
     if (!state)
-      return handleError(
-        next,
-        STATUS_CODE_BAD_REQUEST,
-        MESSAGE_STATE_NOT_FOUND
-      );
+      return res
+        .status(STATUS_CODE_SUCCESS)
+        .send(
+          handleSuccess(STATUS_CODE_SUCCESS, MESSAGE_STATE_NOT_FOUND, [], 0)
+        );
 
     const { results, totalCount } = await findCities({
       query: { state: state._id },
@@ -143,18 +143,18 @@ module.exports = {
       projection: true,
     });
     // Step 4: Return the cities if found, else return an error
-    return cities.length
-      ? res
-          .status(STATUS_CODE_SUCCESS)
-          .send(
-            handleSuccess(
-              STATUS_CODE_SUCCESS,
-              MESSAGE_GET_CITY_SUCCESS,
-              results,
-              totalCount
-            )
-          )
-      : handleError(next, STATUS_CODE_BAD_REQUEST, MESSAGE_CITIES_NOT_FOUND);
+    return res
+      .status(STATUS_CODE_SUCCESS)
+      .send(
+        handleSuccess(
+          STATUS_CODE_SUCCESS,
+          results.length === 0
+            ? MESSAGE_CITIES_NOT_FOUND
+            : MESSAGE_GET_CITY_SUCCESS,
+          results.length === 0 ? [] : results,
+          results.length === 0 ? 0 : totalCount
+        )
+      );
   },
 
   /**
@@ -178,11 +178,11 @@ module.exports = {
       query: { countryCode: req.body.countryCode },
     });
     if (!country)
-      return handleError(
-        next,
-        STATUS_CODE_BAD_REQUEST,
-        MESSAGE_COUNTRY_NOT_FOUND
-      );
+      return res
+        .status(STATUS_CODE_SUCCESS)
+        .send(
+          handleSuccess(STATUS_CODE_SUCCESS, MESSAGE_COUNTRY_NOT_FOUND, [], 0)
+        );
 
     const { results, totalCount } = await findCities({
       query: { country: country._id },
@@ -196,18 +196,18 @@ module.exports = {
     });
 
     // Step 4: Return the cities if found, else return an error
-    return cities.length
-      ? res
-          .status(STATUS_CODE_SUCCESS)
-          .send(
-            handleSuccess(
-              STATUS_CODE_SUCCESS,
-              MESSAGE_GET_CITY_SUCCESS,
-              results,
-              totalCount
-            )
-          )
-      : handleError(next, STATUS_CODE_BAD_REQUEST, MESSAGE_CITIES_NOT_FOUND);
+    return res
+      .status(STATUS_CODE_SUCCESS)
+      .send(
+        handleSuccess(
+          STATUS_CODE_SUCCESS,
+          results.length === 0
+            ? MESSAGE_CITIES_NOT_FOUND
+            : MESSAGE_GET_CITY_SUCCESS,
+          results.length === 0 ? [] : results,
+          results.length === 0 ? 0 : totalCount
+        )
+      );
   },
 
   /**
@@ -219,21 +219,26 @@ module.exports = {
    */
   CreateCity: async (req, res, next) => {
     const { name, stateCode, countryCode } = req.body;
+    console.log(name, stateCode, countryCode);
     const formattedName = formatCityName(name); // Step 1: Format city name
+    console.log(formattedName);
 
     // Step 2: Check if the city already exists
     const existingCity = await findCity({ query: { name: formattedName } });
     if (existingCity)
       return handleError(next, STATUS_CODE_CONFLICT, MESSAGE_CITY_EXIST);
+    console.log(existingCity);
 
     // Step 3: Validate state and country
     const state = await findState({ query: { stateCode } });
     if (!state)
       return handleError(next, STATUS_CODE_CONFLICT, MESSAGE_STATE_NOT_FOUND);
+    console.log(state);
 
     const country = await findCountry({ query: { countryCode } });
     if (!country)
       return handleError(next, STATUS_CODE_CONFLICT, MESSAGE_COUNTRY_NOT_FOUND);
+    console.log(country);
 
     // Step 4: Create and save the city
     const city = await createCityObj({
@@ -243,13 +248,22 @@ module.exports = {
     });
     await city.save();
 
+    console.log(city);
+
     // Step 5: Log the audit
     const createdCity = await findCity({
       query: { cityCode: city.cityCode },
       projection: true,
       populate: true,
     });
-    const currentUser = await getCurrentUser(req.user.userCode);
+    console.log(createdCity);
+    const currentUser = await findUser({
+      query: { userCode: req.user.userCode },
+      projection: true,
+      populate: true,
+    });
+    console.log(currentUser);
+
     await logAudit(
       auditActions.CREATE,
       auditCollections.CITIES,
@@ -325,7 +339,12 @@ module.exports = {
       projection: true,
       populate: true,
     });
-    const currentUser = await getCurrentUser(req.user.userCode);
+    const currentUser = await findUser({
+      query: { userCode: req.user.userCode },
+      projection: true,
+      populate: true,
+    });
+
     await logAudit(
       auditActions.UPDATE,
       auditCollections.CITIES,
@@ -387,7 +406,12 @@ module.exports = {
       );
 
     // Step 5: Log the audit
-    const currentUser = await getCurrentUser(req.user.userCode);
+    const currentUser = await findUser({
+      query: { userCode: req.user.userCode },
+      projection: true,
+      populate: true,
+    });
+
     await logAudit(
       auditActions.DELETE,
       auditCollections.CITIES,
