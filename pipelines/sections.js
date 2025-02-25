@@ -1,7 +1,7 @@
 const buildSectionPipeline = ({
   query = {},
   projection = false,
-  populate = true,
+  populate = false,
 }) => {
   const pipeline = [];
 
@@ -44,12 +44,12 @@ const buildSectionPipeline = ({
         ? {
             classCode: "$class.classCode",
             name: "$class.name",
-            createdAtEpochTimestamp: { $toLong: "$country.createdAt" },
-            updatedAtEpochTimestamp: { $toLong: "$country.updatedAt" },
+            createdAtEpochTimestamp: { $toLong: "$class.createdAt" },
+            updatedAtEpochTimestamp: { $toLong: "$class.updatedAt" },
           }
         : 1,
-      createdAtEpochTimestamp: { $toLong: "$country.createdAt" },
-      updatedAtEpochTimestamp: { $toLong: "$country.updatedAt" },
+      createdAtEpochTimestamp: { $toLong: "$createdAt" },
+      updatedAtEpochTimestamp: { $toLong: "$updatedAt" },
     };
 
     pipeline.push({ $project: baseProjection });
@@ -66,7 +66,7 @@ const buildSectionsPipeline = ({
   page = 1,
   limit = 10,
   projection = false,
-  populate = true,
+  populate = false,
   all = false,
 }) => {
   const pipeline = [];
@@ -136,12 +136,12 @@ const buildSectionsPipeline = ({
         ? {
             classCode: "$class.classCode",
             name: "$class.name",
-            createdAtEpochTimestamp: { $toLong: "$country.createdAt" },
-            updatedAtEpochTimestamp: { $toLong: "$country.updatedAt" },
+            createdAtEpochTimestamp: { $toLong: "$class.createdAt" },
+            updatedAtEpochTimestamp: { $toLong: "$class.updatedAt" },
           }
         : 1,
-      createdAtEpochTimestamp: { $toLong: "$country.createdAt" },
-      updatedAtEpochTimestamp: { $toLong: "$country.updatedAt" },
+      createdAtEpochTimestamp: { $toLong: "$createdAt" },
+      updatedAtEpochTimestamp: { $toLong: "$updatedAt" },
     };
 
     pipeline.push({ $project: baseProjection });

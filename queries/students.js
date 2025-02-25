@@ -1,14 +1,35 @@
 const moment = require("moment-timezone");
 const Student = require("../models/student");
+const { toCapitalize, generateStudentCode } = require("../utils/helpers");
 const {
-  hiddenFieldsDefault,
-  toCapitalize,
-  generateStudentCode,
-} = require("../utils/helpers");
-const {
-  buildStudentPipeline,
+  buildStudentsPipeline,
   buildStudentCountPipeline,
+  buildStudentPipeline,
 } = require("../pipelines/students");
+
+/**
+ * Retrieves a single student from the database.
+ *
+ * @param {Object} params - The parameters for querying a student.
+ * @param {Object} params.query - The MongoDB query object to filter the student.
+ * @param {Object} params.options - Fields to include or exclude from the result.
+ * @param {boolean} params.populated - Determines if related data should be populated.
+ * @returns {Promise<Object|null>} - A promise that resolves to the student object or null if not found.
+ */
+const findStudent = async ({
+  query = {},
+  projection = false,
+  populate = false,
+}) => {
+  // Build the aggregation pipeline with the provided query and projection.
+  const pipeline = buildStudentPipeline({ query, projection, populate });
+
+  // Execute the aggregation pipeline using the audit log model.
+  const result = await Student.aggregate(pipeline);
+
+  // Since we expect a single audit log, return the first document or null if not found.
+  return result.length > 0 ? result[0] : null;
+};
 
 /**
  * Retrieves all students from the database with pagination, filtering, sorting, and optional population of related data.
@@ -43,7 +64,7 @@ const findStudents = async ({
   const [results, countResult] = await Promise.all([
     // Aggregate pipeline to fetch student records with filters, pagination, and optional population
     Student.aggregate(
-      buildStudentPipeline({
+      buildStudentsPipeline({
         query,
         keyword,
         sortField,
@@ -72,38 +93,6 @@ const findStudents = async ({
 };
 
 /**
- * Retrieves a single student from the database.
- *
- * @param {Object} params - The parameters for querying a student.
- * @param {Object} params.query - The MongoDB query object to filter the student.
- * @param {Object} params.options - Fields to include or exclude from the result.
- * @param {boolean} params.populated - Determines if related data should be populated.
- * @returns {Promise<Object|null>} - A promise that resolves to the student object or null if not found.
- */
-const findStudent = async ({
-  query = {},
-  options = false,
-  populated = false,
-}) => {
-  const studentQuery = Student.findOne(
-    query,
-    options ? hiddenFieldsDefault : {}
-  ); // Step 1: Build the base query to find a student
-
-  // Step 2: Conditionally populate related section and class data if populated flag is true
-  return populated
-    ? studentQuery.populate({
-        path: "section",
-        select: hiddenFieldsDefault,
-        populate: {
-          path: "class",
-          select: hiddenFieldsDefault,
-        },
-      })
-    : studentQuery;
-};
-
-/**
  * Formats student fields by capitalizing the name and converting roll number to uppercase.
  *
  * @param {Object} params - The student details to format.
@@ -127,7 +116,7 @@ const formatStudentFields = ({ name, rollNumber }) => {
  * @param {string} params.section - The associated section ID.
  * @returns {Object} - The newly created student object.
  */
-const createStudentObj = async ({ name, rollNumber, section }) => {
+const createStudentObj = ({ name, rollNumber, section }) => {
   const studentCode = generateStudentCode(); // Step 1: Generate a unique student code
 
   // Step 2: Create and return the new student object

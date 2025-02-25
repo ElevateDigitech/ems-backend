@@ -1,4 +1,73 @@
 const buildStudentPipeline = ({
+  query = {},
+  projection = false,
+  populate = false,
+}) => {
+  const pipeline = [];
+
+  // 1. Match exact filters
+  if (Object.keys(query).length > 0) {
+    pipeline.push({ $match: query });
+  }
+
+  // 2. Lookup (populate section)
+  if (populate) {
+    pipeline.push({
+      $lookup: {
+        from: "sections",
+        localField: "section",
+        foreignField: "_id",
+        as: "section",
+      },
+    });
+    pipeline.push({
+      $unwind: { path: "$section", preserveNullAndEmptyArrays: true },
+    });
+    pipeline.push({
+      $lookup: {
+        from: "classes",
+        localField: "section.class",
+        foreignField: "_id",
+        as: "section.class",
+      },
+    });
+    pipeline.push({
+      $unwind: { path: "$section.class", preserveNullAndEmptyArrays: true },
+    });
+  }
+
+  if (projection) {
+    // 6. Projection
+    const baseProjection = {
+      _id: 0,
+      studentCode: 1,
+      name: 1,
+      rollNumber: 1,
+      section: populate
+        ? {
+            sectionCode: "$section.sectionCode",
+            name: "$section.name",
+            class: {
+              classCode: "$section.class.classCode",
+              name: "$section.class.name",
+              createdAtEpochTimestamp: { $toLong: "$section.class.createdAt" },
+              updatedAtEpochTimestamp: { $toLong: "$section.class.updatedAt" },
+            },
+            createdAtEpochTimestamp: { $toLong: "$section.createdAt" },
+            updatedAtEpochTimestamp: { $toLong: "$section.updatedAt" },
+          }
+        : 1,
+      createdAtEpochTimestamp: { $toLong: "$createdAt" },
+      updatedAtEpochTimestamp: { $toLong: "$updatedAt" },
+    };
+
+    pipeline.push({ $project: baseProjection });
+  }
+
+  return pipeline;
+};
+
+const buildStudentsPipeline = ({
   keyword,
   query = {},
   sortField = "_id",
@@ -6,7 +75,7 @@ const buildStudentPipeline = ({
   page = 1,
   limit = 10,
   projection = false,
-  populate = true,
+  populate = false,
   all = false,
 }) => {
   const pipeline = [];
@@ -29,6 +98,17 @@ const buildStudentPipeline = ({
     pipeline.push({
       $unwind: { path: "$section", preserveNullAndEmptyArrays: true },
     });
+    pipeline.push({
+      $lookup: {
+        from: "sections",
+        localField: "section.class",
+        foreignField: "_id",
+        as: "section.class",
+      },
+    });
+    pipeline.push({
+      $unwind: { path: "$section.class", preserveNullAndEmptyArrays: true },
+    });
   }
 
   // 3. Keyword Search
@@ -36,16 +116,12 @@ const buildStudentPipeline = ({
     const keywordRegex = new RegExp(keyword, "i");
 
     const studentSearchConditions = [
-      { studentCode: { $regex: keywordRegex } },
       { name: { $regex: keywordRegex } },
       { rollNumber: { $regex: keywordRegex } },
     ];
 
     const sectionSearchConditions = populate
-      ? [
-          { "section.name": { $regex: keywordRegex } },
-          { "section.sectionCode": { $regex: keywordRegex } },
-        ]
+      ? [{ "section.name": { $regex: keywordRegex } }]
       : [];
 
     pipeline.push({
@@ -76,13 +152,20 @@ const buildStudentPipeline = ({
       rollNumber: 1,
       section: populate
         ? {
-            sectionCode: 1,
-            name: 1,
-            class: 1,
+            sectionCode: "$section.sectionCode",
+            name: "$section.name",
+            class: {
+              classCode: "$section.class.classCode",
+              name: "$section.class.name",
+              createdAtEpochTimestamp: { $toLong: "$section.class.createdAt" },
+              updatedAtEpochTimestamp: { $toLong: "$section.class.updatedAt" },
+            },
+            createdAtEpochTimestamp: { $toLong: "$section.createdAt" },
+            updatedAtEpochTimestamp: { $toLong: "$section.updatedAt" },
           }
-        : "$section",
-      createdAt: 1,
-      updatedAt: 1,
+        : 1,
+      createdAtEpochTimestamp: { $toLong: "$createdAt" },
+      updatedAtEpochTimestamp: { $toLong: "$updatedAt" },
     };
 
     pipeline.push({ $project: baseProjection });
@@ -118,4 +201,8 @@ const buildStudentCountPipeline = ({ keyword, query = {} }) => {
   return pipeline;
 };
 
-module.exports = { buildStudentPipeline, buildStudentCountPipeline };
+module.exports = {
+  buildStudentPipeline,
+  buildStudentsPipeline,
+  buildStudentCountPipeline,
+};

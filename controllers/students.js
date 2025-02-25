@@ -8,7 +8,6 @@ const {
   handleError,
   handleSuccess,
   IsObjectIdReferenced,
-  getCurrentUser,
 } = require("../utils/helpers");
 const {
   STATUS_CODE_CONFLICT,
@@ -39,6 +38,7 @@ const {
   deleteStudentObj,
 } = require("../queries/students");
 const { findSection } = require("../queries/sections");
+const { findUser } = require("../queries/users");
 
 module.exports = {
   /**
@@ -92,7 +92,8 @@ module.exports = {
     // Step 2: Find the student by its code
     const student = await findStudent({
       query: { studentCode },
-      options: true,
+      projection: true,
+      populate: true,
     });
 
     // Step 3: Handle case when student is not found
@@ -207,20 +208,25 @@ module.exports = {
     // Step 6: Retrieve the newly created student
     const createdStudent = await findStudent({
       query: { studentCode: newStudent.studentCode },
-      options: true,
-      populated: true,
+      projection: true,
+      populate: true,
     });
 
     // Step 7: Log the creation action for auditing
-    const currentUser = await getCurrentUser(req.user.userCode);
+    const currentUser = await findUser({
+      query: { userCode: req.user.userCode },
+      projection: true,
+      populate: true,
+    });
+
     await logAudit(
       auditActions.CREATE,
       auditCollections.STUDENTS,
       createdStudent.studentCode,
       auditChanges.CREATE_STUDENT,
       null,
-      createdStudent ,
-      currentUser 
+      createdStudent,
+      currentUser
     );
 
     // Step 8: Send success response with the created student
@@ -272,8 +278,8 @@ module.exports = {
     // Step 6: Retrieve student before updating (for audit)
     const previousData = await findStudent({
       query: { studentCode },
-      options: true,
-      populated: true,
+      projection: true,
+      populate: true,
     });
 
     // Step 7: Update student details
@@ -287,20 +293,25 @@ module.exports = {
     // Step 8: Retrieve updated student
     const updatedStudent = await findStudent({
       query: { studentCode },
-      options: true,
-      populated: true,
+      projection: true,
+      populate: true,
     });
 
     // Step 9: Log the update action for auditing
-    const currentUser = await getCurrentUser(req.user.userCode);
+    const currentUser = await findUser({
+      query: { userCode: req.user.userCode },
+      projection: true,
+      populate: true,
+    });
+
     await logAudit(
       auditActions.UPDATE,
       auditCollections.STUDENTS,
       updatedStudent.studentCode,
       auditChanges.UPDATE_STUDENT,
-      previousData ,
-      updatedStudent ,
-      currentUser 
+      previousData,
+      updatedStudent,
+      currentUser
     );
 
     // Step 10: Send success response with the updated student
@@ -342,8 +353,8 @@ module.exports = {
     // Step 4: Retrieve student before deletion (for audit)
     const previousData = await findStudent({
       query: { studentCode },
-      options: true,
-      populated: true,
+      projection: true,
+      populate: true,
     });
 
     // Step 5: Delete the student
@@ -356,15 +367,20 @@ module.exports = {
       );
 
     // Step 6: Log the deletion action for auditing
-    const currentUser = await getCurrentUser(req.user.userCode);
+    const currentUser = await findUser({
+      query: { userCode: req.user.userCode },
+      projection: true,
+      populate: true,
+    });
+
     await logAudit(
       auditActions.DELETE,
       auditCollections.STUDENTS,
       previousData.studentCode,
       auditChanges.DELETE_STUDENT,
-      previousData ,
+      previousData,
       null,
-      currentUser 
+      currentUser
     );
 
     // Step 7: Send success response confirming deletion
