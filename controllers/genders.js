@@ -52,7 +52,6 @@ module.exports = {
       page = 1,
       limit = 10,
     } = req.query;
-    console.log(sortField, sortValue);
     const { results, totalCount } = await findGenders({
       keyword,
       sortField,

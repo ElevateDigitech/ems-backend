@@ -5,13 +5,12 @@ const buildRolePipeline = ({
 }) => {
   const pipeline = [];
 
-  // 1. Match the query (usually filters like { permissionCode: 'SOME_CODE' })
-  pipeline.push({ $match: query });
+  // 1. Match exact filters
+  if (Object.keys(query).length > 0) {
+    pipeline.push({ $match: query });
+  }
 
-  // 2. Limit to 1 document
-  pipeline.push({ $limit: 1 });
-
-  // 2. Lookup (populate rolePermissions)
+  // 2. Lookup (populate state and country)
   if (populate) {
     pipeline.push({
       $lookup: {
@@ -23,34 +22,37 @@ const buildRolePipeline = ({
     });
   }
 
-  // 4. Projection (Optional)
+  // 4. Projection
   if (projection) {
-    pipeline.push({
-      $project: {
-        _id: 0,
-        roleCode: 1,
-        roleName: 1,
-        roleDescription: 1,
-        roleAllowDeletion: 1,
-        createdAtEpochTimestamp: { $toLong: "$createdAt" },
-        updatedAtEpochTimestamp: { $toLong: "$updatedAt" },
-        rolePermissions: populate
-          ? {
-              $map: {
-                input: "$rolePermissions",
-                as: "perm",
-                in: {
-                  permissionCode: "$$perm.permissionCode",
-                  permissionName: "$$perm.permissionName",
-                  permissionDescription: "$$perm.permissionDescription",
-                  createdAtEpochTimestamp: { $toLong: "$$perm.createdAt" },
-                },
+    const baseProjection = {
+      _id: 0,
+      roleCode: 1,
+      roleName: 1,
+      roleDescription: 1,
+      roleAllowDeletion: 1,
+      createdAtEpochTimestamp: { $toLong: "$createdAt" },
+      updatedAtEpochTimestamp: { $toLong: "$updatedAt" },
+      rolePermissions: populate
+        ? {
+            $map: {
+              input: "$rolePermissions",
+              as: "perm",
+              in: {
+                permissionCode: "$$perm.permissionCode",
+                permissionName: "$$perm.permissionName",
+                permissionDescription: "$$perm.permissionDescription",
+                createdAtEpochTimestamp: { $toLong: "$$perm.createdAt" },
               },
-            }
-          : 1,
-      },
-    });
+            },
+          }
+        : 1,
+    };
+
+    pipeline.push({ $project: baseProjection });
   }
+
+  // 5. Limit the results to 1 document
+  pipeline.push({ $limit: 1 });
 
   return pipeline;
 };
@@ -73,7 +75,7 @@ const buildRolesPipeline = ({
     pipeline.push({ $match: query });
   }
 
-  // 2. Lookup (populate rolePermissions)
+  // 2. Lookup (populate permissions)
   if (populate) {
     pipeline.push({
       $lookup: {
@@ -88,26 +90,13 @@ const buildRolesPipeline = ({
   // 3. Keyword Search (LIKE Match on All Fields)
   if (keyword && keyword.trim().length > 0) {
     const keywordRegex = new RegExp(keyword, "i"); // Case-insensitive regex for "LIKE"
-
-    // Dynamic search conditions for role fields
-    const roleSearchConditions = [
-      { roleCode: { $regex: keywordRegex } },
+    const searchConditions = [
       { roleName: { $regex: keywordRegex } },
       { roleDescription: { $regex: keywordRegex } },
     ];
-
-    // Dynamic search conditions for permission fields (if populated)
-    const permissionSearchConditions = populate
-      ? [
-          { "rolePermissions.permissionCode": { $regex: keywordRegex } },
-          { "rolePermissions.permissionName": { $regex: keywordRegex } },
-          { "rolePermissions.permissionDescription": { $regex: keywordRegex } },
-        ]
-      : [];
-
     pipeline.push({
       $match: {
-        $or: [...roleSearchConditions, ...permissionSearchConditions],
+        $or: searchConditions,
       },
     });
   }
@@ -124,61 +113,80 @@ const buildRolesPipeline = ({
     pipeline.push({ $limit: parseInt(limit) });
   }
 
+  // 6. Projection
   if (projection) {
-    // 6. Projection (Include-Only Fields & Clean Up Permissions)
-    pipeline.push({
-      $project: {
-        _id: 0,
-        roleCode: 1,
-        roleName: 1,
-        roleDescription: 1,
-        roleAllowDeletion: 1,
-        createdAtEpochTimestamp: { $toLong: "$createdAt" },
-        updatedAtEpochTimestamp: { $toLong: "$updatedAt" },
-        rolePermissions: populate
-          ? {
-              $map: {
-                input: "$rolePermissions",
-                as: "perm",
-                in: {
-                  permissionCode: "$$perm.permissionCode",
-                  permissionName: "$$perm.permissionName",
-                  permissionDescription: "$$perm.permissionDescription",
-                  createdAtEpochTimestamp: { $toLong: "$$perm.createdAt" },
-                },
+    const baseProjection = {
+      _id: 0,
+      roleCode: 1,
+      roleName: 1,
+      roleDescription: 1,
+      roleAllowDeletion: 1,
+      createdAtEpochTimestamp: { $toLong: "$createdAt" },
+      updatedAtEpochTimestamp: { $toLong: "$updatedAt" },
+      rolePermissions: populate
+        ? {
+            $map: {
+              input: "$rolePermissions",
+              as: "perm",
+              in: {
+                permissionCode: "$$perm.permissionCode",
+                permissionName: "$$perm.permissionName",
+                permissionDescription: "$$perm.permissionDescription",
+                createdAtEpochTimestamp: { $toLong: "$$perm.createdAt" },
               },
-            }
-          : 1,
-      },
-    });
+            },
+          }
+        : 1,
+    };
+
+    pipeline.push({ $project: baseProjection });
   }
 
   return pipeline;
 };
 
-const buildRoleCountPipeline = ({ keyword, query = {} }) => {
+const buildRoleCountPipeline = ({ keyword, query = {}, populate = false }) => {
   const pipeline = [];
 
   if (Object.keys(query).length > 0) {
     pipeline.push({ $match: query });
   }
 
+  // 2. Lookup (populate permissions)
+  if (populate) {
+    pipeline.push(
+      {
+        $lookup: {
+          from: "permissions",
+          localField: "rolePermissions",
+          foreignField: "_id",
+          as: "rolePermissions",
+        },
+      },
+      {
+        $unwind: {
+          path: "$rolePermissions",
+          preserveNullAndEmptyArrays: true,
+        },
+      }
+    );
+  }
+
+  // 3. Keyword Search (LIKE Match on All Fields)
   if (keyword && keyword.trim().length > 0) {
-    const keywordRegex = new RegExp(keyword, "i");
+    const keywordRegex = new RegExp(keyword, "i"); // Case-insensitive regex for "LIKE"
+    const searchConditions = [
+      { roleName: { $regex: keywordRegex } },
+      { roleDescription: { $regex: keywordRegex } },
+    ];
     pipeline.push({
       $match: {
-        $or: [
-          { roleCode: { $regex: keywordRegex } },
-          { roleName: { $regex: keywordRegex } },
-          { roleDescription: { $regex: keywordRegex } },
-        ],
+        $or: searchConditions,
       },
     });
   }
 
-  pipeline.push({
-    $count: "totalCount",
-  });
+  pipeline.push({ $count: "totalCount" });
 
   return pipeline;
 };

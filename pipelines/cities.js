@@ -82,8 +82,6 @@ const buildCityPipeline = ({
   return pipeline;
 };
 
-module.exports = buildCityPipeline;
-
 const buildCitiesPipeline = ({
   keyword,
   query = {},

@@ -219,26 +219,21 @@ module.exports = {
    */
   CreateCity: async (req, res, next) => {
     const { name, stateCode, countryCode } = req.body;
-    console.log(name, stateCode, countryCode);
     const formattedName = formatCityName(name); // Step 1: Format city name
-    console.log(formattedName);
 
     // Step 2: Check if the city already exists
     const existingCity = await findCity({ query: { name: formattedName } });
     if (existingCity)
       return handleError(next, STATUS_CODE_CONFLICT, MESSAGE_CITY_EXIST);
-    console.log(existingCity);
 
     // Step 3: Validate state and country
     const state = await findState({ query: { stateCode } });
     if (!state)
       return handleError(next, STATUS_CODE_CONFLICT, MESSAGE_STATE_NOT_FOUND);
-    console.log(state);
 
     const country = await findCountry({ query: { countryCode } });
     if (!country)
       return handleError(next, STATUS_CODE_CONFLICT, MESSAGE_COUNTRY_NOT_FOUND);
-    console.log(country);
 
     // Step 4: Create and save the city
     const city = await createCityObj({
@@ -248,21 +243,17 @@ module.exports = {
     });
     await city.save();
 
-    console.log(city);
-
     // Step 5: Log the audit
     const createdCity = await findCity({
       query: { cityCode: city.cityCode },
       projection: true,
       populate: true,
     });
-    console.log(createdCity);
     const currentUser = await findUser({
       query: { userCode: req.user.userCode },
       projection: true,
       populate: true,
     });
-    console.log(currentUser);
 
     await logAudit(
       auditActions.CREATE,

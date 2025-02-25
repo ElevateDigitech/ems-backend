@@ -14,7 +14,6 @@ const {
   handleError,
   handleSuccess,
   IsObjectIdReferenced,
-  getCurrentUser,
 } = require("../utils/helpers");
 const {
   MESSAGE_GET_STATE_SUCCESS,

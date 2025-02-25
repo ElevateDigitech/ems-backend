@@ -10,7 +10,6 @@ const {
   getPermissionIds,
   getInvalidPermissions,
   IsObjectIdReferenced,
-  getCurrentUser,
 } = require("../utils/helpers");
 const {
   STATUS_CODE_SUCCESS,
@@ -32,13 +31,14 @@ const {
   MESSAGE_ROLE_NOT_ALLOWED_DELETE_REFERENCE_EXIST,
   MESSAGE_ROLE_TAKEN,
 } = require("../utils/messages");
+const { findUser } = require("../queries/users");
 const {
   findRoles,
   findRole,
+  formatRoleFields,
   createRoleObj,
   updateRoleObj,
   deleteRoleObj,
-  formatRoleFields,
 } = require("../queries/roles");
 
 module.exports = {
@@ -56,7 +56,6 @@ module.exports = {
       page = 1,
       limit = 10,
     } = req.query;
-
     const { results, totalCount } = await findRoles({
       keyword,
       sortField,
@@ -140,12 +139,10 @@ module.exports = {
       roleAllowDeletion = true,
       rolePermissions,
     } = req.body;
-
     const { formattedRoleName, formattedRoleDescription } = formatRoleFields({
       roleName,
       roleDescription,
     }); // Step 1: Format role fields
-
     const existingRole = await findRole({
       query: { roleName: formattedRoleName },
     });
@@ -160,11 +157,12 @@ module.exports = {
         MESSAGE_ROLE_PERMISSION_NOT_FOUND
       ); // Step 3: Validate permissions
 
-    const newRole = await createRoleObj({
+    const permissionIds = await getPermissionIds(rolePermissions);
+    const newRole = createRoleObj({
       roleName: formattedRoleName,
       roleDescription: formattedRoleDescription,
       roleAllowDeletion,
-      rolePermissions: await getPermissionIds(rolePermissions),
+      rolePermissions: permissionIds,
     }); // Step 4: Create new role
 
     await newRole.save(); // Step 5: Save the new role
@@ -175,7 +173,12 @@ module.exports = {
       populate: true,
     }); // Step 6: Retrieve the newly created role
 
-    const currentUser = await getCurrentUser(req.user.userCode);
+    const currentUser = await findUser({
+      query: { userCode: req.user.userCode },
+      projection: true,
+      populate: true,
+    });
+
     await logAudit(
       auditActions.CREATE,
       auditCollections.ROLES,
@@ -248,7 +251,12 @@ module.exports = {
       populate: true,
     });
 
-    const currentUser = await getCurrentUser(req.user.userCode);
+    const currentUser = await findUser({
+      query: { userCode: req.user.userCode },
+      projection: true,
+      populate: true,
+    });
+
     await logAudit(
       auditActions.UPDATE,
       auditCollections.ROLES,
@@ -313,7 +321,12 @@ module.exports = {
         MESSAGE_DELETE_ROLE_ERROR
       ); // Step 4: Handle deletion error
 
-    const currentUser = await getCurrentUser(req.user.userCode);
+    const currentUser = await findUser({
+      query: { userCode: req.user.userCode },
+      projection: true,
+      populate: true,
+    });
+
     await logAudit(
       auditActions.DELETE,
       auditCollections.ROLES,

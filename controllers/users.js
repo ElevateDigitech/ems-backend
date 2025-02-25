@@ -50,6 +50,7 @@ const {
   findUser,
   createUserObj,
   deleteUserObj,
+  updateUserObj,
 } = require("../queries/users");
 
 module.exports = {
@@ -123,8 +124,8 @@ module.exports = {
       username,
       userAllowDeletion,
       roleId,
+      password,
     });
-
     // Retrieve the newly created user
     const createdUser = await findUser({
       query: { userCode: user.userCode },
@@ -560,7 +561,6 @@ module.exports = {
    */
   UpdateUser: async (req, res, next) => {
     const { userCode, email, username } = req.body;
-
     // Validate required fields
     if (!validateRequiredFields([userCode, email, username])) {
       return handleError(
@@ -590,7 +590,6 @@ module.exports = {
         MESSAGE_EMAIL_USERNAME_EXIST
       );
     }
-
     // Retrieve current user data before the update for audit logging
     const userBeforeUpdate = await findUser({
       query: { userCode },
@@ -599,7 +598,7 @@ module.exports = {
     });
 
     // Update the user's email and username
-    await updatedUser({ userCode, username, email });
+    await updateUserObj({ userCode, username, email });
 
     // Retrieve the updated user data
     const updatedUser = await findUser({

@@ -1,16 +1,14 @@
+const path = require("path");
 const moment = require("moment");
 const { v4: uuidv4 } = require("uuid");
-const Permission = require("../models/permission");
 const mongoose = require("mongoose");
-const Role = require("../models/role");
 const ExpressResponse = require("./ExpressResponse");
 const fsPromises = require("fs").promises;
 const { STATUS_SUCCESS, STATUS_ERROR } = require("./status");
 const { referenceFields } = require("./referenceFields");
-const path = require("path");
 const { findPermission } = require("../queries/permissions");
-const { findRole } = require("../queries/roles");
 const { findUser } = require("../queries/users");
+const { findRole } = require("../queries/roles");
 
 const hiddenFieldsDefault = { __v: 0, _id: 0, id: 0 };
 const hiddenFieldsUser = { __v: 0, _id: 0, salt: 0, hash: 0 };

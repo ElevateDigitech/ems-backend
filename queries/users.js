@@ -4,7 +4,7 @@ const {
   buildUserCountPipeline,
   buildUserPipeline,
 } = require("../pipelines/users");
-const { generateUserCode } = require("../utils/helpers");
+const { v4: uuidv4 } = require("uuid");
 
 /**
  * Retrieves a single user from the database using an aggregation pipeline.
@@ -101,10 +101,11 @@ const createUserObj = async ({
   username,
   userAllowDeletion,
   roleId,
+  password,
 }) => {
   // Create new user object
   const user = new User({
-    userCode: generateUserCode(), // Generate unique user code
+    userCode: `USER-${uuidv4()}`, // Generate unique user code
     email: email.trim().toLowerCase(), // Normalize email
     username, // Set username
     userAllowDeletion, // Set deletion permission
