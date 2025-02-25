@@ -517,7 +517,7 @@ module.exports = {
    * @param {Function} next - Express next middleware function
    */
   GetUserById: async (req, res, next) => {
-    const { userCode } = req.query; // Extract user code from the request body
+    const { userCode } = req.body; // Extract user code from the request body
 
     // Validate if the user code is provided
     if (!userCode?.trim()) {
