@@ -47,6 +47,7 @@ const buildCityPipeline = ({
   // 4. Projection
   if (projection) {
     const baseProjection = {
+      _id: 0,
       cityCode: 1,
       name: 1,
       createdAtEpochTimestamp: { $toLong: "$createdAt" },
@@ -169,6 +170,7 @@ const buildCitiesPipeline = ({
   // 6. Projection
   if (projection) {
     const baseProjection = {
+      _id: 0,
       cityCode: 1,
       name: 1,
       createdAtEpochTimestamp: { $toLong: "$createdAt" },

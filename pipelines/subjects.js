@@ -1,4 +1,31 @@
-const buildSubjectPipeline = ({
+const buildSubjectPipeline = ({ query = {}, projection = false }) => {
+  const pipeline = [];
+
+  // 1. Match exact filters
+  if (Object.keys(query).length > 0) {
+    pipeline.push({ $match: query });
+  }
+
+  if (projection) {
+    // 2. Projection
+    const baseProjection = {
+      _id: 0,
+      subjectCode: 1,
+      name: 1,
+      createdAtEpochTimestamp: { $toLong: "$createdAt" },
+      updatedAtEpochTimestamp: { $toLong: "$updatedAt" },
+    };
+
+    pipeline.push({ $project: baseProjection });
+  }
+
+  // 3. Limit the results to 1 document
+  pipeline.push({ $limit: 1 });
+
+  return pipeline;
+};
+
+const buildSubjectsPipeline = ({
   keyword,
   query = {},
   sortField = "_id",
@@ -19,10 +46,7 @@ const buildSubjectPipeline = ({
   if (keyword && keyword.trim().length > 0) {
     const keywordRegex = new RegExp(keyword, "i"); // Case-insensitive regex for "LIKE"
 
-    const subjectSearchConditions = [
-      { subjectCode: { $regex: keywordRegex } },
-      { name: { $regex: keywordRegex } },
-    ];
+    const subjectSearchConditions = [{ name: { $regex: keywordRegex } }];
 
     pipeline.push({
       $match: {
@@ -46,10 +70,11 @@ const buildSubjectPipeline = ({
   if (projection) {
     // 5. Projection
     const baseProjection = {
+      _id: 0,
       subjectCode: 1,
       name: 1,
-      createdAt: 1,
-      updatedAt: 1,
+      createdAtEpochTimestamp: { $toLong: "$createdAt" },
+      updatedAtEpochTimestamp: { $toLong: "$updatedAt" },
     };
 
     pipeline.push({ $project: baseProjection });
@@ -84,4 +109,8 @@ const buildSubjectCountPipeline = ({ keyword, query = {} }) => {
   return pipeline;
 };
 
-module.exports = { buildSubjectPipeline, buildSubjectCountPipeline };
+module.exports = {
+  buildSubjectPipeline,
+  buildSubjectsPipeline,
+  buildSubjectCountPipeline,
+};

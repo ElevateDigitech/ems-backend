@@ -92,6 +92,7 @@ const buildMarkPipeline = ({
   if (projection) {
     // 6. Projection
     const baseProjection = {
+      _id: 0,
       markCode: 1,
       markEarned: 1,
       markTotal: 1,

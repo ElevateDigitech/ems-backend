@@ -8,7 +8,6 @@ const {
   handleSuccess,
   handleError,
   IsObjectIdReferenced,
-  getCurrentUser,
 } = require("../utils/helpers");
 const {
   STATUS_CODE_CONFLICT,
@@ -36,6 +35,7 @@ const {
   updateSubjectObj,
   deleteSubjectObj,
 } = require("../queries/subjects");
+const { findUser } = require("../queries/users");
 
 module.exports = {
   /**
@@ -88,7 +88,7 @@ module.exports = {
     // Step 2: Find subject in the database using the subject code
     const subject = await findSubject({
       query: { subjectCode },
-      options: true,
+      projection: true,
     });
 
     // Step 3: Handle case where subject is not found
@@ -134,11 +134,15 @@ module.exports = {
     // Step 4: Retrieve the newly created subject details
     const createdSubject = await findSubject({
       query: { subjectCode: subject.subjectCode },
-      options: true,
+      projection: true,
     });
 
     // Step 5: Get current user information for audit logging
-    const currentUser = await getCurrentUser(req.user.userCode);
+    const currentUser = await findUser({
+      query: { userCode: req.user.userCode },
+      projection: true,
+      populate: true,
+    });
 
     // Step 6: Log the audit details for subject creation
     await logAudit(
@@ -147,8 +151,8 @@ module.exports = {
       createdSubject.subjectCode,
       auditChanges.CREATE_SUBJECT,
       null,
-      createdSubject ,
-      currentUser 
+      createdSubject,
+      currentUser
     );
 
     // Step 7: Send success response with created subject details
@@ -191,7 +195,7 @@ module.exports = {
     // Step 4: Retrieve subject details before update for audit logging
     const previousData = await findSubject({
       query: { subjectCode },
-      options: true,
+      projection: true,
     });
 
     // Step 5: Update the subject details in the database
@@ -200,19 +204,23 @@ module.exports = {
     // Step 6: Retrieve updated subject details
     const updatedSubject = await findSubject({
       query: { subjectCode },
-      options: true,
+      projection: true,
     });
 
     // Step 7: Log the audit details for subject update
-    const currentUser = await getCurrentUser(req.user.userCode);
+    const currentUser = await findUser({
+      query: { userCode: req.user.userCode },
+      projection: true,
+      populate: true,
+    });
     await logAudit(
       auditActions.UPDATE,
       auditCollections.SUBJECTS,
       updatedSubject.subjectCode,
       auditChanges.UPDATE_SUBJECT,
-      previousData ,
-      updatedSubject ,
-      currentUser 
+      previousData,
+      updatedSubject,
+      currentUser
     );
 
     // Step 8: Send success response with updated subject details
@@ -256,7 +264,7 @@ module.exports = {
     // Step 4: Retrieve subject details before deletion for audit logging
     const previousData = await findSubject({
       query: { subjectCode },
-      options: true,
+      projection: true,
     });
 
     // Step 5: Delete the subject from the database
@@ -270,15 +278,19 @@ module.exports = {
     }
 
     // Step 6: Log the audit details for subject deletion
-    const currentUser = await getCurrentUser(req.user.userCode);
+    const currentUser = await findUser({
+      query: { userCode: req.user.userCode },
+      projection: true,
+      populate: true,
+    });
     await logAudit(
       auditActions.DELETE,
       auditCollections.SUBJECTS,
       previousData.subjectCode,
       auditChanges.DELETE_SUBJECT,
-      previousData ,
+      previousData,
       null,
-      currentUser 
+      currentUser
     );
 
     // Step 7: Send success response confirming deletion

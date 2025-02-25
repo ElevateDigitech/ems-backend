@@ -1,13 +1,32 @@
 const moment = require("moment-timezone");
 const Subject = require("../models/subject");
+const { generateSubjectCode } = require("../utils/helpers");
 const {
-  hiddenFieldsDefault,
-  generateSubjectCode,
-} = require("../utils/helpers");
-const {
-  buildSubjectPipeline,
+  buildSubjectsPipeline,
   buildSubjectCountPipeline,
+  buildSubjectPipeline,
 } = require("../pipelines/subjects");
+
+/**
+ * Retrieves a single subject from the database.
+ *
+ * @param {Object} params - The parameters for querying a subject.
+ * @param {Object} params.query - The MongoDB query object to filter the subject.
+ * @param {Object} params.options - Fields to include or exclude from the result.
+ * @returns {Promise<Object|null>} - A promise that resolves to the subject object or null if not found.
+ */
+const findSubject = async ({
+  query = {}, // MongoDB query object to filter the subject
+  projection = false, // Fields to include/exclude in the result
+}) => {
+  const pipeline = buildSubjectPipeline({ query, projection });
+
+  // Execute aggregation pipeline
+  const result = await Subject.aggregate(pipeline);
+
+  // Return the first document or null if not found
+  return result.length > 0 ? result[0] : null;
+};
 
 /**
  * Retrieves multiple subjects from the database with pagination, search, and sorting support.
@@ -36,7 +55,7 @@ const findSubjects = async ({
   // Fetch both paginated results and the total count of matching subjects concurrently
   const [results, countResult] = await Promise.all([
     Subject.aggregate(
-      buildSubjectPipeline({
+      buildSubjectsPipeline({
         query,
         keyword,
         sortField,
@@ -60,22 +79,6 @@ const findSubjects = async ({
 
   // Return results and total count
   return { results, totalCount };
-};
-
-/**
- * Retrieves a single subject from the database.
- *
- * @param {Object} params - The parameters for querying a subject.
- * @param {Object} params.query - The MongoDB query object to filter the subject.
- * @param {Object} params.options - Fields to include or exclude from the result.
- * @returns {Promise<Object|null>} - A promise that resolves to the subject object or null if not found.
- */
-const findSubject = async ({
-  query = {}, // MongoDB query object to filter the subject
-  options = false, // Fields to include/exclude in the result
-}) => {
-  // Step 1: Query the database to find a single subject based on the query criteria
-  return await Subject.findOne(query, options ? hiddenFieldsDefault : {});
 };
 
 /**

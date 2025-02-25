@@ -70,6 +70,7 @@ const buildStudentPipeline = ({
   if (projection) {
     // 6. Projection
     const baseProjection = {
+      _id: 0,
       studentCode: 1,
       name: 1,
       rollNumber: 1,

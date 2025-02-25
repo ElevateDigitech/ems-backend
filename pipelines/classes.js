@@ -9,6 +9,7 @@ const buildClassPipeline = ({ query = {}, projection = false }) => {
   if (projection) {
     // 5. Projection (Include-Only Fields)
     const baseProjection = {
+      _id: 0,
       classCode: 1,
       name: 1,
       createdAtEpochTimestamp: { $toLong: "$createdAt" },
@@ -70,6 +71,7 @@ const buildClassesPipeline = ({
   if (projection) {
     // 5. Projection (Include-Only Fields)
     const baseProjection = {
+      _id: 0,
       classCode: 1,
       name: 1,
       createdAtEpochTimestamp: { $toLong: "$createdAt" },
