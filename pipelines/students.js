@@ -50,15 +50,15 @@ const buildStudentPipeline = ({
             class: {
               classCode: "$section.class.classCode",
               name: "$section.class.name",
-              createdAtEpochTimestamp: { $toLong: "$section.class.createdAt" },
-              updatedAtEpochTimestamp: { $toLong: "$section.class.updatedAt" },
+              createdAt: { $toLong: "$section.class.createdAt" },
+              updatedAt: { $toLong: "$section.class.updatedAt" },
             },
-            createdAtEpochTimestamp: { $toLong: "$section.createdAt" },
-            updatedAtEpochTimestamp: { $toLong: "$section.updatedAt" },
+            createdAt: { $toLong: "$section.createdAt" },
+            updatedAt: { $toLong: "$section.updatedAt" },
           }
         : 1,
-      createdAtEpochTimestamp: { $toLong: "$createdAt" },
-      updatedAtEpochTimestamp: { $toLong: "$updatedAt" },
+      createdAt: { $toLong: "$createdAt" },
+      updatedAt: { $toLong: "$updatedAt" },
     };
 
     pipeline.push({ $project: baseProjection });
@@ -157,15 +157,15 @@ const buildStudentsPipeline = ({
             class: {
               classCode: "$section.class.classCode",
               name: "$section.class.name",
-              createdAtEpochTimestamp: { $toLong: "$section.class.createdAt" },
-              updatedAtEpochTimestamp: { $toLong: "$section.class.updatedAt" },
+              createdAt: { $toLong: "$section.class.createdAt" },
+              updatedAt: { $toLong: "$section.class.updatedAt" },
             },
-            createdAtEpochTimestamp: { $toLong: "$section.createdAt" },
-            updatedAtEpochTimestamp: { $toLong: "$section.updatedAt" },
+            createdAt: { $toLong: "$section.createdAt" },
+            updatedAt: { $toLong: "$section.updatedAt" },
           }
         : 1,
-      createdAtEpochTimestamp: { $toLong: "$createdAt" },
-      updatedAtEpochTimestamp: { $toLong: "$updatedAt" },
+      createdAt: { $toLong: "$createdAt" },
+      updatedAt: { $toLong: "$updatedAt" },
     };
 
     pipeline.push({ $project: baseProjection });

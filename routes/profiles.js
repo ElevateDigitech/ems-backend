@@ -45,6 +45,12 @@ router.post(
   "/CreateProfile",
   isLoggedIn,
   checkPermission(allPermissions?.CREATE_PROFILE),
+  (req, res, next) => {
+    console.log(req.headers);
+    console.log(req.file);
+    console.log(req.files);
+    return next();
+  },
   validateProfilePicture,
   validateProfile,
   catchAsync(profiles.CreateProfile)

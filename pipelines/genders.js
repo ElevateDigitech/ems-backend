@@ -23,8 +23,8 @@ const buildGenderPipeline = ({ query = {}, projection = false }) => {
       _id: 0,
       genderCode: 1, // Include genderCode field
       genderName: 1, // Include genderName field
-      createdAtEpochTimestamp: { $toLong: "$createdAt" }, // Convert createdAt field to long integer
-      updatedAtEpochTimestamp: { $toLong: "$updatedAt" }, // Convert updatedAt field to long integer
+      createdAt: { $toLong: "$createdAt" }, // Convert createdAt field to long integer
+      updatedAt: { $toLong: "$updatedAt" }, // Convert updatedAt field to long integer
     };
     pipeline.push({ $project: baseProjection });
   }
@@ -97,8 +97,8 @@ const buildGendersPipeline = ({
       _id: 0,
       genderCode: 1, // Include genderCode field
       genderName: 1, // Include genderName field
-      createdAtEpochTimestamp: { $toLong: "$createdAt" }, // Convert createdAt field to long integer
-      updatedAtEpochTimestamp: { $toLong: "$updatedAt" }, // Convert updatedAt field to long integer
+      createdAt: { $toLong: "$createdAt" }, // Convert createdAt field to long integer
+      updatedAt: { $toLong: "$updatedAt" }, // Convert updatedAt field to long integer
     };
     pipeline.push({ $project: baseProjection });
   }

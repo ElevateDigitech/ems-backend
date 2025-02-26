@@ -43,8 +43,8 @@ const buildUserPipeline = ({
       username: 1,
       email: 1,
       userAllowDeletion: 1,
-      createdAtEpochTimestamp: { $toLong: "$createdAt" }, // Replace $toLong with $toMillis if needed
-      updatedAtEpochTimestamp: { $toLong: "$updatedAt" },
+      createdAt: { $toLong: "$createdAt" }, // Replace $toLong with $toMillis if needed
+      updatedAt: { $toLong: "$updatedAt" },
       role: populate
         ? {
             roleCode: "$role.roleCode",
@@ -59,13 +59,13 @@ const buildUserPipeline = ({
                       permissionCode: "$$perm.permissionCode",
                       permissionName: "$$perm.permissionName",
                       permissionDescription: "$$perm.permissionDescription",
-                      createdAtEpochTimestamp: { $toLong: "$$perm.createdAt" },
+                      createdAt: { $toLong: "$$perm.createdAt" },
                     },
                   },
                 }
               : 0,
-            createdAtEpochTimestamp: { $toLong: "$role.createdAt" },
-            updatedAtEpochTimestamp: { $toLong: "$role.updatedAt" },
+            createdAt: { $toLong: "$role.createdAt" },
+            updatedAt: { $toLong: "$role.updatedAt" },
           }
         : 1,
     };
@@ -160,8 +160,8 @@ const buildUsersPipeline = ({
       username: 1,
       email: 1,
       userAllowDeletion: 1,
-      createdAtEpochTimestamp: { $toLong: "$createdAt" }, // Use $toMillis if needed
-      updatedAtEpochTimestamp: { $toLong: "$updatedAt" },
+      createdAt: { $toLong: "$createdAt" }, // Use $toMillis if needed
+      updatedAt: { $toLong: "$updatedAt" },
       role: populate
         ? {
             roleCode: "$role.roleCode",
@@ -176,13 +176,13 @@ const buildUsersPipeline = ({
                       permissionCode: "$$perm.permissionCode",
                       permissionName: "$$perm.permissionName",
                       permissionDescription: "$$perm.permissionDescription",
-                      createdAtEpochTimestamp: { $toLong: "$$perm.createdAt" },
+                      createdAt: { $toLong: "$$perm.createdAt" },
                     },
                   },
                 }
               : 0,
-            createdAtEpochTimestamp: { $toLong: "$role.createdAt" },
-            updatedAtEpochTimestamp: { $toLong: "$role.updatedAt" },
+            createdAt: { $toLong: "$role.createdAt" },
+            updatedAt: { $toLong: "$role.updatedAt" },
           }
         : 1,
     };

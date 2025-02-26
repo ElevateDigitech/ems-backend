@@ -12,8 +12,8 @@ const buildClassPipeline = ({ query = {}, projection = false }) => {
       _id: 0,
       classCode: 1,
       name: 1,
-      createdAtEpochTimestamp: { $toLong: "$createdAt" },
-      updatedAtEpochTimestamp: { $toLong: "$updatedAt" },
+      createdAt: { $toLong: "$createdAt" },
+      updatedAt: { $toLong: "$updatedAt" },
     };
 
     pipeline.push({ $project: baseProjection });
@@ -74,8 +74,8 @@ const buildClassesPipeline = ({
       _id: 0,
       classCode: 1,
       name: 1,
-      createdAtEpochTimestamp: { $toLong: "$createdAt" },
-      updatedAtEpochTimestamp: { $toLong: "$updatedAt" },
+      createdAt: { $toLong: "$createdAt" },
+      updatedAt: { $toLong: "$updatedAt" },
     };
 
     pipeline.push({ $project: baseProjection });

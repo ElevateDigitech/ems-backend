@@ -1,14 +1,35 @@
 const moment = require("moment-timezone");
 const Profile = require("../models/profile");
-const {
-  hiddenFieldsDefault,
-  generateProfileCode,
-} = require("../utils/helpers");
+const { generateProfileCode } = require("../utils/helpers");
 const { cloudinary } = require("../cloudinary");
 const {
-  buildProfilePipeline,
+  buildProfilesPipeline,
   buildProfileCountPipeline,
+  buildProfilePipeline,
 } = require("../pipelines/profiles");
+
+/**
+ * Retrieves a single profile from the database.
+ *
+ * @param {Object} params - The parameters for querying a profile.
+ * @param {Object} params.query - The MongoDB query object to filter the profile.
+ * @param {Object} params.options - Fields to include or exclude from the result.
+ * @param {boolean} params.populated - Determines if related data should be populated.
+ * @returns {Promise<Object|null>} - A promise that resolves to the profile object or null if not found.
+ */
+const findProfile = async ({
+  query = {},
+  projection = false,
+  populate = false,
+}) => {
+  const pipeline = buildProfilePipeline({ query, projection, populate });
+
+  // Execute aggregation pipeline
+  const result = await Profile.aggregate(pipeline);
+
+  // Return the first document or null if not found
+  return result.length > 0 ? result[0] : null;
+};
 
 /**
  * Retrieves all profiles from the database with pagination, filtering, sorting, population, and projection support.
@@ -41,7 +62,7 @@ const findProfiles = async ({
   // 2. Fetch the total count of profiles that match the query.
   const [results, countResult] = await Promise.all([
     Profile.aggregate(
-      buildProfilePipeline({
+      buildProfilesPipeline({
         query,
         keyword,
         sortField,
@@ -57,6 +78,7 @@ const findProfiles = async ({
       buildProfileCountPipeline({
         query,
         keyword,
+        populate,
       })
     ),
   ]);
@@ -66,63 +88,6 @@ const findProfiles = async ({
 
   // Return the fetched profiles and the total count.
   return { results, totalCount };
-};
-
-/**
- * Retrieves a single profile from the database.
- *
- * @param {Object} params - The parameters for querying a profile.
- * @param {Object} params.query - The MongoDB query object to filter the profile.
- * @param {Object} params.options - Fields to include or exclude from the result.
- * @param {boolean} params.populated - Determines if related data should be populated.
- * @returns {Promise<Object|null>} - A promise that resolves to the profile object or null if not found.
- */
-const findProfile = async ({
-  query = {},
-  options = false,
-  populated = false,
-}) => {
-  // Step 1: Build the base query to find a profile
-  const profileQuery = Profile.findOne(
-    query,
-    options ? hiddenFieldsDefault : {}
-  );
-
-  // Step 2: Conditionally populate related data if populated flag is true
-  return populated
-    ? profileQuery
-        .populate("gender", hiddenFieldsDefault)
-        .populate({
-          path: "user",
-          select: hiddenFieldsDefault,
-          populate: {
-            path: "role",
-            select: hiddenFieldsDefault,
-            populate: {
-              path: "rolePermissions",
-              select: hiddenFieldsDefault,
-            },
-          },
-        })
-        .populate({
-          path: "address.city",
-          select: hiddenFieldsDefault,
-          populate: [
-            {
-              path: "state",
-              select: hiddenFieldsDefault,
-              populate: { path: "country", select: hiddenFieldsDefault },
-            },
-            { path: "country", select: hiddenFieldsDefault },
-          ],
-        })
-        .populate({
-          path: "address.state",
-          select: hiddenFieldsDefault,
-          populate: { path: "country", select: hiddenFieldsDefault },
-        })
-        .populate({ path: "address.country", select: hiddenFieldsDefault })
-    : profileQuery;
 };
 
 /**

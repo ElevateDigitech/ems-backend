@@ -44,12 +44,12 @@ const buildSectionPipeline = ({
         ? {
             classCode: "$class.classCode",
             name: "$class.name",
-            createdAtEpochTimestamp: { $toLong: "$class.createdAt" },
-            updatedAtEpochTimestamp: { $toLong: "$class.updatedAt" },
+            createdAt: { $toLong: "$class.createdAt" },
+            updatedAt: { $toLong: "$class.updatedAt" },
           }
         : 1,
-      createdAtEpochTimestamp: { $toLong: "$createdAt" },
-      updatedAtEpochTimestamp: { $toLong: "$updatedAt" },
+      createdAt: { $toLong: "$createdAt" },
+      updatedAt: { $toLong: "$updatedAt" },
     };
 
     pipeline.push({ $project: baseProjection });
@@ -136,12 +136,12 @@ const buildSectionsPipeline = ({
         ? {
             classCode: "$class.classCode",
             name: "$class.name",
-            createdAtEpochTimestamp: { $toLong: "$class.createdAt" },
-            updatedAtEpochTimestamp: { $toLong: "$class.updatedAt" },
+            createdAt: { $toLong: "$class.createdAt" },
+            updatedAt: { $toLong: "$class.updatedAt" },
           }
         : 1,
-      createdAtEpochTimestamp: { $toLong: "$createdAt" },
-      updatedAtEpochTimestamp: { $toLong: "$updatedAt" },
+      createdAt: { $toLong: "$createdAt" },
+      updatedAt: { $toLong: "$updatedAt" },
     };
 
     pipeline.push({ $project: baseProjection });

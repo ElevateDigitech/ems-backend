@@ -30,8 +30,8 @@ const buildRolePipeline = ({
       roleName: 1,
       roleDescription: 1,
       roleAllowDeletion: 1,
-      createdAtEpochTimestamp: { $toLong: "$createdAt" },
-      updatedAtEpochTimestamp: { $toLong: "$updatedAt" },
+      createdAt: { $toLong: "$createdAt" },
+      updatedAt: { $toLong: "$updatedAt" },
       rolePermissions: populate
         ? {
             $map: {
@@ -41,7 +41,7 @@ const buildRolePipeline = ({
                 permissionCode: "$$perm.permissionCode",
                 permissionName: "$$perm.permissionName",
                 permissionDescription: "$$perm.permissionDescription",
-                createdAtEpochTimestamp: { $toLong: "$$perm.createdAt" },
+                createdAt: { $toLong: "$$perm.createdAt" },
               },
             },
           }
@@ -121,8 +121,8 @@ const buildRolesPipeline = ({
       roleName: 1,
       roleDescription: 1,
       roleAllowDeletion: 1,
-      createdAtEpochTimestamp: { $toLong: "$createdAt" },
-      updatedAtEpochTimestamp: { $toLong: "$updatedAt" },
+      createdAt: { $toLong: "$createdAt" },
+      updatedAt: { $toLong: "$updatedAt" },
       rolePermissions: populate
         ? {
             $map: {
@@ -132,7 +132,7 @@ const buildRolesPipeline = ({
                 permissionCode: "$$perm.permissionCode",
                 permissionName: "$$perm.permissionName",
                 permissionDescription: "$$perm.permissionDescription",
-                createdAtEpochTimestamp: { $toLong: "$$perm.createdAt" },
+                createdAt: { $toLong: "$$perm.createdAt" },
               },
             },
           }

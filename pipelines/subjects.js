@@ -12,8 +12,8 @@ const buildSubjectPipeline = ({ query = {}, projection = false }) => {
       _id: 0,
       subjectCode: 1,
       name: 1,
-      createdAtEpochTimestamp: { $toLong: "$createdAt" },
-      updatedAtEpochTimestamp: { $toLong: "$updatedAt" },
+      createdAt: { $toLong: "$createdAt" },
+      updatedAt: { $toLong: "$updatedAt" },
     };
 
     pipeline.push({ $project: baseProjection });
@@ -73,8 +73,8 @@ const buildSubjectsPipeline = ({
       _id: 0,
       subjectCode: 1,
       name: 1,
-      createdAtEpochTimestamp: { $toLong: "$createdAt" },
-      updatedAtEpochTimestamp: { $toLong: "$updatedAt" },
+      createdAt: { $toLong: "$createdAt" },
+      updatedAt: { $toLong: "$updatedAt" },
     };
 
     pipeline.push({ $project: baseProjection });

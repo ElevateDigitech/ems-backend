@@ -17,8 +17,8 @@ const buildCountryPipeline = ({ query = {}, projection = false }) => {
       name: 1, // Include name field
       iso2: 1, // Include iso2 field
       iso3: 1, // Include iso3 field
-      createdAtEpochTimestamp: { $toLong: "$createdAt" }, // Convert createdAt field to long integer
-      updatedAtEpochTimestamp: { $toLong: "$updatedAt" }, // Convert updatedAt field to long integer
+      createdAt: { $toLong: "$createdAt" }, // Convert createdAt field to long integer
+      updatedAt: { $toLong: "$updatedAt" }, // Convert updatedAt field to long integer
     };
     pipeline.push({ $project: baseProjection });
   }
@@ -81,8 +81,8 @@ const buildCountriesPipeline = ({
       name: 1, // Include name field
       iso2: 1, // Include iso2 field
       iso3: 1, // Include iso3 field
-      createdAtEpochTimestamp: { $toLong: "$createdAt" }, // Convert createdAt field to long integer
-      updatedAtEpochTimestamp: { $toLong: "$updatedAt" }, // Convert updatedAt field to long integer
+      createdAt: { $toLong: "$createdAt" }, // Convert createdAt field to long integer
+      updatedAt: { $toLong: "$updatedAt" }, // Convert updatedAt field to long integer
     };
     pipeline.push({ $project: baseProjection });
   }

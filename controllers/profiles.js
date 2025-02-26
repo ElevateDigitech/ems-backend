@@ -9,7 +9,6 @@ const {
   handleError,
   handleSuccess,
   IsObjectIdReferenced,
-  getCurrentUser,
 } = require("../utils/helpers");
 const {
   STATUS_CODE_SUCCESS,
@@ -43,6 +42,7 @@ const {
   createProfileObj,
   updateProfileObj,
   removeUploadedProfilePicture,
+  deleteProfileObj,
 } = require("../queries/profiles");
 const { findUser } = require("../queries/users");
 const { findGender } = require("../queries/genders");
@@ -103,8 +103,8 @@ module.exports = {
     // Retrieve the profile associated with the logged-in user
     const profile = await findProfile({
       query: { user: loggedInUser._id },
-      options: true,
-      populated: true,
+      projection: true,
+      populate: true,
     });
 
     // Check if the profile exists
@@ -122,7 +122,7 @@ module.exports = {
       handleSuccess(
         STATUS_CODE_SUCCESS, // Status code indicating success
         MESSAGE_GET_PROFILE_SUCCESS, // Message indicating the profile was fetched successfully
-        profile.toJSON() // The actual profile data in JSON format
+        profile // The actual profile data in JSON format
       )
     );
   },
@@ -141,8 +141,8 @@ module.exports = {
     // Use the 'profileCode' to find the corresponding profile in the database
     const profile = await findProfile({
       query: { profileCode },
-      options: true,
-      populated: true,
+      projection: true,
+      populate: true,
     });
 
     // Check if the profile exists
@@ -163,7 +163,7 @@ module.exports = {
         handleSuccess(
           STATUS_CODE_SUCCESS, // HTTP status code for success
           MESSAGE_GET_PROFILE_SUCCESS, // Success message
-          profile.toJSON() // Convert the profile object to JSON format and send it in the response
+          profile // Convert the profile object to JSON format and send it in the response
         )
       );
   },
@@ -199,8 +199,8 @@ module.exports = {
     // Find the profile associated with the found user's ID
     const profile = await findProfile({
       query: { user: user._id },
-      options: true,
-      populated: true,
+      projection: true,
+      populate: true,
     });
 
     // If the profile is not found, handle the error indicating the profile was not found under the user
@@ -350,12 +350,16 @@ module.exports = {
     // Retrieve the newly created profile to confirm creation
     const createdProfile = await findProfile({
       query: { profileCode: profile.profileCode },
-      options: true,
-      populated: true,
+      projection: true,
+      populate: true,
     });
 
     // Get the current user information from the request
-    const currentUser = await getCurrentUser(req.user.userCode);
+    const currentUser = await findUser({
+      query: { userCode: req.user.userCode },
+      projection: true,
+      populate: true,
+    });
 
     // Log the creation action in the audit logs
     await logAudit(
@@ -364,8 +368,8 @@ module.exports = {
       profile.profileCode,
       auditChanges.CREATE_PROFILE,
       null,
-      createdProfile ,
-      currentUser 
+      createdProfile,
+      currentUser
     );
 
     // Send a success response with the created profile details
@@ -476,8 +480,8 @@ module.exports = {
     // Save previous profile data for audit logging
     const previousData = await findProfile({
       query: { profileCode },
-      options: true,
-      populated: true,
+      projection: true,
+      populate: true,
     });
 
     // Prepare the updated profile object
@@ -515,12 +519,16 @@ module.exports = {
     // Fetch the updated profile data
     const updatedProfile = await findProfile({
       query: { profileCode },
-      options: true,
-      populated: true,
+      projection: true,
+      populate: true,
     });
 
     // Fetch the current user making the request
-    const currentUser = await getCurrentUser(req.user.userCode);
+    const currentUser = await findUser({
+      query: { userCode: req.user.userCode },
+      projection: true,
+      populate: true,
+    });
 
     // Log the profile update action for auditing purposes
     await logAudit(
@@ -528,9 +536,9 @@ module.exports = {
       auditCollections.PROFILES,
       existingProfile.profileCode,
       auditChanges.UPDATE_PROFILE,
-      previousData ,
-      updatedProfile ,
-      currentUser 
+      previousData,
+      updatedProfile,
+      currentUser
     );
 
     // Send a success response with the updated profile data
@@ -556,7 +564,7 @@ module.exports = {
     const { profileCode } = req.body;
 
     // Check if the profile with the given profileCode exists in the database
-    const existingProfile = await Profile.findOne({ profileCode });
+    const existingProfile = await findProfile({ query: { profileCode } });
     if (!existingProfile)
       // If the profile does not exist, return an error response
       return handleError(next, STATUS_CODE_CONFLICT, MESSAGE_PROFILE_NOT_FOUND);
@@ -576,14 +584,14 @@ module.exports = {
     // Convert the existing profile document to a plain JavaScript object for audit logging
     const previousData = await findProfile({
       query: { profileCode },
-      options: true,
-      populated: true,
+      projection: true,
+      populate: true,
     });
 
     await removeUploadedProfilePicture(fileName);
 
     // Attempt to delete the profile from the database
-    const deletionResult = await existingProfile.deleteOne();
+    const deletionResult = await deleteProfileObj(profileCode);
 
     // Check if the deletion was successful
     if (deletionResult.deletedCount === 0)
@@ -595,7 +603,11 @@ module.exports = {
       );
 
     // Find the current user who initiated the delete request
-    const currentUser = await findUserByCode(req.user.userCode);
+    const currentUser = await findUser({
+      query: { userCode: req.user.userCode },
+      projection: true,
+      populate: true,
+    });
 
     // Log the deletion action for audit purposes
     await logAudit(
@@ -603,9 +615,9 @@ module.exports = {
       auditCollections.PROFILES,
       existingProfile.profileCode,
       auditChanges.DELETE_PROFILE,
-      previousData ,
+      previousData,
       null,
-      currentUser 
+      currentUser
     );
 
     // Send a success response indicating the profile was deleted successfully

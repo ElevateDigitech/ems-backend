@@ -15,7 +15,7 @@ const buildPermissionPipeline = ({ query = {}, projection = false }) => {
         permissionCode: 1,
         permissionName: 1,
         permissionDescription: 1,
-        createdAtEpochTimestamp: { $toLong: "$createdAt" },
+        createdAt: { $toLong: "$createdAt" },
       },
     });
   }
@@ -75,7 +75,7 @@ const buildPermissionsPipeline = ({
         permissionCode: 1,
         permissionName: 1,
         permissionDescription: 1,
-        createdAtEpochTimestamp: { $toLong: "$createdAt" },
+        createdAt: { $toLong: "$createdAt" },
       },
     });
   }

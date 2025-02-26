@@ -50,15 +50,15 @@ const buildCityPipeline = ({
       _id: 0,
       cityCode: 1,
       name: 1,
-      createdAtEpochTimestamp: { $toLong: "$createdAt" },
-      updatedAtEpochTimestamp: { $toLong: "$updatedAt" },
+      createdAt: { $toLong: "$createdAt" },
+      updatedAt: { $toLong: "$updatedAt" },
       state: populate
         ? {
             stateCode: "$state.stateCode",
             name: "$state.name",
             iso: "$state.iso",
-            createdAtEpochTimestamp: { $toLong: "$state.createdAt" },
-            updatedAtEpochTimestamp: { $toLong: "$state.updatedAt" },
+            createdAt: { $toLong: "$state.createdAt" },
+            updatedAt: { $toLong: "$state.updatedAt" },
           }
         : 1,
       country: populate
@@ -67,8 +67,8 @@ const buildCityPipeline = ({
             name: "$country.name",
             iso2: "$country.iso2",
             iso3: "$country.iso3",
-            createdAtEpochTimestamp: { $toLong: "$country.createdAt" },
-            updatedAtEpochTimestamp: { $toLong: "$country.updatedAt" },
+            createdAt: { $toLong: "$country.createdAt" },
+            updatedAt: { $toLong: "$country.updatedAt" },
           }
         : 1,
     };
@@ -171,15 +171,15 @@ const buildCitiesPipeline = ({
       _id: 0,
       cityCode: 1,
       name: 1,
-      createdAtEpochTimestamp: { $toLong: "$createdAt" },
-      updatedAtEpochTimestamp: { $toLong: "$updatedAt" },
+      createdAt: { $toLong: "$createdAt" },
+      updatedAt: { $toLong: "$updatedAt" },
       state: populate
         ? {
             stateCode: "$state.stateCode",
             name: "$state.name",
             iso: "$state.iso",
-            createdAtEpochTimestamp: { $toLong: "$state.createdAt" },
-            updatedAtEpochTimestamp: { $toLong: "$state.updatedAt" },
+            createdAt: { $toLong: "$state.createdAt" },
+            updatedAt: { $toLong: "$state.updatedAt" },
           }
         : 1,
       country: populate
@@ -188,8 +188,8 @@ const buildCitiesPipeline = ({
             name: "$country.name",
             iso2: "$country.iso2",
             iso3: "$country.iso3",
-            createdAtEpochTimestamp: { $toLong: "$country.createdAt" },
-            updatedAtEpochTimestamp: { $toLong: "$country.updatedAt" },
+            createdAt: { $toLong: "$country.createdAt" },
+            updatedAt: { $toLong: "$country.updatedAt" },
           }
         : 1,
     };

@@ -28,7 +28,7 @@ const buildAuditLogPipeline = ({ query = {}, projection = false }) => {
         before: 1,
         after: 1,
         user: 1,
-        createdAtEpochTimestamp: { $toLong: "$createdAt" },
+        createdAt: { $toLong: "$createdAt" },
       },
     });
   }
@@ -110,7 +110,7 @@ const buildAuditLogsPipeline = ({
         before: 1,
         after: 1,
         user: 1,
-        createdAtEpochTimestamp: { $toLong: "$createdAt" },
+        createdAt: { $toLong: "$createdAt" },
       },
     });
   }

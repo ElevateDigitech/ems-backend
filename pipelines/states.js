@@ -45,12 +45,12 @@ const buildStatePipeline = ({
             name: "$country.name",
             iso2: "$country.iso2",
             iso3: "$country.iso3",
-            createdAtEpochTimestamp: { $toLong: "$country.createdAt" },
-            updatedAtEpochTimestamp: { $toLong: "$country.updatedAt" },
+            createdAt: { $toLong: "$country.createdAt" },
+            updatedAt: { $toLong: "$country.updatedAt" },
           }
         : 1,
-      createdAtEpochTimestamp: { $toLong: "$createdAt" }, // Convert createdAt field to long integer
-      updatedAtEpochTimestamp: { $toLong: "$updatedAt" }, // Convert updatedAt field to long integer
+      createdAt: { $toLong: "$createdAt" }, // Convert createdAt field to long integer
+      updatedAt: { $toLong: "$updatedAt" }, // Convert updatedAt field to long integer
     };
     pipeline.push({ $project: baseProjection });
   }
@@ -140,12 +140,12 @@ const buildStatesPipeline = ({
             name: "$country.name",
             iso2: "$country.iso2",
             iso3: "$country.iso3",
-            createdAtEpochTimestamp: { $toLong: "$country.createdAt" },
-            updatedAtEpochTimestamp: { $toLong: "$country.updatedAt" },
+            createdAt: { $toLong: "$country.createdAt" },
+            updatedAt: { $toLong: "$country.updatedAt" },
           }
         : 1,
-      createdAtEpochTimestamp: { $toLong: "$createdAt" }, // Convert createdAt field to long integer
-      updatedAtEpochTimestamp: { $toLong: "$updatedAt" }, // Convert updatedAt field to long integer
+      createdAt: { $toLong: "$createdAt" }, // Convert createdAt field to long integer
+      updatedAt: { $toLong: "$updatedAt" }, // Convert updatedAt field to long integer
     };
     pipeline.push({ $project: baseProjection });
   }
