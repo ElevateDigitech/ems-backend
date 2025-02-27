@@ -116,7 +116,7 @@ const buildProfilePipeline = ({
           : 1,
         state: populate
           ? {
-              stateCode: "$address.state.address.stateCode",
+              stateCode: "$address.state.stateCode",
               name: "$address.state.name",
               iso: "$address.state.iso",
               createdAt: { $toLong: "$address.state.createdAt" },
@@ -356,7 +356,7 @@ const buildProfilesPipeline = ({
           : 1,
         state: populate
           ? {
-              stateCode: "$address.state.address.stateCode",
+              stateCode: "$address.state.stateCode",
               name: "$address.state.name",
               iso: "$address.state.iso",
               createdAt: { $toLong: "$address.state.createdAt" },
