@@ -8,7 +8,6 @@ const {
   handleError,
   handleSuccess,
   IsObjectIdReferenced,
-  getCurrentUser,
 } = require("../utils/helpers");
 const {
   STATUS_CODE_SUCCESS,
@@ -36,6 +35,7 @@ const {
   updateExamObj,
   deleteExamObj,
 } = require("../queries/exams");
+const { findUser } = require("../queries/users");
 
 module.exports = {
   /**
@@ -83,7 +83,7 @@ module.exports = {
    */
   GetExamByCode: async (req, res, next) => {
     const { examCode } = req.body; // Step 1: Extract exam code from request
-    const exam = await findExam({ query: { examCode }, options: true }); // Step 2: Fetch exam by provided examCode
+    const exam = await findExam({ query: { examCode }, projection: true }); // Step 2: Fetch exam by provided examCode
 
     // Step 3: Return response based on exam existence
     return exam
@@ -103,7 +103,7 @@ module.exports = {
    * @param {Function} next - Express next middleware function
    */
   CreateExam: async (req, res, next) => {
-    const { title } = req.body; // Step 1: Extract exam title from request
+    const { title, date } = req.body; // Step 1: Extract exam title from request
     const formattedTitle = formatExamTitle(title); // Step 2: Format exam title
 
     // Step 3: Check if exam already exists
@@ -112,23 +112,28 @@ module.exports = {
       return handleError(next, STATUS_CODE_CONFLICT, MESSAGE_EXAM_EXIST);
 
     // Step 4: Create new exam
-    const newExam = await createExamObj({ title: formattedTitle });
+    const newExam = await createExamObj({ title: formattedTitle, date });
     await newExam.save();
 
     // Step 5: Log creation
     const createdExam = await findExam({
       query: { examCode: newExam.examCode },
-      options: true,
+      projection: true,
     });
-    const currentUser = await getCurrentUser(req.user.userCode);
+    const currentUser = await findUser({
+      query: { userCode: req.user.userCode },
+      projection: true,
+      populate: true,
+    });
+
     await logAudit(
       auditActions.CREATE,
       auditCollections.EXAMS,
       createdExam.examCode,
       auditChanges.CREATE_EXAM,
       null,
-      createdExam ,
-      currentUser 
+      createdExam,
+      currentUser
     );
 
     // Step 6: Return success response
@@ -151,7 +156,7 @@ module.exports = {
    * @param {Function} next - Express next middleware function
    */
   UpdateExam: async (req, res, next) => {
-    const { examCode, title } = req.body; // Step 1: Extract exam code and title from request
+    const { examCode, title, date } = req.body; // Step 1: Extract exam code and title from request
     const formattedTitle = formatExamTitle(title); // Step 2: Format exam title
 
     // Step 3: Check for existing exam
@@ -167,20 +172,31 @@ module.exports = {
       return handleError(next, STATUS_CODE_CONFLICT, MESSAGE_EXAM_TAKEN);
 
     // Step 5: Update exam data
-    const previousData = await findExam({ query: { examCode }, options: true });
-    await updateExamObj({ examCode, title: formattedTitle });
+    const previousData = await findExam({
+      query: { examCode },
+      projection: true,
+    });
+    await updateExamObj({ examCode, title: formattedTitle, date });
 
     // Step 6: Log the update audit
-    const updatedExam = await findExam({ query: { examCode }, options: true });
-    const currentUser = await getCurrentUser(req.user.userCode);
+    const updatedExam = await findExam({
+      query: { examCode },
+      projection: true,
+    });
+    const currentUser = await findUser({
+      query: { userCode: req.user.userCode },
+      projection: true,
+      populate: true,
+    });
+
     await logAudit(
       auditActions.UPDATE,
       auditCollections.EXAMS,
       examCode,
       auditChanges.UPDATE_EXAM,
-      previousData ,
-      updatedExam ,
-      currentUser 
+      previousData,
+      updatedExam,
+      currentUser
     );
 
     // Step 7: Return success response
@@ -219,7 +235,10 @@ module.exports = {
       );
 
     // Step 4: Delete exam
-    const previousData = await findExam({ query: { examCode }, options: true });
+    const previousData = await findExam({
+      query: { examCode },
+      projection: true,
+    });
     const deletionResult = await deleteExamObj(examCode);
 
     if (deletionResult.deletedCount === 0)
@@ -230,15 +249,20 @@ module.exports = {
       );
 
     // Step 5: Log deletion
-    const currentUser = await getCurrentUser(req.user.userCode);
+    const currentUser = await findUser({
+      query: { userCode: req.user.userCode },
+      projection: true,
+      populate: true,
+    });
+
     await logAudit(
       auditActions.DELETE,
       auditCollections.EXAMS,
       examCode,
       auditChanges.DELETE_EXAM,
-      previousData ,
+      previousData,
       null,
-      currentUser 
+      currentUser
     );
 
     // Step 6: Return success response

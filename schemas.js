@@ -291,11 +291,13 @@ module.exports.examCodeSchema = Joi.object({
 
 module.exports.examSchema = Joi.object({
   title: Joi.string().required(),
+  date: Joi.string().required().pattern(VALID_DATE),
 });
 
 module.exports.updateExamSchema = Joi.object({
   examCode: Joi.string().required(),
   title: Joi.string().required(),
+  date: Joi.string().required().pattern(VALID_DATE),
 });
 
 /**

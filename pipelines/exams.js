@@ -1,4 +1,32 @@
-const buildExamPipeline = ({
+const buildExamPipeline = ({ query = {}, projection = false }) => {
+  const pipeline = [];
+
+  // 1. Match exact filters
+  if (Object.keys(query).length > 0) {
+    pipeline.push({ $match: query });
+  }
+
+  // Step 2: Limit to 1 document
+  pipeline.push({ $limit: 1 });
+
+  // 3. Projection
+  if (projection) {
+    pipeline.push({
+      $project: {
+        _id: 0,
+        examCode: 1,
+        title: 1,
+        date: { $toLong: "$date" },
+        createdAt: { $toLong: "$createdAt" },
+        updatedAt: { $toLong: "$updatedAt" },
+      },
+    });
+  }
+
+  return pipeline;
+};
+
+const buildExamsPipeline = ({
   keyword,
   query = {},
   sortField = "_id",
@@ -18,10 +46,7 @@ const buildExamPipeline = ({
   // 2. Keyword Search (LIKE Match on Fields)
   if (keyword && keyword.trim().length > 0) {
     const keywordRegex = new RegExp(keyword, "i");
-    const searchConditions = [
-      { examCode: { $regex: keywordRegex } },
-      { title: { $regex: keywordRegex } },
-    ];
+    const searchConditions = [{ title: { $regex: keywordRegex } }];
 
     pipeline.push({
       $match: {
@@ -43,8 +68,17 @@ const buildExamPipeline = ({
   }
 
   // 5. Projection
-  if (projection && Object.keys(projection).length > 0) {
-    pipeline.push({ $project: projection });
+  if (projection) {
+    pipeline.push({
+      $project: {
+        _id: 0,
+        examCode: 1,
+        title: 1,
+        date: { $toLong: "$date" },
+        createdAt: { $toLong: "$createdAt" },
+        updatedAt: { $toLong: "$updatedAt" },
+      },
+    });
   }
 
   return pipeline;
@@ -61,10 +95,7 @@ const buildExamCountPipeline = ({ keyword, query = {} }) => {
     const keywordRegex = new RegExp(keyword, "i");
     pipeline.push({
       $match: {
-        $or: [
-          { examCode: { $regex: keywordRegex } },
-          { title: { $regex: keywordRegex } },
-        ],
+        $or: [{ title: { $regex: keywordRegex } }],
       },
     });
   }
@@ -74,4 +105,8 @@ const buildExamCountPipeline = ({ keyword, query = {} }) => {
   return pipeline;
 };
 
-module.exports = { buildExamPipeline, buildExamCountPipeline };
+module.exports = {
+  buildExamPipeline,
+  buildExamsPipeline,
+  buildExamCountPipeline,
+};
