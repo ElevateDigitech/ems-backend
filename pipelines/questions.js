@@ -1,4 +1,4 @@
-const buildClassPipeline = ({ query = {}, projection = false }) => {
+const buildQuestionPipeline = ({ query = {}, projection = false }) => {
   const pipeline = [];
 
   // 1. Match exact filters
@@ -10,8 +10,9 @@ const buildClassPipeline = ({ query = {}, projection = false }) => {
     // 5. Projection (Include-Only Fields)
     const baseProjection = {
       _id: 0,
-      classCode: 1,
-      name: 1,
+      questionCode: 1,
+      level: 1,
+      total: 1,
       createdAt: { $toLong: "$createdAt" },
       updatedAt: { $toLong: "$updatedAt" },
     };
@@ -25,7 +26,7 @@ const buildClassPipeline = ({ query = {}, projection = false }) => {
   return pipeline;
 };
 
-const buildClassesPipeline = ({
+const buildQuestionsPipeline = ({
   keyword,
   query = {},
   sortField = "_id",
@@ -46,12 +47,12 @@ const buildClassesPipeline = ({
   if (keyword && keyword.trim().length > 0) {
     const keywordRegex = new RegExp(keyword, "i"); // Case-insensitive regex for "LIKE"
 
-    // Dynamic search conditions for class fields
-    const classSearchConditions = [{ name: { $regex: keywordRegex } }];
-
     pipeline.push({
       $match: {
-        $or: classSearchConditions,
+        $or: [
+          { level: { $regex: keywordRegex } },
+          { total: { $regex: keywordRegex } },
+        ],
       },
     });
   }
@@ -72,8 +73,9 @@ const buildClassesPipeline = ({
     // 5. Projection (Include-Only Fields)
     const baseProjection = {
       _id: 0,
-      classCode: 1,
-      name: 1,
+      questionCode: 1,
+      level: 1,
+      total: 1,
       createdAt: { $toLong: "$createdAt" },
       updatedAt: { $toLong: "$updatedAt" },
     };
@@ -84,7 +86,7 @@ const buildClassesPipeline = ({
   return pipeline;
 };
 
-const buildClassCountPipeline = ({ keyword, query = {} }) => {
+const buildQuestionCountPipeline = ({ keyword, query = {} }) => {
   const pipeline = [];
 
   if (Object.keys(query).length > 0) {
@@ -95,7 +97,10 @@ const buildClassCountPipeline = ({ keyword, query = {} }) => {
     const keywordRegex = new RegExp(keyword, "i");
     pipeline.push({
       $match: {
-        $or: [{ name: { $regex: keywordRegex } }],
+        $or: [
+          { level: { $regex: keywordRegex } },
+          { total: { $regex: keywordRegex } },
+        ],
       },
     });
   }
@@ -108,7 +113,7 @@ const buildClassCountPipeline = ({ keyword, query = {} }) => {
 };
 
 module.exports = {
-  buildClassPipeline,
-  buildClassesPipeline,
-  buildClassCountPipeline,
+  buildQuestionPipeline,
+  buildQuestionsPipeline,
+  buildQuestionCountPipeline,
 };

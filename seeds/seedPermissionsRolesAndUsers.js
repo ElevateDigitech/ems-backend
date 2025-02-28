@@ -64,7 +64,7 @@ const seedPermissions = async () => {
 const seedRoles = async () => {
   await Role.deleteMany({});
 
-  const permissions = await findPermissions({ all: true });
+  const permissions = await Permission.find({});
   const mappedRoles = parseRoles(baseRoles, permissions, true);
 
   await Role.insertMany(mappedRoles);
@@ -73,7 +73,7 @@ const seedRoles = async () => {
 const seedUsers = async () => {
   await User.deleteMany({});
 
-  const roles = await findRoles({ all: true });
+  const roles = await Role.find({});
   const adminRoleId = roles?.find((r) => r?.roleName === "ADMIN")?._id ?? "";
   const userObj = {
     userCode: generateUserCode(),

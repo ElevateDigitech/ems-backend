@@ -19,6 +19,7 @@ const auditCollections = {
   SECTIONS: "SECTIONS",
   SUBJECTS: "SUBJECTS",
   STUDENTS: "STUDENTS",
+  QUESTIONS: "QUESTIONS",
   EXAMS: "EXAMS",
   MARKS: "MARKS",
 };
@@ -60,12 +61,15 @@ const auditChanges = {
   CREATE_STUDENT: "A Student Created",
   UPDATE_STUDENT: "A Student Updated",
   DELETE_STUDENT: "A Student Deleted",
-  CREATE_EXAM: "A EXAM Created",
-  UPDATE_EXAM: "A EXAM Updated",
-  DELETE_EXAM: "A EXAM Deleted",
-  CREATE_MARK: "A MARKS Created",
-  UPDATE_MARK: "A MARKS Updated",
-  DELETE_MARK: "A MARKS Deleted",
+  CREATE_QUESTION: "A Question Created",
+  UPDATE_QUESTION: "A Question Updated",
+  DELETE_QUESTION: "A Question Deleted",
+  CREATE_EXAM: "A Exam Created",
+  UPDATE_EXAM: "A Exam Updated",
+  DELETE_EXAM: "A Exam Deleted",
+  CREATE_MARK: "A Mark added",
+  UPDATE_MARK: "A Mark Updated",
+  DELETE_MARK: "A Mark Deleted",
 };
 
 module.exports = { auditActions, auditCollections, auditChanges };

@@ -246,7 +246,14 @@ module.exports = {
   validateUpdateStudent: validateSchema(schemas.updateStudentSchema),
 
   /**
-   * Middleware for validating student schemas.
+   * Middleware for validating question schemas.
+   */
+  validateQuestionCode: validateSchema(schemas.questionCodeSchema),
+  validateQuestion: validateSchema(schemas.questionSchema),
+  validateUpdateQuestion: validateSchema(schemas.updateQuestionSchema),
+
+  /**
+   * Middleware for validating exam schemas.
    */
   validateExamCode: validateSchema(schemas.examCodeSchema),
   validateExam: validateSchema(schemas.examSchema),

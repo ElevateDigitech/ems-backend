@@ -283,6 +283,24 @@ module.exports.updateStudentSchema = Joi.object({
 });
 
 /**
+ * Question schemas.
+ */
+module.exports.questionCodeSchema = Joi.object({
+  questionCode: Joi.string().required(),
+});
+
+module.exports.questionSchema = Joi.object({
+  level: Joi.number().required(),
+  total: Joi.number().required(),
+});
+
+module.exports.updateQuestionSchema = Joi.object({
+  questionCode: Joi.string().required(),
+  level: Joi.number().required(),
+  total: Joi.number().required(),
+});
+
+/**
  * EXAM schemas.
  */
 module.exports.examCodeSchema = Joi.object({

@@ -29,10 +29,10 @@ const { classRoutes } = require("./routes/classes");
 const { sectionRoutes } = require("./routes/sections");
 const { subjectRoutes } = require("./routes/subjects");
 const { studentRoutes } = require("./routes/students");
+const { questionRoutes } = require("./routes/questions");
 const { examRoutes } = require("./routes/exams");
 const { markRoutes } = require("./routes/marks");
 
-const { hiddenFieldsUser, hiddenFieldsDefault } = require("./utils/helpers");
 const { STATUS_ERROR } = require("./utils/status");
 const {
   STATUS_CODE_PAGE_NOT_FOUND,
@@ -163,6 +163,7 @@ app.use("/", classRoutes);
 app.use("/", sectionRoutes);
 app.use("/", subjectRoutes);
 app.use("/", studentRoutes);
+app.use("/", questionRoutes);
 app.use("/", examRoutes);
 app.use("/", markRoutes);
 

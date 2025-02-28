@@ -50,6 +50,10 @@ const allPermissions = {
   CREATE_STUDENT: "CREATE STUDENT",
   UPDATE_STUDENT: "UPDATE STUDENT",
   DELETE_STUDENT: "DELETE STUDENT",
+  VIEW_QUESTIONS: "VIEW QUESTIONS",
+  CREATE_QUESTION: "CREATE QUESTION",
+  UPDATE_QUESTION: "UPDATE QUESTION",
+  DELETE_QUESTION: "DELETE QUESTION",
   VIEW_EXAMS: "VIEW EXAMS",
   CREATE_EXAM: "CREATE EXAM",
   UPDATE_EXAM: "UPDATE EXAM",
@@ -264,6 +268,22 @@ const basePermissions = [
   {
     permissionName: allPermissions?.DELETE_STUDENT,
     permissionDescription: "can delete student",
+  },
+  {
+    permissionName: allPermissions?.VIEW_QUESTIONS,
+    permissionDescription: "can view questions",
+  },
+  {
+    permissionName: allPermissions?.CREATE_QUESTION,
+    permissionDescription: "can create question",
+  },
+  {
+    permissionName: allPermissions?.UPDATE_QUESTION,
+    permissionDescription: "can update question",
+  },
+  {
+    permissionName: allPermissions?.DELETE_QUESTION,
+    permissionDescription: "can delete question",
   },
   {
     permissionName: allPermissions?.VIEW_EXAMS,

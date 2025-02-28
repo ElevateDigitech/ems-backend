@@ -199,6 +199,22 @@ const MESSAGE_DELETE_STUDENT_ERROR = "Couldn't delete the student";
 const MESSAGE_STUDENT_TAKEN =
   "Student roll number already taken. Please try a different one.";
 
+const MESSAGE_GET_QUESTIONS_SUCCESS = "Questions retrieved successfully";
+const MESSAGE_GET_QUESTION_SUCCESS = "Question retrieved successfully";
+const MESSAGE_QUESTION_NOT_FOUND = "The selected question could not be found";
+const MESSAGE_QUESTION_EXIST =
+  "Question already exist. Please try a different one";
+const MESSAGE_CREATE_QUESTION_SUCCESS = "Question created successfully";
+const MESSAGE_UPDATE_QUESTION_SUCCESS = "Question updated successfully";
+const MESSAGE_DELETE_QUESTION_SUCCESS = "Question deleted successfully";
+const MESSAGE_DELETE_QUESTION_ERROR = "Couldn't delete the question";
+const MESSAGE_QUESTION_NOT_ALLOWED_DELETE_REFERENCE_EXIST =
+  "The selected question is in use and not allowed to be deleted.";
+const MESSAGE_QUESTION_NOT_ALLOWED_UPDATE_REFERENCE_EXIST =
+  "The selected question is in use and not allowed to be updated.";
+const MESSAGE_QUESTION_TAKEN =
+  "Question already exist. Please try a different one.";
+
 const MESSAGE_GET_EXAMS_SUCCESS = "Exams retrieved successfully";
 const MESSAGE_GET_EXAM_SUCCESS = "Exam retrieved successfully";
 const MESSAGE_EXAM_NOT_FOUND = "The selected exam could not be found";
@@ -330,6 +346,7 @@ module.exports = {
   MESSAGE_COUNTRY_TAKEN,
   MESSAGE_STATE_TAKEN,
   MESSAGE_CITY_TAKEN,
+
   MESSAGE_GET_CLASSES_SUCCESS,
   MESSAGE_GET_CLASS_SUCCESS,
   MESSAGE_CLASS_NOT_FOUND,
@@ -340,6 +357,7 @@ module.exports = {
   MESSAGE_DELETE_CLASSS_ERROR,
   MESSAGE_CLASS_NOT_ALLOWED_DELETE_REFERENCE_EXIST,
   MESSAGE_CLASS_TAKEN,
+
   MESSAGE_GET_SECTIONS_SUCCESS,
   MESSAGE_GET_SECTION_SUCCESS,
   MESSAGE_SECTION_EXIST,
@@ -376,6 +394,18 @@ module.exports = {
   MESSAGE_DELETE_STUDENT_SUCCESS,
   MESSAGE_DELETE_STUDENT_ERROR,
   MESSAGE_STUDENT_TAKEN,
+
+  MESSAGE_GET_QUESTIONS_SUCCESS,
+  MESSAGE_GET_QUESTION_SUCCESS,
+  MESSAGE_QUESTION_NOT_FOUND,
+  MESSAGE_QUESTION_EXIST,
+  MESSAGE_CREATE_QUESTION_SUCCESS,
+  MESSAGE_UPDATE_QUESTION_SUCCESS,
+  MESSAGE_DELETE_QUESTION_SUCCESS,
+  MESSAGE_DELETE_QUESTION_ERROR,
+  MESSAGE_QUESTION_NOT_ALLOWED_DELETE_REFERENCE_EXIST,
+  MESSAGE_QUESTION_NOT_ALLOWED_UPDATE_REFERENCE_EXIST,
+  MESSAGE_QUESTION_TAKEN,
 
   MESSAGE_GET_EXAMS_SUCCESS,
   MESSAGE_GET_EXAM_SUCCESS,

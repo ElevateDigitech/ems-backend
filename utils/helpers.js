@@ -35,6 +35,7 @@ const generateClassCode = () => `CLASS-${uuidv4()}`;
 const generateSectionCode = () => `SECTION-${uuidv4()}`;
 const generateSubjectCode = () => `SUBJECT-${uuidv4()}`;
 const generateStudentCode = () => `STUDENT-${uuidv4()}`;
+const generateQuestionCode = () => `QUESTION-${uuidv4()}`;
 const generateExamCode = () => `EXAM-${uuidv4()}`;
 const generateMarkCode = () => `MARK-${uuidv4()}`;
 
@@ -148,6 +149,7 @@ module.exports = {
   generateSectionCode,
   generateSubjectCode,
   generateStudentCode,
+  generateQuestionCode,
   generateExamCode,
   generateMarkCode,
   validateDob,
