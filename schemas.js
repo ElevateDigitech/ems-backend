@@ -319,6 +319,44 @@ module.exports.updateExamSchema = Joi.object({
 });
 
 /**
+ * EXAM schemas.
+ */
+module.exports.questionPaperCodeSchema = Joi.object({
+  questionPaperCode: Joi.string().required(),
+});
+
+module.exports.questionPaperSchema = Joi.object({
+  title: Joi.string().required(),
+  examCode: Joi.string().required(),
+  subjectCode: Joi.string().required(),
+  questions: Joi.array()
+    .items(
+      Joi.object({
+        questionCode: Joi.string().required(),
+        questionNumber: Joi.number().required(),
+      })
+    )
+    .min(1)
+    .required(),
+});
+
+module.exports.updateQuestionPaperSchema = Joi.object({
+  questionPaperCode: Joi.string().required(),
+  title: Joi.string().required(),
+  examCode: Joi.string().required(),
+  subjectCode: Joi.string().required(),
+  questions: Joi.array()
+    .items(
+      Joi.object({
+        questionCode: Joi.string().required(),
+        questionNumber: Joi.number().required(),
+      })
+    )
+    .min(1)
+    .required(),
+});
+
+/**
  * Mark schemas.
  */
 module.exports.markCodeSchema = Joi.object({

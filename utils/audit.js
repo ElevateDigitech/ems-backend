@@ -20,6 +20,7 @@ const auditCollections = {
   SUBJECTS: "SUBJECTS",
   STUDENTS: "STUDENTS",
   QUESTIONS: "QUESTIONS",
+  QUESTION_PAPERS: "QUESTION PAPERS",
   EXAMS: "EXAMS",
   MARKS: "MARKS",
 };
@@ -64,6 +65,9 @@ const auditChanges = {
   CREATE_QUESTION: "A Question Created",
   UPDATE_QUESTION: "A Question Updated",
   DELETE_QUESTION: "A Question Deleted",
+  CREATE_QUESTION_PAPER: "A Question Paper Created",
+  UPDATE_QUESTION_PAPER: "A Question Paper Updated",
+  DELETE_QUESTION_PAPER: "A Question Paper Deleted",
   CREATE_EXAM: "A Exam Created",
   UPDATE_EXAM: "A Exam Updated",
   DELETE_EXAM: "A Exam Deleted",

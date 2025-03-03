@@ -34,6 +34,7 @@ const {
   createQuestionObj,
   updateQuestionObj,
   deleteQuestionObj,
+  formatQuestionObj,
 } = require("../queries/questions");
 const { findUser } = require("../queries/users");
 
@@ -112,14 +113,24 @@ module.exports = {
    */
   CreateQuestion: async (req, res, next) => {
     const { level, total } = req.body; // Step 1: Extract class level from request
+    const { formattedLevel, formattedTotal } = formatQuestionObj({
+      level,
+      total,
+    });
 
     // Step 3: Check if the class already exists
-    const existingQuestion = await findQuestion({ query: { level, total } });
+    const existingQuestion = await findQuestion({
+      query: { level: formattedLevel, total: formattedTotal },
+    });
+    console.log(existingQuestion);
     if (existingQuestion)
       return handleError(next, STATUS_CODE_CONFLICT, MESSAGE_QUESTION_EXIST);
 
     // Step 4: Create and save the new class
-    const newQuestion = createQuestionObj({ level, total });
+    const newQuestion = createQuestionObj({
+      level: formattedLevel,
+      total: formattedTotal,
+    });
     await newQuestion.save();
 
     // Step 5: Log the creation in audit logs
@@ -165,6 +176,11 @@ module.exports = {
    */
   UpdateQuestion: async (req, res, next) => {
     const { questionCode, level, total } = req.body; // Step 1: Extract class code and new level
+    const { formattedLevel, formattedTotal } = formatQuestionObj({
+      level,
+      total,
+    });
+
     // Step 3: Validate if the class exists
     const existingQuestion = await findQuestion({ query: { questionCode } });
     if (!existingQuestion)
@@ -176,7 +192,11 @@ module.exports = {
 
     // Step 4: Check for level conflicts with other classes
     const duplicateQuestion = await findQuestion({
-      query: { questionCode: { $ne: questionCode }, level, total },
+      query: {
+        questionCode: { $ne: questionCode },
+        level: formattedLevel,
+        total: formattedTotal,
+      },
     });
     if (duplicateQuestion)
       return handleError(next, STATUS_CODE_CONFLICT, MESSAGE_QUESTION_TAKEN);
@@ -197,7 +217,11 @@ module.exports = {
     });
 
     // Step 6: Update the class details
-    await updateQuestionObj({ questionCode, level, total });
+    await updateQuestionObj({
+      questionCode,
+      level: formattedLevel,
+      total: formattedTotal,
+    });
 
     // Step 7: Log the update in the audit logs
     const updatedQuestion = await findQuestion({

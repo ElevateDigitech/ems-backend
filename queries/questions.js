@@ -1,11 +1,11 @@
 const moment = require("moment-timezone");
 const Question = require("../models/question");
-const { generateQuestionCode } = require("../utils/helpers");
 const {
   buildQuestionPipeline,
   buildQuestionsPipeline,
   buildQuestionCountPipeline,
 } = require("../pipelines/questions");
+const { v4: uuidv4 } = require("uuid");
 
 /**
  * Retrieves a single class from the database.
@@ -81,6 +81,11 @@ const findQuestions = async ({
   return { results, totalCount };
 };
 
+const formatQuestionObj = ({ level, total }) => ({
+  formattedLevel: parseFloat(level),
+  formattedTotal: parseFloat(total),
+});
+
 /**
  * Creates a new class object.
  *
@@ -90,12 +95,9 @@ const findQuestions = async ({
  * @returns {Object} - The newly created class object.
  */
 const createQuestionObj = ({ level, total }) => {
-  // Step 1: Generate a unique class code
-  const questionCode = generateQuestionCode();
-
-  // Step 2: Create a new Class object with the generated code and provided level
+  // Step 1: Create a new Class object with the generated code and provided level
   return new Question({
-    questionCode,
+    questionCode: `QUESTION-${uuidv4()}`,
     level,
     total,
   });
@@ -136,6 +138,7 @@ const deleteQuestionObj = async (questionCode) => {
 module.exports = {
   findQuestion, // Export function to retrieve a single class
   findQuestions, // Export function to retrieve multiple classes
+  formatQuestionObj,
   createQuestionObj, // Export function to create a new class object
   updateQuestionObj, // Export function to update an existing class
   deleteQuestionObj, // Export function to delete a class

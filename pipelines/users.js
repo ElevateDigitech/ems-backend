@@ -180,7 +180,7 @@ const buildUsersPipeline = ({
                     },
                   },
                 }
-              : 0,
+              : 1,
             createdAt: { $toLong: "$role.createdAt" },
             updatedAt: { $toLong: "$role.updatedAt" },
           }

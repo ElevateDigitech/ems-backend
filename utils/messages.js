@@ -215,6 +215,31 @@ const MESSAGE_QUESTION_NOT_ALLOWED_UPDATE_REFERENCE_EXIST =
 const MESSAGE_QUESTION_TAKEN =
   "Question already exist. Please try a different one.";
 
+const MESSAGE_GET_QUESTION_PAPERS_SUCCESS =
+  "Question papers retrieved successfully";
+const MESSAGE_GET_QUESTION_PAPER_SUCCESS =
+  "Question paper retrieved successfully";
+const MESSAGE_QUESTION_PAPER_NOT_FOUND =
+  "The selected question paper could not be found";
+const MESSAGE_QUESTION_PAPER_EXIST =
+  "Question paper already exist. Please try a different one";
+const MESSAGE_CREATE_QUESTION_PAPER_SUCCESS =
+  "Question paper created successfully";
+const MESSAGE_UPDATE_QUESTION_PAPER_SUCCESS =
+  "Question paper updated successfully";
+const MESSAGE_DELETE_QUESTION_PAPER_SUCCESS =
+  "Question paper deleted successfully";
+const MESSAGE_DELETE_QUESTION_PAPER_ERROR =
+  "Couldn't delete the question paper";
+const MESSAGE_QUESTION_PAPER_NOT_ALLOWED_DELETE_REFERENCE_EXIST =
+  "The selected question paper is in use and not allowed to be deleted.";
+const MESSAGE_QUESTION_PAPER_NOT_ALLOWED_UPDATE_REFERENCE_EXIST =
+  "The selected question paper is in use and not allowed to be updated.";
+const MESSAGE_QUESTION_PAPER_TAKEN =
+  "Question paper already exist. Please try a different one.";
+const MESSAGE_QUESTION_PAPER_QUESTIONS_NOT_FOUND =
+  "One or more of the question listed are not valid";
+
 const MESSAGE_GET_EXAMS_SUCCESS = "Exams retrieved successfully";
 const MESSAGE_GET_EXAM_SUCCESS = "Exam retrieved successfully";
 const MESSAGE_EXAM_NOT_FOUND = "The selected exam could not be found";
@@ -406,6 +431,19 @@ module.exports = {
   MESSAGE_QUESTION_NOT_ALLOWED_DELETE_REFERENCE_EXIST,
   MESSAGE_QUESTION_NOT_ALLOWED_UPDATE_REFERENCE_EXIST,
   MESSAGE_QUESTION_TAKEN,
+
+  MESSAGE_GET_QUESTION_PAPERS_SUCCESS,
+  MESSAGE_GET_QUESTION_PAPER_SUCCESS,
+  MESSAGE_QUESTION_PAPER_NOT_FOUND,
+  MESSAGE_QUESTION_PAPER_EXIST,
+  MESSAGE_CREATE_QUESTION_PAPER_SUCCESS,
+  MESSAGE_UPDATE_QUESTION_PAPER_SUCCESS,
+  MESSAGE_DELETE_QUESTION_PAPER_SUCCESS,
+  MESSAGE_DELETE_QUESTION_PAPER_ERROR,
+  MESSAGE_QUESTION_PAPER_NOT_ALLOWED_DELETE_REFERENCE_EXIST,
+  MESSAGE_QUESTION_PAPER_NOT_ALLOWED_UPDATE_REFERENCE_EXIST,
+  MESSAGE_QUESTION_PAPER_TAKEN,
+  MESSAGE_QUESTION_PAPER_QUESTIONS_NOT_FOUND,
 
   MESSAGE_GET_EXAMS_SUCCESS,
   MESSAGE_GET_EXAM_SUCCESS,

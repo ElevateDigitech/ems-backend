@@ -9,6 +9,7 @@ const { referenceFields } = require("./referenceFields");
 const { findPermission } = require("../queries/permissions");
 const { findUser } = require("../queries/users");
 const { findRole } = require("../queries/roles");
+const { findQuestion } = require("../queries/questions");
 
 const hiddenFieldsDefault = { __v: 0, _id: 0, id: 0 };
 const hiddenFieldsUser = { __v: 0, _id: 0, salt: 0, hash: 0 };
@@ -36,6 +37,7 @@ const generateSectionCode = () => `SECTION-${uuidv4()}`;
 const generateSubjectCode = () => `SUBJECT-${uuidv4()}`;
 const generateStudentCode = () => `STUDENT-${uuidv4()}`;
 const generateQuestionCode = () => `QUESTION-${uuidv4()}`;
+const generateQuestionPaperCode = () => `QUESTION-PAPER-${uuidv4()}`;
 const generateExamCode = () => `EXAM-${uuidv4()}`;
 const generateMarkCode = () => `MARK-${uuidv4()}`;
 
@@ -129,6 +131,28 @@ const getCurrentUser = async (userCode) => {
 
 const getFileExtension = (filename) => path.extname(filename);
 
+const getInvalidQuestions = async (questions) => {
+  return await Promise.all(
+    questions.map(async (q) => {
+      const question = await findQuestion({
+        query: { questionCode: q?.questionCode },
+      });
+      return !question;
+    })
+  );
+};
+
+const getQuestionsWithIds = async (questions) => {
+  return await Promise.all(
+    questions.map(async (q) => {
+      const question = await findQuestion({
+        query: { questionCode: q?.questionCode },
+      });
+      return { ...q, question: question?._id };
+    })
+  );
+};
+
 module.exports = {
   hiddenFieldsDefault,
   hiddenFieldsUser,
@@ -150,6 +174,7 @@ module.exports = {
   generateSubjectCode,
   generateStudentCode,
   generateQuestionCode,
+  generateQuestionPaperCode,
   generateExamCode,
   generateMarkCode,
   validateDob,
@@ -163,4 +188,6 @@ module.exports = {
   validateRequiredFields,
   getCurrentUser,
   getFileExtension,
+  getInvalidQuestions,
+  getQuestionsWithIds,
 };

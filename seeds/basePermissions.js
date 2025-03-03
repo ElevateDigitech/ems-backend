@@ -54,6 +54,10 @@ const allPermissions = {
   CREATE_QUESTION: "CREATE QUESTION",
   UPDATE_QUESTION: "UPDATE QUESTION",
   DELETE_QUESTION: "DELETE QUESTION",
+  VIEW_QUESTION_PAPERS: "VIEW QUESTION PAPERS",
+  CREATE_QUESTION_PAPER: "CREATE QUESTION PAPER",
+  UPDATE_QUESTION_PAPER: "UPDATE QUESTION PAPER",
+  DELETE_QUESTION_PAPER: "DELETE QUESTION PAPER",
   VIEW_EXAMS: "VIEW EXAMS",
   CREATE_EXAM: "CREATE EXAM",
   UPDATE_EXAM: "UPDATE EXAM",
@@ -284,6 +288,22 @@ const basePermissions = [
   {
     permissionName: allPermissions?.DELETE_QUESTION,
     permissionDescription: "can delete question",
+  },
+  {
+    permissionName: allPermissions?.VIEW_QUESTION_PAPERS,
+    permissionDescription: "can view question papers",
+  },
+  {
+    permissionName: allPermissions?.CREATE_QUESTION_PAPER,
+    permissionDescription: "can create question paper",
+  },
+  {
+    permissionName: allPermissions?.UPDATE_QUESTION_PAPER,
+    permissionDescription: "can update question paper",
+  },
+  {
+    permissionName: allPermissions?.DELETE_QUESTION_PAPER,
+    permissionDescription: "can delete question paper",
   },
   {
     permissionName: allPermissions?.VIEW_EXAMS,

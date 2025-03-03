@@ -30,6 +30,7 @@ const { sectionRoutes } = require("./routes/sections");
 const { subjectRoutes } = require("./routes/subjects");
 const { studentRoutes } = require("./routes/students");
 const { questionRoutes } = require("./routes/questions");
+const { questionPaperRoutes } = require("./routes/questionPapers");
 const { examRoutes } = require("./routes/exams");
 const { markRoutes } = require("./routes/marks");
 
@@ -164,6 +165,7 @@ app.use("/", sectionRoutes);
 app.use("/", subjectRoutes);
 app.use("/", studentRoutes);
 app.use("/", questionRoutes);
+app.use("/", questionPaperRoutes);
 app.use("/", examRoutes);
 app.use("/", markRoutes);
 
