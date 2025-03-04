@@ -49,6 +49,22 @@ const buildQuestionPaperPipeline = ({
 
     pipeline.push({
       $lookup: {
+        from: "sections",
+        localField: "section",
+        foreignField: "_id",
+        as: "section",
+      },
+    });
+
+    pipeline.push({
+      $unwind: {
+        path: "$section",
+        preserveNullAndEmptyArrays: true,
+      },
+    });
+
+    pipeline.push({
+      $lookup: {
         from: "questions", // Collection name
         localField: "questions.question",
         foreignField: "_id",
@@ -70,6 +86,12 @@ const buildQuestionPaperPipeline = ({
           name: "$subject.name",
           createdAt: { $toLong: "$subject.createdAt" },
           updatedAt: { $toLong: "$subject.updatedAt" },
+        },
+        section: {
+          sectionCode: "$section.sectionCode",
+          name: "$section.name",
+          createdAt: { $toLong: "$section.createdAt" },
+          updatedAt: { $toLong: "$section.updatedAt" },
         },
         questions: {
           $map: {
@@ -105,6 +127,7 @@ const buildQuestionPaperPipeline = ({
         title: 1,
         exam: 1,
         subject: 1,
+        section: 1,
         questions: 1,
         createdAt: { $toLong: "$createdAt" },
         updatedAt: { $toLong: "$updatedAt" },
@@ -169,6 +192,22 @@ const buildQuestionPapersPipeline = ({
 
     pipeline.push({
       $lookup: {
+        from: "sections",
+        localField: "section",
+        foreignField: "_id",
+        as: "section",
+      },
+    });
+
+    pipeline.push({
+      $unwind: {
+        path: "$section",
+        preserveNullAndEmptyArrays: true,
+      },
+    });
+
+    pipeline.push({
+      $lookup: {
         from: "questions",
         localField: "questions.question",
         foreignField: "_id",
@@ -190,6 +229,12 @@ const buildQuestionPapersPipeline = ({
           name: "$subject.name",
           createdAt: { $toLong: "$subject.createdAt" },
           updatedAt: { $toLong: "$subject.updatedAt" },
+        },
+        section: {
+          sectionCode: "$section.sectionCode",
+          name: "$section.name",
+          createdAt: { $toLong: "$section.createdAt" },
+          updatedAt: { $toLong: "$section.updatedAt" },
         },
         questions: {
           $map: {
@@ -223,6 +268,7 @@ const buildQuestionPapersPipeline = ({
       { title: { $regex: keywordRegex } },
       { "exam.title": { $regex: keywordRegex } },
       { "subject.name": { $regex: keywordRegex } },
+      { "section.name": { $regex: keywordRegex } },
     ];
 
     pipeline.push({
@@ -253,6 +299,7 @@ const buildQuestionPapersPipeline = ({
         title: 1,
         exam: 1,
         subject: 1,
+        section: 1,
         questions: 1,
         createdAt: { $toLong: "$createdAt" },
         updatedAt: { $toLong: "$updatedAt" },
@@ -310,6 +357,22 @@ const buildQuestionPaperCountPipeline = ({
 
     pipeline.push({
       $lookup: {
+        from: "sections",
+        localField: "section",
+        foreignField: "_id",
+        as: "section",
+      },
+    });
+
+    pipeline.push({
+      $unwind: {
+        path: "$section",
+        preserveNullAndEmptyArrays: true,
+      },
+    });
+
+    pipeline.push({
+      $lookup: {
         from: "questions",
         localField: "questions.question",
         foreignField: "_id",
@@ -331,6 +394,12 @@ const buildQuestionPaperCountPipeline = ({
           name: "$subject.name",
           createdAt: { $toLong: "$subject.createdAt" },
           updatedAt: { $toLong: "$subject.updatedAt" },
+        },
+        section: {
+          sectionCode: "$section.sectionCode",
+          name: "$section.name",
+          createdAt: { $toLong: "$section.createdAt" },
+          updatedAt: { $toLong: "$section.updatedAt" },
         },
         questions: {
           $map: {
@@ -364,6 +433,7 @@ const buildQuestionPaperCountPipeline = ({
       { title: { $regex: keywordRegex } },
       { "exam.title": { $regex: keywordRegex } },
       { "subject.name": { $regex: keywordRegex } },
+      { "section.name": { $regex: keywordRegex } },
     ];
 
     pipeline.push({

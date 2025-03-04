@@ -97,7 +97,7 @@ const findSections = async ({
  * @returns {string} - The formatted section name.
  */
 const formatSectionName = (name) => {
-  return toCapitalize(name); // Step 1: Capitalize the section name
+  return `${name}`.toUpperCase(); // Step 1: Capitalize the section name
 };
 
 /**

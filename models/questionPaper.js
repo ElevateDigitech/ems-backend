@@ -33,6 +33,11 @@ const QuestionPaperSchema = new Schema(
       ref: "Subject",
       required: true,
     },
+    section: {
+      type: Schema.Types.ObjectId,
+      ref: "Section",
+      required: true,
+    },
     questions: [
       {
         question: {

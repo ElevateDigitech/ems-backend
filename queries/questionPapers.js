@@ -111,7 +111,13 @@ const formatQuestionPaperTitle = (title) => {
  * @param {Array} params.questions - The list of questions.
  * @returns {Object} - The newly created question paper object.
  */
-const createQuestionPaperObj = ({ title, exam, subject, questions }) => {
+const createQuestionPaperObj = ({
+  title,
+  exam,
+  subject,
+  section,
+  questions,
+}) => {
   // Generate a unique question paper code
   const questionPaperCode = generateQuestionPaperCode();
 
@@ -121,6 +127,7 @@ const createQuestionPaperObj = ({ title, exam, subject, questions }) => {
     title,
     exam,
     subject,
+    section,
     questions,
   });
 };
@@ -141,6 +148,7 @@ const updateQuestionPaperObj = async ({
   title,
   exam,
   subject,
+  section,
   questions,
 }) => {
   // Update the question paper document with the provided details
@@ -150,6 +158,7 @@ const updateQuestionPaperObj = async ({
       title,
       exam,
       subject,
+      section,
       questions,
       updatedAt: moment().valueOf(),
     }

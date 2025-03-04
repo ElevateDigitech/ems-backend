@@ -8,6 +8,7 @@ const {
   validateUpdateQuestionPaper,
   validateSubjectCode,
   validateExamCode,
+  validateSectionCode,
 } = require("../middleware");
 const catchAsync = require("../utils/catchAsync");
 const { allPermissions } = require("../seeds/basePermissions");
@@ -17,14 +18,14 @@ const router = express.Router();
 router.get(
   "/GetQuestionPapers",
   isLoggedIn,
-  checkPermission(allPermissions?.VIEW_CITIES),
+  checkPermission(allPermissions?.VIEW_QUESTION_PAPERS),
   catchAsync(questionPapers.GetQuestionPapers)
 );
 
 router.post(
   "/GetQuestionPaperByCode",
   isLoggedIn,
-  checkPermission(allPermissions?.VIEW_CITIES),
+  checkPermission(allPermissions?.VIEW_QUESTION_PAPERS),
   validateQuestionPaperCode,
   catchAsync(questionPapers.GetQuestionPaperByCode)
 );
@@ -32,7 +33,7 @@ router.post(
 router.post(
   "/GetQuestionPapersBySubjectCode",
   isLoggedIn,
-  checkPermission(allPermissions?.VIEW_CITIES),
+  checkPermission(allPermissions?.VIEW_QUESTION_PAPERS),
   validateSubjectCode,
   catchAsync(questionPapers.GetQuestionPapersBySubjectCode)
 );
@@ -40,15 +41,23 @@ router.post(
 router.post(
   "/GetQuestionPapersByExamCode",
   isLoggedIn,
-  checkPermission(allPermissions?.VIEW_CITIES),
+  checkPermission(allPermissions?.VIEW_QUESTION_PAPERS),
   validateExamCode,
   catchAsync(questionPapers.GetQuestionPapersByExamCode)
 );
 
 router.post(
+  "/GetQuestionPapersBySectionCode",
+  isLoggedIn,
+  checkPermission(allPermissions?.VIEW_QUESTION_PAPERS),
+  validateSectionCode,
+  catchAsync(questionPapers.GetQuestionPapersBySectionCode)
+);
+
+router.post(
   "/CreateQuestionPaper",
   isLoggedIn,
-  checkPermission(allPermissions?.CREATE_CITY),
+  checkPermission(allPermissions?.CREATE_QUESTION_PAPER),
   validateQuestionPaper,
   catchAsync(questionPapers.CreateQuestionPaper)
 );
@@ -56,7 +65,7 @@ router.post(
 router.post(
   "/UpdateQuestionPaper",
   isLoggedIn,
-  checkPermission(allPermissions?.UPDATE_CITY),
+  checkPermission(allPermissions?.UPDATE_QUESTION_PAPER),
   validateUpdateQuestionPaper,
   catchAsync(questionPapers.UpdateQuestionPaper)
 );
@@ -64,7 +73,7 @@ router.post(
 router.post(
   "/DeleteQuestionPaper",
   isLoggedIn,
-  checkPermission(allPermissions?.DELETE_CITY),
+  checkPermission(allPermissions?.DELETE_QUESTION_PAPER),
   validateQuestionPaperCode,
   catchAsync(questionPapers.DeleteQuestionPaper)
 );

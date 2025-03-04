@@ -319,7 +319,7 @@ module.exports.updateExamSchema = Joi.object({
 });
 
 /**
- * EXAM schemas.
+ * question paper schemas.
  */
 module.exports.questionPaperCodeSchema = Joi.object({
   questionPaperCode: Joi.string().required(),
@@ -329,6 +329,7 @@ module.exports.questionPaperSchema = Joi.object({
   title: Joi.string().required(),
   examCode: Joi.string().required(),
   subjectCode: Joi.string().required(),
+  sectionCode: Joi.string().required(),
   questions: Joi.array()
     .items(
       Joi.object({
@@ -345,6 +346,7 @@ module.exports.updateQuestionPaperSchema = Joi.object({
   title: Joi.string().required(),
   examCode: Joi.string().required(),
   subjectCode: Joi.string().required(),
+  sectionCode: Joi.string().required(),
   questions: Joi.array()
     .items(
       Joi.object({

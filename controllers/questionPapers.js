@@ -10,6 +10,7 @@ const {
   IsObjectIdReferenced,
   getInvalidQuestions,
   getQuestionsWithIds,
+  hasDuplicates,
 } = require("../utils/helpers");
 const {
   STATUS_CODE_CONFLICT,
@@ -31,6 +32,8 @@ const {
   MESSAGE_EXAM_NOT_FOUND,
   MESSAGE_QUESTION_PAPER_TAKEN,
   MESSAGE_QUESTION_PAPER_QUESTIONS_NOT_FOUND,
+  MESSAGE_SECTION_NOT_FOUND,
+  MESSAGE_QUESTION_PAPER_QUESTION_NUMBER_DUPLICATION,
 } = require("../utils/messages");
 const {
   findQuestionPapers,
@@ -43,6 +46,7 @@ const {
 const { findUser } = require("../queries/users");
 const { findSubject } = require("../queries/subjects");
 const { findExam } = require("../queries/exams");
+const { findSection } = require("../queries/sections");
 
 module.exports = {
   /**
@@ -224,6 +228,59 @@ module.exports = {
   },
 
   /**
+   * Retrieves question papers by the given section code.
+   *
+   * @param {Object} req - Express request object
+   * @param {Object} res - Express response object
+   * @param {Function} next - Express next middleware function
+   */
+  GetQuestionPapersBySectionCode: async (req, res, next) => {
+    const {
+      keyword = "",
+      sortField = "_id",
+      sortValue = "desc",
+      page = 1,
+      limit = 10,
+    } = req.query;
+
+    // Step 2: Find the section by its code
+    const section = await findSection({
+      query: { sectionCode: req.body.sectionCode },
+    });
+    if (!section)
+      return res
+        .status(STATUS_CODE_SUCCESS)
+        .send(
+          handleSuccess(STATUS_CODE_SUCCESS, MESSAGE_SECTION_NOT_FOUND, [], 0)
+        );
+
+    const { results, totalCount } = await findQuestionPapers({
+      query: { section: section._id },
+      keyword,
+      sortField,
+      sortValue,
+      page,
+      limit,
+      populate: true,
+      projection: true,
+    });
+
+    // Step 4: Return the question papers if found, else return an error
+    return res
+      .status(STATUS_CODE_SUCCESS)
+      .send(
+        handleSuccess(
+          STATUS_CODE_SUCCESS,
+          results.length === 0
+            ? MESSAGE_QUESTION_PAPER_NOT_FOUND
+            : MESSAGE_GET_QUESTION_PAPER_SUCCESS,
+          results.length === 0 ? [] : results,
+          results.length === 0 ? 0 : totalCount
+        )
+      );
+  },
+
+  /**
    * Creates a new question paper in the database.
    *
    * @param {Object} req - Express request object
@@ -231,9 +288,8 @@ module.exports = {
    * @param {Function} next - Express next middleware function
    */
   CreateQuestionPaper: async (req, res, next) => {
-    const { title, subjectCode, examCode, questions } = req.body;
-    console.log(title, subjectCode, examCode, questions);
-    const formattedTitle = formatQuestionPaperTitle(title); // Step 1: Format city title
+    const { title, subjectCode, examCode, sectionCode, questions } = req.body;
+    const formattedTitle = formatQuestionPaperTitle(title); // Step 1: Format question paper title
 
     // Step 2: Check if the question paper already exists
     const existingQuestionPaper = await findQuestionPaper({
@@ -255,6 +311,21 @@ module.exports = {
     if (!exam)
       return handleError(next, STATUS_CODE_CONFLICT, MESSAGE_EXAM_NOT_FOUND);
 
+    const section = await findSection({ query: { sectionCode } });
+    if (!section)
+      return handleError(next, STATUS_CODE_CONFLICT, MESSAGE_SECTION_NOT_FOUND);
+
+    const duplicateQuestionsExist = hasDuplicates(
+      questions?.map((q) => q?.questionNumber)
+    );
+
+    if (duplicateQuestionsExist)
+      return handleError(
+        next,
+        STATUS_CODE_BAD_REQUEST,
+        MESSAGE_QUESTION_PAPER_QUESTION_NUMBER_DUPLICATION
+      );
+
     // Step 4: Validate Questions
     const invalidQuestion = await getInvalidQuestions(questions);
     if (invalidQuestion.some(Boolean))
@@ -271,12 +342,11 @@ module.exports = {
       title: formattedTitle,
       subject: subject._id,
       exam: exam._id,
+      section: section._id,
       questions: questionsWithIds,
     });
 
     await questionPaper.save();
-
-    console.log(questionPaper);
 
     // Step 6: Log the audit
     const createdQuestionPaper = await findQuestionPaper({
@@ -285,15 +355,11 @@ module.exports = {
       populate: true,
     });
 
-    console.log(createdQuestionPaper);
-
     const currentUser = await findUser({
       query: { userCode: req.user.userCode },
       projection: true,
       populate: true,
     });
-
-    console.log(currentUser);
 
     await logAudit(
       auditActions.CREATE,
@@ -304,8 +370,6 @@ module.exports = {
       createdQuestionPaper,
       currentUser
     );
-
-    console.log("logged");
 
     // Step 7: Return the created question paper
     res
@@ -327,8 +391,14 @@ module.exports = {
    * @param {Function} next - Express next middleware function
    */
   UpdateQuestionPaper: async (req, res, next) => {
-    const { questionPaperCode, title, subjectCode, examCode, questions } =
-      req.body;
+    const {
+      questionPaperCode,
+      title,
+      subjectCode,
+      examCode,
+      sectionCode,
+      questions,
+    } = req.body;
     const formattedTitle = formatQuestionPaperTitle(title); // Step 1: Format question paper title
 
     // Step 2: Validate the question paper
@@ -350,6 +420,21 @@ module.exports = {
     const exam = await findExam({ query: { examCode } });
     if (!exam)
       return handleError(next, STATUS_CODE_CONFLICT, MESSAGE_EXAM_NOT_FOUND);
+
+    const section = await findSection({ query: { sectionCode } });
+    if (!section)
+      return handleError(next, STATUS_CODE_CONFLICT, MESSAGE_SECTION_NOT_FOUND);
+
+    const duplicateQuestionsExist = hasDuplicates(
+      questions?.map((q) => q?.questionNumber)
+    );
+
+    if (duplicateQuestionsExist)
+      return handleError(
+        next,
+        STATUS_CODE_BAD_REQUEST,
+        MESSAGE_QUESTION_PAPER_QUESTION_NUMBER_DUPLICATION
+      );
 
     // Step 4: Validate Questions
     const invalidQuestion = await getInvalidQuestions(questions);
@@ -389,6 +474,7 @@ module.exports = {
       title: formattedTitle,
       subject: subject._id,
       exam: exam._id,
+      section: section._id,
       questions: questionsWithIds,
     });
 
@@ -480,7 +566,7 @@ module.exports = {
     await logAudit(
       auditActions.DELETE,
       auditCollections.QUESTION_PAPERS,
-      city.questionPaperCode,
+      questionPaperCode,
       auditChanges.DELETE_CITY,
       previousData,
       null,
