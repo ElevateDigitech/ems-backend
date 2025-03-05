@@ -281,6 +281,77 @@ module.exports = {
   },
 
   /**
+   * Retrieves question papers by the given query.
+   *
+   * @param {Object} req - Express request object
+   * @param {Object} res - Express response object
+   * @param {Function} next - Express next middleware function
+   */
+  GetQuestionPaperByQuery: async (req, res, next) => {
+    const { sectionCode, subjectCode, examCode } = req.body;
+    console.log(sectionCode, subjectCode, examCode);
+    // Step 2: Find the section by its code
+    const section = await findSection({
+      query: { sectionCode },
+    });
+    if (!section)
+      return res
+        .status(STATUS_CODE_SUCCESS)
+        .send(
+          handleSuccess(STATUS_CODE_SUCCESS, MESSAGE_SECTION_NOT_FOUND, [], 0)
+        );
+
+    // Step 3: Find the subject by its code
+    const subject = await findSubject({
+      query: { subjectCode },
+    });
+    if (!subject)
+      return res
+        .status(STATUS_CODE_SUCCESS)
+        .send(
+          handleSuccess(STATUS_CODE_SUCCESS, MESSAGE_SUBJECT_NOT_FOUND, [], 0)
+        );
+
+    // Step 3: Find the exam by its code
+    const exam = await findExam({
+      query: { examCode },
+    });
+    if (!exam)
+      return res
+        .status(STATUS_CODE_SUCCESS)
+        .send(
+          handleSuccess(STATUS_CODE_SUCCESS, MESSAGE_EXAM_NOT_FOUND, [], 0)
+        );
+
+    const questionPaper = await findQuestionPaper({
+      query: {
+        section: section._id,
+        subject: subject._id,
+        exam: exam._id,
+      },
+      populate: true,
+      projection: true,
+    });
+
+    // Step 4: Return the question papers if found, else return an error
+    return questionPaper
+      ? res
+          .status(STATUS_CODE_SUCCESS)
+          .send(
+            handleSuccess(
+              STATUS_CODE_SUCCESS,
+              MESSAGE_GET_QUESTION_PAPER_SUCCESS,
+              questionPaper
+            )
+          )
+      : handleError(
+          next,
+          STATUS_CODE_BAD_REQUEST,
+          MESSAGE_QUESTION_PAPER_NOT_FOUND
+        );
+  },
+
+  /**
    * Creates a new question paper in the database.
    *
    * @param {Object} req - Express request object
@@ -314,6 +385,17 @@ module.exports = {
     const section = await findSection({ query: { sectionCode } });
     if (!section)
       return handleError(next, STATUS_CODE_CONFLICT, MESSAGE_SECTION_NOT_FOUND);
+
+    const duplicateQuestionPaper = await findQuestionPaper({
+      query: { subjectCode, examCode, sectionCode },
+    });
+
+    if (duplicateQuestionPaper)
+      return handleError(
+        next,
+        STATUS_CODE_CONFLICT,
+        MESSAGE_QUESTION_PAPER_TAKEN
+      );
 
     const duplicateQuestionsExist = hasDuplicates(
       questions?.map((q) => q?.questionNumber)
@@ -451,7 +533,10 @@ module.exports = {
     const duplicateQuestionPaper = await findQuestionPaper({
       query: {
         questionPaperCode: { $ne: questionPaperCode },
-        title: formattedTitle,
+        $or: [
+          { title: formattedTitle },
+          { sectionCode, subjectCode, examCode },
+        ],
       },
     });
     if (duplicateQuestionPaper)

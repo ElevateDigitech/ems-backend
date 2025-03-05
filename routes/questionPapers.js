@@ -9,6 +9,7 @@ const {
   validateSubjectCode,
   validateExamCode,
   validateSectionCode,
+  validateQueryQuestionPaper,
 } = require("../middleware");
 const catchAsync = require("../utils/catchAsync");
 const { allPermissions } = require("../seeds/basePermissions");
@@ -52,6 +53,14 @@ router.post(
   checkPermission(allPermissions?.VIEW_QUESTION_PAPERS),
   validateSectionCode,
   catchAsync(questionPapers.GetQuestionPapersBySectionCode)
+);
+
+router.post(
+  "/GetQuestionPaperByQuery",
+  isLoggedIn,
+  checkPermission(allPermissions?.VIEW_QUESTION_PAPERS),
+  validateQueryQuestionPaper,
+  catchAsync(questionPapers.GetQuestionPaperByQuery)
 );
 
 router.post(

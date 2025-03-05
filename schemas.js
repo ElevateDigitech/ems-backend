@@ -357,6 +357,11 @@ module.exports.updateQuestionPaperSchema = Joi.object({
     .min(1)
     .required(),
 });
+module.exports.questionPaperQuerySchema = Joi.object({
+  sectionCode: Joi.string().required(),
+  subjectCode: Joi.string().required(),
+  examCode: Joi.string().required(),
+});
 
 /**
  * Mark schemas.
