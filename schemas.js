@@ -371,6 +371,8 @@ module.exports.markCodeSchema = Joi.object({
 });
 
 module.exports.markSchema = Joi.object({
+  questionPaperCode: Joi.string().required(),
+  marksPerQuestion: Joi.array().items(Joi.string()).min(1).required(),
   markEarned: Joi.number().required(),
   markTotal: Joi.number().required(),
   examCode: Joi.string().required(),
@@ -380,6 +382,8 @@ module.exports.markSchema = Joi.object({
 
 module.exports.updateMarkSchema = Joi.object({
   markCode: Joi.string().required(),
+  questionPaperCode: Joi.string().required(),
+  marksPerQuestion: Joi.array().items(Joi.string()).min(1).required(),
   markEarned: Joi.number().required(),
   markTotal: Joi.number().required(),
   examCode: Joi.string().required(),

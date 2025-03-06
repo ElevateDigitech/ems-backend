@@ -151,22 +151,17 @@ module.exports = {
       projection: true,
     });
 
-    // Step 6: Handle case when no students are found
-    if (!results?.length)
-      return handleError(
-        next,
-        STATUS_CODE_BAD_REQUEST,
-        MESSAGE_STUDENTS_NOT_FOUND
-      );
-    // Step 7: Send success response with the list of students
+    // Step 6: Send success response with the list of students
     res
       .status(STATUS_CODE_SUCCESS)
       .send(
         handleSuccess(
           STATUS_CODE_SUCCESS,
-          MESSAGE_GET_STUDENT_SUCCESS,
-          results,
-          totalCount
+          results?.length
+            ? MESSAGE_GET_STUDENT_SUCCESS
+            : MESSAGE_STUDENTS_NOT_FOUND,
+          results?.length ? results : [],
+          results?.length ? totalCount : 0
         )
       );
   },

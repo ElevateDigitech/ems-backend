@@ -1,4 +1,4 @@
-const buildMarkPipeline = ({
+const buildMarksPipeline = ({
   keyword,
   query = {},
   sortField = "_id",
@@ -21,6 +21,65 @@ const buildMarkPipeline = ({
     pipeline.push(
       {
         $lookup: {
+          from: "questionPapers",
+          localField: "questionPaper",
+          foreignField: "_id",
+          as: "questionPaper",
+        },
+      },
+      { $unwind: { path: "$questionPaper", preserveNullAndEmptyArrays: true } },
+      {
+        $lookup: {
+          from: "exams",
+          localField: "questionPaper.exam",
+          foreignField: "_id",
+          as: "questionPaper.exam",
+        },
+      },
+      {
+        $unwind: {
+          path: "$questionPaper.exam",
+          preserveNullAndEmptyArrays: true,
+        },
+      },
+      {
+        $lookup: {
+          from: "subjects",
+          localField: "questionPaper.subject",
+          foreignField: "_id",
+          as: "questionPaper.subject",
+        },
+      },
+      {
+        $unwind: {
+          path: "$questionPaper.subject",
+          preserveNullAndEmptyArrays: true,
+        },
+      },
+      {
+        $lookup: {
+          from: "sections",
+          localField: "questionPaper.section",
+          foreignField: "_id",
+          as: "questionPaper.section",
+        },
+      },
+      {
+        $unwind: {
+          path: "$questionPaper.section",
+          preserveNullAndEmptyArrays: true,
+        },
+      },
+      {
+        $lookup: {
+          from: "questions",
+          localField: "questionPaper.questions.question",
+          foreignField: "_id",
+          as: "questionPaper.questionDetails",
+        },
+      },
+      {
+        $lookup: {
           from: "exams",
           localField: "exam",
           foreignField: "_id",
@@ -39,13 +98,70 @@ const buildMarkPipeline = ({
       { $unwind: { path: "$student", preserveNullAndEmptyArrays: true } },
       {
         $lookup: {
+          from: "sections",
+          localField: "student.section",
+          foreignField: "_id",
+          as: "student.section",
+        },
+      },
+      {
+        $unwind: { path: "$student.section", preserveNullAndEmptyArrays: true },
+      },
+      {
+        $lookup: {
           from: "subjects",
           localField: "subject",
           foreignField: "_id",
           as: "subject",
         },
       },
-      { $unwind: { path: "$subject", preserveNullAndEmptyArrays: true } }
+      { $unwind: { path: "$subject", preserveNullAndEmptyArrays: true } },
+      {
+        $addFields: {
+          questionPaper: {
+            exam: {
+              examCode: "$questionPaper.exam.examCode",
+              title: "$questionPaper.exam.title",
+              date: { $toLong: "$questionPaper.exam.date" },
+              createdAt: { $toLong: "$questionPaper.exam.createdAt" },
+              updatedAt: { $toLong: "$questionPaper.exam.updatedAt" },
+            },
+            subject: {
+              subjectCode: "$questionPaper.subject.subjectCode",
+              name: "$questionPaper.subject.name",
+              createdAt: { $toLong: "$questionPaper.subject.createdAt" },
+              updatedAt: { $toLong: "$questionPaper.subject.updatedAt" },
+            },
+            section: {
+              sectionCode: "$questionPaper.section.sectionCode",
+              name: "$questionPaper.section.name",
+              createdAt: { $toLong: "$questionPaper.section.createdAt" },
+              updatedAt: { $toLong: "$questionPaper.section.updatedAt" },
+            },
+            questions: {
+              $map: {
+                input: "$questionPaper.questions",
+                as: "q",
+                in: {
+                  questionNumber: "$$q.questionNumber",
+                  question: {
+                    $arrayElemAt: [
+                      {
+                        $filter: {
+                          input: "$questionPaper.questionDetails",
+                          as: "qd",
+                          cond: { $eq: ["$$qd._id", "$$q.question"] },
+                        },
+                      },
+                      0,
+                    ],
+                  },
+                },
+              },
+            },
+          },
+        },
+      }
     );
   }
 
@@ -61,12 +177,10 @@ const buildMarkPipeline = ({
 
     const populateSearchConditions = populate
       ? [
-          { "exam.examCode": { $regex: keywordRegex } },
           { "exam.title": { $regex: keywordRegex } },
           { "student.name": { $regex: keywordRegex } },
           { "student.rollNumber": { $regex: keywordRegex } },
           { "subject.name": { $regex: keywordRegex } },
-          { "subject.subjectCode": { $regex: keywordRegex } },
         ]
       : [];
 
@@ -94,13 +208,49 @@ const buildMarkPipeline = ({
     const baseProjection = {
       _id: 0,
       markCode: 1,
+      questionPaper: 1,
       markEarned: 1,
       markTotal: 1,
       createdAt: 1,
       updatedAt: 1,
-      exam: populate ? { examCode: 1, title: 1 } : "$$REMOVE",
-      student: populate ? { name: 1, rollNumber: 1 } : "$$REMOVE",
-      subject: populate ? { name: 1, subjectCode: 1 } : "$$REMOVE",
+      exam: populate
+        ? {
+            examCode: "$exam.examCode",
+            title: "$exam.title",
+            date: { $toLong: "$exam.date" },
+            createdAt: { $toLong: "$exam.createdAt" },
+            updatedAt: { $toLong: "$exam.updatedAt" },
+          }
+        : 1,
+      student: populate
+        ? {
+            studentCode: "$student.studentCode",
+            name: "$student.examnameCode",
+            rollNumber: "$student.rollNumber",
+            section: {
+              sectionCode: "$student.section.sectionCode",
+              name: "$student.section.name",
+              class: {
+                classCode: "$student.section.class.classCode",
+                name: "$student.section.class.name",
+                createdAt: { $toLong: "$student.section.class.createdAt" },
+                updatedAt: { $toLong: "$student.section.class.updatedAt" },
+              },
+              createdAt: { $toLong: "$student.section.createdAt" },
+              updatedAt: { $toLong: "$student.section.updatedAt" },
+            },
+            createdAt: { $toLong: "$student.createdAt" },
+            updatedAt: { $toLong: "$student.updatedAt" },
+          }
+        : 1,
+      subject: populate
+        ? {
+            subjectCode: "$subject.studentCode",
+            name: "$subject.studentCode",
+            createdAt: { $toLong: "$subject.createdAt" },
+            updatedAt: { $toLong: "$subject.updatedAt" },
+          }
+        : 1,
     };
 
     pipeline.push({ $project: baseProjection });
@@ -136,4 +286,4 @@ const buildMarkCountPipeline = ({ keyword, query = {} }) => {
   return pipeline;
 };
 
-module.exports = { buildMarkPipeline, buildMarkCountPipeline };
+module.exports = { buildMarksPipeline, buildMarkCountPipeline };

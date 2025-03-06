@@ -2,7 +2,7 @@ const mongoose = require("mongoose");
 const moment = require("moment");
 
 const Schema = mongoose.Schema;
-const timeNow = moment().valueOf();
+const timeNow = () => moment().valueOf();
 const defaultOptions = {
   toJSON: { virtuals: true },
   id: false,
@@ -17,15 +17,36 @@ const MarkSchema = new Schema(
       trim: true,
       immutable: true,
     },
-    markEarned: {
-      type: String,
+    questionPaper: {
+      type: Schema.Types.ObjectId,
+      ref: "QuestionPaper",
       required: true,
-      trim: true,
+    },
+    marksPerQuestion: {
+      type: [{ type: Number, required: true }],
+      required: true,
+      validate: {
+        validator: (value) =>
+          Array.isArray(value) &&
+          value.every((num) => !Number.isNaN(parseFloat(num))),
+        message: "Invalid marks per question",
+      },
+    },
+    markEarned: {
+      type: Number,
+      required: true,
+      validate: {
+        validator: (num) => !Number.isNaN(parseFloat(num)),
+        message: "Invalid marks earned",
+      },
     },
     markTotal: {
-      type: String,
+      type: Number,
       required: true,
-      trim: true,
+      validate: {
+        validator: (num) => !Number.isNaN(parseFloat(num)),
+        message: "Invalid total marks",
+      },
     },
     exam: {
       type: Schema.Types.ObjectId,

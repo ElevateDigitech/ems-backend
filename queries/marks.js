@@ -2,7 +2,7 @@ const moment = require("moment-timezone");
 const Mark = require("../models/mark");
 const { hiddenFieldsDefault, generateMarkCode } = require("../utils/helpers");
 const {
-  buildMarkPipeline,
+  buildMarksPipeline,
   buildMarkCountPipeline,
 } = require("../pipelines/marks");
 
@@ -36,7 +36,7 @@ const findMarks = async ({
   const [results, countResult] = await Promise.all([
     // Pipeline to fetch the paginated and sorted marks based on filters.
     Mark.aggregate(
-      buildMarkPipeline({
+      buildMarksPipeline({
         query,
         keyword,
         sortField,

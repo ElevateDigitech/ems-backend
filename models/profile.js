@@ -3,7 +3,7 @@ const moment = require("moment");
 const { removeIdsForSubSchemas, validateDob } = require("../utils/helpers");
 
 const Schema = mongoose.Schema;
-const timeNow = moment().valueOf();
+const timeNow = () => moment().valueOf();
 const defaultOptions = {
   toJSON: { virtuals: true },
   id: false,

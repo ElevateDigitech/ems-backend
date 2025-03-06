@@ -3,7 +3,7 @@ const moment = require("moment");
 const passportLocalMongoose = require("passport-local-mongoose");
 
 const Schema = mongoose.Schema;
-const timeNow = moment().valueOf();
+const timeNow = () => moment().valueOf();
 const UserSchema = new Schema(
   {
     userCode: {

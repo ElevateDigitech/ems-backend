@@ -120,15 +120,6 @@ const validateRequiredFields = (fields) => {
   return fields.every((field) => field?.trim()?.length);
 };
 
-const getCurrentUser = async (userCode) => {
-  const user = await findUser({
-    query: { userCode },
-    projection: true,
-    populate: true,
-  });
-  return user;
-};
-
 const getFileExtension = (filename) => path.extname(filename);
 
 const getInvalidQuestions = async (questions) => {
@@ -190,7 +181,6 @@ module.exports = {
   toCapitalize,
   writeToFile,
   validateRequiredFields,
-  getCurrentUser,
   getFileExtension,
   getInvalidQuestions,
   getQuestionsWithIds,

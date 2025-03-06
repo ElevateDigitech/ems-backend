@@ -9,6 +9,7 @@ const {
   validateExamCode,
   validateStudentCode,
   validateSubjectCode,
+  validateQuestionPaperCode,
 } = require("../middleware");
 const catchAsync = require("../utils/catchAsync");
 const { allPermissions } = require("../seeds/basePermissions");
@@ -31,11 +32,11 @@ router.post(
 );
 
 router.post(
-  "/GetMarksByExamCode",
+  "/GetMarksByQuestionPaperCode",
   isLoggedIn,
   checkPermission(allPermissions?.VIEW_MARKS),
-  validateExamCode,
-  catchAsync(marks.GetMarksByExamCode)
+  validateQuestionPaperCode,
+  catchAsync(marks.GetMarksByQuestionPaperCode)
 );
 
 router.post(
