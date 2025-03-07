@@ -98,8 +98,8 @@ module.exports = {
     // Step 2: Find the mark by its code in the database
     const mark = await findMark({
       query: { markCode },
-      options: true,
-      populated: true,
+      projection: true,
+      populate: true,
     });
 
     // Step 3: Return the found mark or handle the error if not found
@@ -389,6 +389,8 @@ module.exports = {
 
     // Step 7: Create and save the mark
     const mark = await createMarkObj({
+      questionPaper: questionPaper._id,
+      marksPerQuestion,
       markEarned,
       markTotal,
       exam: exam._id,
@@ -400,11 +402,11 @@ module.exports = {
     // Step 8: Log the audit
     const createdMark = await findMark({
       query: { markCode: mark.markCode },
-      options: true,
-      populated: true,
+      projection: true,
+      populate: true,
     });
     const currentUser = await findUser({
-      query: { userCode: req.user.usercode },
+      query: { userCode: req.user.userCode },
       projection: true,
       populate: true,
     });
@@ -518,8 +520,8 @@ module.exports = {
     // Step 8: Capture previous data for audit
     const previousData = await findMark({
       query: { markCode },
-      options: true,
-      populated: true,
+      projection: true,
+      populate: true,
     });
 
     // Step 9: Update the mark details
@@ -535,8 +537,8 @@ module.exports = {
     // Step 10: Log the audit
     const updatedMark = await findMark({
       query: { markCode },
-      options: true,
-      populated: true,
+      projection: true,
+      populate: true,
     });
     const currentUser = await findUser({
       query: { userCode: req.user.usercode },
@@ -593,8 +595,8 @@ module.exports = {
     // Step 3: Capture data for audit before deletion
     const previousData = await findMark({
       query: { markCode },
-      options: true,
-      populated: true,
+      projection: true,
+      populate: true,
     });
 
     // Step 4: Delete the mark

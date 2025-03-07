@@ -4,6 +4,7 @@ const { hiddenFieldsDefault, generateMarkCode } = require("../utils/helpers");
 const {
   buildMarksPipeline,
   buildMarkCountPipeline,
+  buildMarkPipeline,
 } = require("../pipelines/marks");
 
 /**
@@ -74,28 +75,19 @@ const findMarks = async ({
  * @param {boolean} params.populated - Determines if related data should be populated.
  * @returns {Promise<Object|null>} - A promise that resolves to the mark object or null if not found.
  */
-const findMark = async ({ query = {}, options = false, populated = false }) => {
-  // Step 1: Build the base query to find a mark
-  const markQuery = Mark.findOne(query, options ? hiddenFieldsDefault : {});
+const findMark = async ({
+  query = {},
+  projection = false,
+  populate = false,
+}) => {
+  // Build the aggregation pipeline with the provided query, projection, and populate options.
+  const pipeline = buildMarkPipeline({ query, projection, populate });
 
-  // Step 2: Conditionally populate related exam, student, and subject data if populated flag is true
-  return populated
-    ? markQuery
-        .populate("exam", hiddenFieldsDefault)
-        .populate({
-          path: "student",
-          select: hiddenFieldsDefault,
-          populate: {
-            path: "section",
-            select: hiddenFieldsDefault,
-            populate: {
-              path: "class",
-              select: hiddenFieldsDefault,
-            },
-          },
-        })
-        .populate("subject", hiddenFieldsDefault)
-    : markQuery;
+  // Execute the aggregation pipeline using the QuestionPaper model.
+  const result = await Mark.aggregate(pipeline);
+
+  // Since we expect a single question paper, return the first document or null if not found.
+  return result.length > 0 ? result[0] : null;
 };
 
 /**
@@ -110,6 +102,8 @@ const findMark = async ({ query = {}, options = false, populated = false }) => {
  * @returns {Object} - The newly created mark object.
  */
 const createMarkObj = async ({
+  questionPaper,
+  marksPerQuestion,
   markEarned,
   markTotal,
   exam,
@@ -121,6 +115,8 @@ const createMarkObj = async ({
 
   // Step 2: Create and return the new mark object
   return new Mark({
+    questionPaper,
+    marksPerQuestion,
     markCode,
     markEarned,
     markTotal,

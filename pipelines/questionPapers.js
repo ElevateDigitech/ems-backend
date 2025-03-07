@@ -13,7 +13,7 @@ const buildQuestionPaperPipeline = ({
   // Step 2: Limit to 1 document
   pipeline.push({ $limit: 1 });
 
-  // Step 3. Lookup to populate questions
+  // Step 2. Lookup to populate questions
   if (populate) {
     pipeline.push({
       $lookup: {
@@ -65,7 +65,7 @@ const buildQuestionPaperPipeline = ({
 
     pipeline.push({
       $lookup: {
-        from: "questions", // Collection name
+        from: "questions",
         localField: "questions.question",
         foreignField: "_id",
         as: "questionDetails",
@@ -118,7 +118,7 @@ const buildQuestionPaperPipeline = ({
     });
   }
 
-  // Step 4. Projection
+  // Step 5. Projection
   if (projection) {
     pipeline.push({
       $project: {
