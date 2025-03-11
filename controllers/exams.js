@@ -103,7 +103,7 @@ module.exports = {
    * @param {Function} next - Express next middleware function
    */
   CreateExam: async (req, res, next) => {
-    const { title, date } = req.body; // Step 1: Extract exam title from request
+    const { title } = req.body; // Step 1: Extract exam title from request
     const formattedTitle = formatExamTitle(title); // Step 2: Format exam title
 
     // Step 3: Check if exam already exists
@@ -112,7 +112,7 @@ module.exports = {
       return handleError(next, STATUS_CODE_CONFLICT, MESSAGE_EXAM_EXIST);
 
     // Step 4: Create new exam
-    const newExam = await createExamObj({ title: formattedTitle, date });
+    const newExam = await createExamObj({ title: formattedTitle });
     await newExam.save();
 
     // Step 5: Log creation
@@ -156,7 +156,7 @@ module.exports = {
    * @param {Function} next - Express next middleware function
    */
   UpdateExam: async (req, res, next) => {
-    const { examCode, title, date } = req.body; // Step 1: Extract exam code and title from request
+    const { examCode, title } = req.body; // Step 1: Extract exam code and title from request
     const formattedTitle = formatExamTitle(title); // Step 2: Format exam title
 
     // Step 3: Check for existing exam
@@ -176,7 +176,7 @@ module.exports = {
       query: { examCode },
       projection: true,
     });
-    await updateExamObj({ examCode, title: formattedTitle, date });
+    await updateExamObj({ examCode, title: formattedTitle });
 
     // Step 6: Log the update audit
     const updatedExam = await findExam({

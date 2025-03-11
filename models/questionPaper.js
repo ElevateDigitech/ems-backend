@@ -23,9 +23,9 @@ const QuestionPaperSchema = new Schema(
       unique: true,
       trim: true,
     },
-    exam: {
+    section: {
       type: Schema.Types.ObjectId,
-      ref: "Exam",
+      ref: "Section",
       required: true,
     },
     subject: {
@@ -33,21 +33,30 @@ const QuestionPaperSchema = new Schema(
       ref: "Subject",
       required: true,
     },
-    section: {
+    exam: {
       type: Schema.Types.ObjectId,
-      ref: "Section",
+      ref: "Exam",
+      required: true,
+    },
+    examDate: {
+      type: Date,
       required: true,
     },
     questions: [
       {
+        questionNumber: {
+          type: Number,
+          required: true,
+        },
         question: {
           type: Schema.Types.ObjectId,
           ref: "Question",
           required: true,
         },
-        questionNumber: {
-          type: Number,
+        topicOfFocus: {
+          type: String,
           required: true,
+          trim: true,
         },
       },
     ],

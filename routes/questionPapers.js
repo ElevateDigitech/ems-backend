@@ -56,11 +56,11 @@ router.post(
 );
 
 router.post(
-  "/GetQuestionPaperByQuery",
+  "/GetQuestionPapersByQuery",
   isLoggedIn,
   checkPermission(allPermissions?.VIEW_QUESTION_PAPERS),
   validateQueryQuestionPaper,
-  catchAsync(questionPapers.GetQuestionPaperByQuery)
+  catchAsync(questionPapers.GetQuestionPapersByQuery)
 );
 
 router.post(

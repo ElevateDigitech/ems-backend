@@ -23,10 +23,6 @@ const ExamSchema = new Schema(
       unique: true,
       trim: true,
     },
-    date: {
-      type: Date,
-      required: true,
-    },
     createdAt: {
       type: Date,
       default: timeNow,

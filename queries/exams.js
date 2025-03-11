@@ -103,7 +103,7 @@ const formatExamTitle = (title) => {
  * @param {string} params.title - The title of the exam.
  * @returns {Object} - The newly created exam object.
  */
-const createExamObj = async ({ title, date }) => {
+const createExamObj = async ({ title }) => {
   // Step 1: Generate a unique exam code
   const examCode = generateExamCode();
 
@@ -111,7 +111,6 @@ const createExamObj = async ({ title, date }) => {
   return new Exam({
     examCode,
     title,
-    date,
   });
 };
 
@@ -123,13 +122,12 @@ const createExamObj = async ({ title, date }) => {
  * @param {string} params.title - The new title for the exam.
  * @returns {Promise<Object|null>} - A promise that resolves to the updated exam object.
  */
-const updateExamObj = async ({ examCode, title, date }) => {
+const updateExamObj = async ({ examCode, title }) => {
   // Step 1: Update the exam document with the provided examCode
   return await Exam.findOneAndUpdate(
     { examCode }, // Query to find the exam by examCode
     {
       title, // Update the exam title
-      date,
       updatedAt: moment().valueOf(), // Set the current timestamp for the update
     }
   );

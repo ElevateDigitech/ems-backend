@@ -113,9 +113,10 @@ const formatQuestionPaperTitle = (title) => {
  */
 const createQuestionPaperObj = ({
   title,
-  exam,
-  subject,
   section,
+  subject,
+  exam,
+  examDate,
   questions,
 }) => {
   // Generate a unique question paper code
@@ -125,9 +126,10 @@ const createQuestionPaperObj = ({
   return new QuestionPaper({
     questionPaperCode,
     title,
-    exam,
-    subject,
     section,
+    subject,
+    exam,
+    examDate,
     questions,
   });
 };
@@ -146,9 +148,10 @@ const createQuestionPaperObj = ({
 const updateQuestionPaperObj = async ({
   questionPaperCode,
   title,
-  exam,
-  subject,
   section,
+  subject,
+  exam,
+  examDate,
   questions,
 }) => {
   // Update the question paper document with the provided details
@@ -156,9 +159,10 @@ const updateQuestionPaperObj = async ({
     { questionPaperCode },
     {
       title,
-      exam,
-      subject,
       section,
+      subject,
+      exam,
+      examDate,
       questions,
       updatedAt: moment().valueOf(),
     }

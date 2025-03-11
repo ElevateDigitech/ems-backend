@@ -309,13 +309,11 @@ module.exports.examCodeSchema = Joi.object({
 
 module.exports.examSchema = Joi.object({
   title: Joi.string().required(),
-  date: Joi.string().required().pattern(VALID_DATE),
 });
 
 module.exports.updateExamSchema = Joi.object({
   examCode: Joi.string().required(),
   title: Joi.string().required(),
-  date: Joi.string().required().pattern(VALID_DATE),
 });
 
 /**
@@ -328,13 +326,15 @@ module.exports.questionPaperCodeSchema = Joi.object({
 module.exports.questionPaperSchema = Joi.object({
   title: Joi.string().required(),
   examCode: Joi.string().required(),
+  examDate: Joi.string().required().pattern(VALID_DATE),
   subjectCode: Joi.string().required(),
   sectionCode: Joi.string().required(),
   questions: Joi.array()
     .items(
       Joi.object({
-        questionCode: Joi.string().required(),
         questionNumber: Joi.number().required(),
+        topicOfFocus: Joi.string().required(),
+        questionCode: Joi.string().required(),
       })
     )
     .min(1)
@@ -345,19 +345,21 @@ module.exports.updateQuestionPaperSchema = Joi.object({
   questionPaperCode: Joi.string().required(),
   title: Joi.string().required(),
   examCode: Joi.string().required(),
+  examDate: Joi.string().required().pattern(VALID_DATE),
   subjectCode: Joi.string().required(),
   sectionCode: Joi.string().required(),
   questions: Joi.array()
     .items(
       Joi.object({
-        questionCode: Joi.string().required(),
         questionNumber: Joi.number().required(),
+        topicOfFocus: Joi.string().required(),
+        questionCode: Joi.string().required(),
       })
     )
     .min(1)
     .required(),
 });
-module.exports.questionPaperQuerySchema = Joi.object({
+module.exports.questionPapersQuerySchema = Joi.object({
   sectionCode: Joi.string().required(),
   subjectCode: Joi.string().required(),
   examCode: Joi.string().required(),

@@ -287,7 +287,14 @@ module.exports = {
    * @param {Object} res - Express response object
    * @param {Function} next - Express next middleware function
    */
-  GetQuestionPaperByQuery: async (req, res, next) => {
+  GetQuestionPapersByQuery: async (req, res, next) => {
+    const {
+      keyword = "",
+      sortField = "_id",
+      sortValue = "desc",
+      page = 1,
+      limit = 10,
+    } = req.query;
     const { sectionCode, subjectCode, examCode } = req.body;
     console.log(sectionCode, subjectCode, examCode);
     // Step 2: Find the section by its code
@@ -323,32 +330,34 @@ module.exports = {
           handleSuccess(STATUS_CODE_SUCCESS, MESSAGE_EXAM_NOT_FOUND, [], 0)
         );
 
-    const questionPaper = await findQuestionPaper({
+    const { results, totalCount } = await findQuestionPapers({
       query: {
         section: section._id,
         subject: subject._id,
         exam: exam._id,
       },
+      keyword,
+      sortField,
+      sortValue,
+      page,
+      limit,
       populate: true,
       projection: true,
     });
 
-    // Step 4: Return the question papers if found, else return an error
-    return questionPaper
-      ? res
-          .status(STATUS_CODE_SUCCESS)
-          .send(
-            handleSuccess(
-              STATUS_CODE_SUCCESS,
-              MESSAGE_GET_QUESTION_PAPER_SUCCESS,
-              questionPaper
-            )
-          )
-      : handleError(
-          next,
-          STATUS_CODE_BAD_REQUEST,
-          MESSAGE_QUESTION_PAPER_NOT_FOUND
-        );
+    // Step 4: Return the question papers if found, else return an empty array
+    return res
+      .status(STATUS_CODE_SUCCESS)
+      .send(
+        handleSuccess(
+          STATUS_CODE_SUCCESS,
+          results?.length
+            ? MESSAGE_GET_QUESTION_PAPER_SUCCESS
+            : MESSAGE_QUESTION_PAPER_NOT_FOUND,
+          results?.length ? results : [],
+          results?.length ? totalCount : 0
+        )
+      );
   },
 
   /**
@@ -359,7 +368,8 @@ module.exports = {
    * @param {Function} next - Express next middleware function
    */
   CreateQuestionPaper: async (req, res, next) => {
-    const { title, subjectCode, examCode, sectionCode, questions } = req.body;
+    const { title, subjectCode, examCode, examDate, sectionCode, questions } =
+      req.body;
     const formattedTitle = formatQuestionPaperTitle(title); // Step 1: Format question paper title
 
     // Step 2: Check if the question paper already exists
@@ -422,9 +432,10 @@ module.exports = {
     // Step 5: Create and save the questionPaper
     const questionPaper = createQuestionPaperObj({
       title: formattedTitle,
+      section: section._id,
       subject: subject._id,
       exam: exam._id,
-      section: section._id,
+      examDate,
       questions: questionsWithIds,
     });
 
@@ -476,9 +487,10 @@ module.exports = {
     const {
       questionPaperCode,
       title,
+      sectionCode,
       subjectCode,
       examCode,
-      sectionCode,
+      examDate,
       questions,
     } = req.body;
     const formattedTitle = formatQuestionPaperTitle(title); // Step 1: Format question paper title
@@ -557,9 +569,10 @@ module.exports = {
     await updateQuestionPaperObj({
       questionPaperCode,
       title: formattedTitle,
+      section: section._id,
       subject: subject._id,
       exam: exam._id,
-      section: section._id,
+      examDate,
       questions: questionsWithIds,
     });
 
