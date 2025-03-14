@@ -140,6 +140,8 @@ const createMarkObj = async ({
  */
 const updateMarkObj = async ({
   markCode,
+  questionPaper,
+  marksPerQuestion,
   markEarned,
   markTotal,
   exam,
@@ -150,6 +152,8 @@ const updateMarkObj = async ({
   return await Mark.findOneAndUpdate(
     { markCode },
     {
+      questionPaper,
+      marksPerQuestion,
       markEarned,
       markTotal,
       exam,

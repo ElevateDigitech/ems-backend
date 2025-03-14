@@ -31,6 +31,7 @@ const {
   MESSAGE_DELETE_MARK_SUCCESS,
   MESSAGE_QUESTION_PAPER_NOT_FOUND,
   MESSAGE_MARK_PER_QUESTIONS_INVALID,
+  MESSAGE_CREATE_UPDATE_MARKS_SUCCESS,
 } = require("../utils/messages");
 const {
   findMarks,
@@ -44,6 +45,176 @@ const { findStudent } = require("../queries/students");
 const { findSubject } = require("../queries/subjects");
 const { findQuestionPaper } = require("../queries/questionPapers");
 const { findUser } = require("../queries/users");
+
+const ValidateCreateMark = async (markData, next) => {
+  const {
+    questionPaperCode,
+    marksPerQuestion,
+    markEarned,
+    markTotal,
+    examCode,
+    studentCode,
+    subjectCode,
+  } = markData;
+
+  // Step 1: Validate question paper
+  const questionPaper = await findQuestionPaper({
+    query: { questionPaperCode },
+  });
+  if (!questionPaper)
+    return handleError(
+      next,
+      STATUS_CODE_CONFLICT,
+      MESSAGE_QUESTION_PAPER_NOT_FOUND
+    );
+
+  // Step 2: Validate exam
+  const exam = await findExam({ query: { examCode } });
+  if (!exam)
+    return handleError(next, STATUS_CODE_CONFLICT, MESSAGE_EXAM_NOT_FOUND);
+
+  // Step 3: Validate student
+  const student = await findStudent({ query: { studentCode } });
+  if (!student)
+    return handleError(next, STATUS_CODE_CONFLICT, MESSAGE_STUDENT_NOT_FOUND);
+
+  // Step 4: Validate subject
+  const subject = await findSubject({ query: { subjectCode } });
+  if (!subject)
+    return handleError(next, STATUS_CODE_CONFLICT, MESSAGE_SUBJECT_NOT_FOUND);
+
+  // Step 5: Validate marks
+  const questionPaperPopulated = await findQuestionPaper({
+    query: { questionPaperCode },
+    populate: true,
+    projection: true,
+  });
+  if (
+    !(
+      Array.isArray(marksPerQuestion) &&
+      Array.isArray(questionPaperPopulated?.questions) &&
+      marksPerQuestion?.length > 0 &&
+      questionPaperPopulated.questions?.length > 0 &&
+      marksPerQuestion?.length === questionPaperPopulated.questions?.length
+    )
+  ) {
+    return handleError(
+      next,
+      STATUS_CODE_CONFLICT,
+      MESSAGE_MARK_PER_QUESTIONS_INVALID
+    );
+  }
+
+  // Step 6: Check for duplicate mark
+  const duplicateMark = await findMarks({
+    query: {
+      questionPaper: questionPaper?._id,
+      exam: exam?._id,
+      student: student?._id,
+      subject: subject?._id,
+    },
+  });
+  if (duplicateMark?.length)
+    return handleError(next, STATUS_CODE_CONFLICT, MESSAGE_MARK_EXIST);
+
+  return {
+    questionPaper,
+    marksPerQuestion,
+    exam,
+    student,
+    subject,
+    markEarned,
+    markTotal,
+  };
+};
+
+const ValidateUpdateMark = async (markData, next) => {
+  const {
+    markCode,
+    questionPaperCode,
+    marksPerQuestion,
+    markEarned,
+    markTotal,
+    examCode,
+    studentCode,
+    subjectCode,
+  } = markData;
+  // Step 1: Validate the mark
+  const mark = await findMark({ query: { markCode } });
+  if (!mark)
+    return handleError(next, STATUS_CODE_CONFLICT, MESSAGE_MARK_NOT_FOUND);
+
+  // Step 2: Validate question paper
+  const questionPaper = await findQuestionPaper({
+    query: { questionPaperCode },
+  });
+  if (!questionPaper)
+    return handleError(
+      next,
+      STATUS_CODE_CONFLICT,
+      MESSAGE_QUESTION_PAPER_NOT_FOUND
+    );
+
+  // Step 3: Validate exam
+  const exam = await findExam({ query: { examCode } });
+  if (!exam)
+    return handleError(next, STATUS_CODE_CONFLICT, MESSAGE_EXAM_NOT_FOUND);
+
+  // Step 4: Validate student
+  const student = await findStudent({ query: { studentCode } });
+  if (!student)
+    return handleError(next, STATUS_CODE_CONFLICT, MESSAGE_STUDENT_NOT_FOUND);
+
+  // Step 5: Validate subject
+  const subject = await findSubject({ query: { subjectCode } });
+  if (!subject)
+    return handleError(next, STATUS_CODE_CONFLICT, MESSAGE_SUBJECT_NOT_FOUND);
+
+  // Step 6: Validate marks
+  const questionPaperPopulated = await findQuestionPaper({
+    query: { questionPaperCode },
+    populate: true,
+    projection: true,
+  });
+  if (
+    !(
+      Array.isArray(marksPerQuestion) &&
+      Array.isArray(questionPaperPopulated?.questions) &&
+      marksPerQuestion?.length > 0 &&
+      questionPaperPopulated.questions?.length > 0 &&
+      marksPerQuestion?.length === questionPaperPopulated.questions?.length
+    )
+  ) {
+    return handleError(
+      next,
+      STATUS_CODE_CONFLICT,
+      MESSAGE_MARK_PER_QUESTIONS_INVALID
+    );
+  }
+
+  // Step 7: Check for duplicate mark
+  const duplicateMark = await findMark({
+    query: {
+      markCode: { $ne: markCode },
+      questionPaper: questionPaper?._id,
+      exam: exam?._id,
+      student: student?._id,
+      subject: subject?._id,
+    },
+  });
+  if (duplicateMark)
+    return handleError(next, STATUS_CODE_CONFLICT, MESSAGE_MARK_EXIST);
+  return {
+    markCode,
+    questionPaper,
+    marksPerQuestion,
+    exam,
+    student,
+    subject,
+    markEarned,
+    markTotal,
+  };
+};
 
 module.exports = {
   /**
@@ -322,95 +493,44 @@ module.exports = {
    * @param {Function} next - Express next middleware function
    */
   CreateMark: async (req, res, next) => {
+    // Step 1: Validate Mark
     const {
-      questionPaperCode,
+      questionPaper,
       marksPerQuestion,
+      exam,
+      student,
+      subject,
       markEarned,
       markTotal,
-      examCode,
-      studentCode,
-      subjectCode,
-    } = req.body;
+    } = await ValidateCreateMark(req.body, next);
 
-    // Step 1: Validate question paper
-    const questionPaper = await findQuestionPaper({
-      query: { questionPaperCode },
-    });
-    if (!questionPaper)
-      return handleError(
-        next,
-        STATUS_CODE_CONFLICT,
-        MESSAGE_QUESTION_PAPER_NOT_FOUND
-      );
-
-    // Step 2: Validate exam
-    const exam = await findExam({ query: { examCode } });
-    if (!exam)
-      return handleError(next, STATUS_CODE_CONFLICT, MESSAGE_EXAM_NOT_FOUND);
-
-    // Step 3: Validate student
-    const student = await findStudent({ query: { studentCode } });
-    if (!student)
-      return handleError(next, STATUS_CODE_CONFLICT, MESSAGE_STUDENT_NOT_FOUND);
-
-    // Step 4: Validate subject
-    const subject = await findSubject({ query: { subjectCode } });
-    if (!subject)
-      return handleError(next, STATUS_CODE_CONFLICT, MESSAGE_SUBJECT_NOT_FOUND);
-
-    // Step 5: Validate marks
-    const questionPaperPopulated = await findQuestionPaper({
-      query: { questionPaperCode },
-      populate: true,
-      projection: true,
-    });
-    if (
-      !(
-        Array.isArray(marksPerQuestion) &&
-        Array.isArray(questionPaperPopulated?.questions) &&
-        marksPerQuestion?.length > 0 &&
-        questionPaperPopulated.questions?.length > 0 &&
-        marksPerQuestion?.length === questionPaperPopulated.questions?.length
-      )
-    ) {
-      return handleError(
-        next,
-        STATUS_CODE_CONFLICT,
-        MESSAGE_MARK_PER_QUESTIONS_INVALID
-      );
-    }
-
-    // Step 6: Check for duplicate mark
-    const duplicateMark = await findMarks({
-      query: { exam: exam._id, student: student._id, subject: subject._id },
-    });
-    if (duplicateMark?.length)
-      return handleError(next, STATUS_CODE_CONFLICT, MESSAGE_MARK_EXIST);
-
-    // Step 7: Create and save the mark
+    // Step 2: Create and save the mark
     const mark = await createMarkObj({
-      questionPaper: questionPaper._id,
+      questionPaper: questionPaper?._id,
       marksPerQuestion,
       markEarned,
       markTotal,
-      exam: exam._id,
-      student: student._id,
-      subject: subject._id,
+      exam: exam?._id,
+      student: student?._id,
+      subject: subject?._id,
     });
     await mark.save();
 
-    // Step 8: Log the audit
+    // Step 3: Capture the created mark data
     const createdMark = await findMark({
       query: { markCode: mark.markCode },
       projection: true,
       populate: true,
     });
+
+    // Step 4: Capture the current user data
     const currentUser = await findUser({
       query: { userCode: req.user.userCode },
       projection: true,
       populate: true,
     });
 
+    // Step 5: Log audit
     await logAudit(
       auditActions.CREATE,
       auditCollections.MARKS,
@@ -421,7 +541,7 @@ module.exports = {
       currentUser
     );
 
-    // Step 9: Return the created mark
+    // Step 6: Return the created mark
     res
       .status(STATUS_CODE_SUCCESS)
       .send(
@@ -441,111 +561,52 @@ module.exports = {
    * @param {Function} next - Express next middleware function
    */
   UpdateMark: async (req, res, next) => {
+    // Step 1: Validate Mark
     const {
       markCode,
-      questionPaperCode,
+      questionPaper,
       marksPerQuestion,
+      exam,
+      student,
+      subject,
       markEarned,
       markTotal,
-      examCode,
-      studentCode,
-      subjectCode,
-    } = req.body;
+    } = await ValidateUpdateMark(req.body, next);
 
-    // Step 1: Validate the mark
-    const mark = await findMark({ query: { markCode } });
-    if (!mark)
-      return handleError(next, STATUS_CODE_CONFLICT, MESSAGE_MARK_NOT_FOUND);
-
-    // Step 2: Validate question paper
-    const questionPaper = await findQuestionPaper({
-      query: { questionPaperCode },
-    });
-    if (!questionPaper)
-      return handleError(
-        next,
-        STATUS_CODE_CONFLICT,
-        MESSAGE_QUESTION_PAPER_NOT_FOUND
-      );
-
-    // Step 3: Validate exam
-    const exam = await findExam({ query: { examCode } });
-    if (!exam)
-      return handleError(next, STATUS_CODE_CONFLICT, MESSAGE_EXAM_NOT_FOUND);
-
-    // Step 4: Validate student
-    const student = await findStudent({ query: { studentCode } });
-    if (!student)
-      return handleError(next, STATUS_CODE_CONFLICT, MESSAGE_STUDENT_NOT_FOUND);
-
-    // Step 5: Validate subject
-    const subject = await findSubject({ query: { subjectCode } });
-    if (!subject)
-      return handleError(next, STATUS_CODE_CONFLICT, MESSAGE_SUBJECT_NOT_FOUND);
-
-    // Step 6: Validate marks
-    const questionPaperPopulated = await findQuestionPaper({
-      query: { questionPaperCode },
-      populate: true,
-      projection: true,
-    });
-    if (
-      !(
-        Array.isArray(marksPerQuestion) &&
-        Array.isArray(questionPaperPopulated?.questions) &&
-        marksPerQuestion?.length > 0 &&
-        questionPaperPopulated.questions?.length > 0 &&
-        marksPerQuestion?.length === questionPaperPopulated.questions?.length
-      )
-    ) {
-      return handleError(
-        next,
-        STATUS_CODE_CONFLICT,
-        MESSAGE_MARK_PER_QUESTIONS_INVALID
-      );
-    }
-
-    // Step 7: Check for duplicate mark
-    const duplicateMark = await findMark({
-      query: {
-        markCode: { $ne: markCode },
-        exam: exam._id,
-        student: student._id,
-        subject: subject._id,
-      },
-    });
-    if (duplicateMark)
-      return handleError(next, STATUS_CODE_CONFLICT, MESSAGE_MARK_EXIST);
-
-    // Step 8: Capture previous data for audit
+    // Step 2: Capture previous data for audit
     const previousData = await findMark({
       query: { markCode },
       projection: true,
       populate: true,
     });
 
-    // Step 9: Update the mark details
+    // Step 3: Update the mark details
     await updateMarkObj({
       markCode,
+      questionPaper: questionPaper?._id,
+      exam: exam?._id,
+      student: student?._id,
+      subject: subject?._id,
+      marksPerQuestion,
       markEarned,
       markTotal,
-      exam: exam._id,
-      student: student._id,
-      subject: subject._id,
     });
 
-    // Step 10: Log the audit
+    // Step 4: Capture updated data
     const updatedMark = await findMark({
       query: { markCode },
       projection: true,
       populate: true,
     });
+
+    // Step 5: Capture current user data
     const currentUser = await findUser({
-      query: { userCode: req.user.usercode },
+      query: { userCode: req.user.userCode },
       projection: true,
       populate: true,
     });
 
+    // Step 6: Log audit
     await logAudit(
       auditActions.UPDATE,
       auditCollections.MARKS,
@@ -556,7 +617,7 @@ module.exports = {
       currentUser
     );
 
-    // Step 11: Return the updated mark
+    // Step 7: Return the updated mark
     res
       .status(STATUS_CODE_SUCCESS)
       .send(
@@ -610,7 +671,7 @@ module.exports = {
 
     // Step 5: Log the audit
     const currentUser = await findUser({
-      query: { userCode: req.user.usercode },
+      query: { userCode: req.user.userCode },
       projection: true,
       populate: true,
     });
@@ -629,5 +690,155 @@ module.exports = {
     res
       .status(STATUS_CODE_SUCCESS)
       .send(handleSuccess(STATUS_CODE_SUCCESS, MESSAGE_DELETE_MARK_SUCCESS));
+  },
+
+  /**
+   * Create (or) updates marks in the database.
+   *
+   * @param {Object} req - Express request object
+   * @param {Object} res - Express response object
+   * @param {Function} next - Express next middleware function
+   */
+  CreateUpdateMarks: async (req, res, next) => {
+    console.log(req.body);
+    const { marks } = req.body;
+    console.log(marks);
+    const markCodes = [];
+    console.log(req.user, "user");
+    marks?.forEach(async (m) => {
+      if (m?.markCode?.trim()?.length > 0) {
+        // Step 1: Validate Mark
+        const {
+          markCode,
+          questionPaper,
+          marksPerQuestion,
+          exam,
+          student,
+          subject,
+          markEarned,
+          markTotal,
+        } = await ValidateUpdateMark(m, next);
+
+        // Step 2: Capture previous data for audit
+        const previousData = await findMark({
+          query: { markCode },
+          projection: true,
+          populate: true,
+        });
+
+        // Step 3: Update the mark details
+        await updateMarkObj({
+          markCode,
+          questionPaper: questionPaper?._id,
+          exam: exam?._id,
+          student: student?._id,
+          subject: subject?._id,
+          marksPerQuestion,
+          markEarned,
+          markTotal,
+        });
+
+        // Step 4: Capture updated data
+        const updatedMark = await findMark({
+          query: { markCode },
+          projection: true,
+          populate: true,
+        });
+
+        // Step 5: Capture current user data
+        const currentUser = await findUser({
+          query: { userCode: req.user.userCode },
+          projection: true,
+          populate: true,
+        });
+
+        // Step 6: Log audit
+        await logAudit(
+          auditActions.UPDATE,
+          auditCollections.MARKS,
+          markCode,
+          auditChanges.UPDATE_MARK,
+          previousData,
+          updatedMark,
+          currentUser
+        );
+
+        // Step 7: Capture the mark code
+        markCodes?.push(markCode);
+      } else {
+        // Step 8: Validate Mark
+        const {
+          questionPaper,
+          marksPerQuestion,
+          exam,
+          student,
+          subject,
+          markEarned,
+          markTotal,
+        } = await ValidateCreateMark(m, next);
+
+        // Step 9: Create and save the mark
+        const mark = await createMarkObj({
+          questionPaper: questionPaper?._id,
+          marksPerQuestion,
+          markEarned,
+          markTotal,
+          exam: exam?._id,
+          student: student?._id,
+          subject: subject?._id,
+        });
+        await mark.save();
+
+        // Step 10: Capture the created mark data
+        const createdMark = await findMark({
+          query: { markCode: mark.markCode },
+          projection: true,
+          populate: true,
+        });
+
+        // Step 11: Capture the current user data
+        const currentUser = await findUser({
+          query: { userCode: req.user.userCode },
+          projection: true,
+          populate: true,
+        });
+
+        // Step 12: Log audit
+        await logAudit(
+          auditActions.CREATE,
+          auditCollections.MARKS,
+          mark.markCode,
+          auditChanges.CREATE_MARK,
+          null,
+          createdMark,
+          currentUser
+        );
+
+        // Step 13: Capture the mark code
+        markCodes?.push(mark.markCode);
+      }
+    });
+
+    // Step 14: Capture the marks
+    const { results, totalCount } = await findMarks({
+      query: {
+        $markCode: { $in: markCodes },
+      },
+      populate: true,
+      projection: true,
+      all: true,
+    });
+
+    // Step 15: Return the marks
+    res
+      .status(STATUS_CODE_SUCCESS)
+      .send(
+        handleSuccess(
+          STATUS_CODE_SUCCESS,
+          MESSAGE_CREATE_UPDATE_MARKS_SUCCESS,
+          results,
+          totalCount
+        )
+      );
   },
 };

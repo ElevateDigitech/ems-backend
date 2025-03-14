@@ -10,6 +10,7 @@ const {
   validateStudentCode,
   validateSubjectCode,
   validateQuestionPaperCode,
+  validateCreateUpdateMarks,
 } = require("../middleware");
 const catchAsync = require("../utils/catchAsync");
 const { allPermissions } = require("../seeds/basePermissions");
@@ -77,6 +78,15 @@ router.post(
   checkPermission(allPermissions?.DELETE_CITY),
   validateMarkCode,
   catchAsync(marks.DeleteMark)
+);
+
+router.post(
+  "/CreateUpdateMarks",
+  isLoggedIn,
+  checkPermission(allPermissions?.CREATE_MARK),
+  // checkPermission(allPermissions?.UPDATE_MARK),
+  validateCreateUpdateMarks,
+  catchAsync(marks.CreateUpdateMarks)
 );
 
 module.exports.markRoutes = router;

@@ -26,8 +26,10 @@ const { getFileExtension } = require("./utils/helpers");
  */
 const validateSchema = (passedSchema) =>
   catchAsync(async (req, res, next) => {
+    // console.log(req.body);
     // Validate the request body using the provided schema
     const { error } = passedSchema.validate(req.body);
+    console.log(error);
     if (error) {
       // Extract error messages and throw a custom error response
       const msg = error.details.map((d) => d.message).join(", ");
@@ -275,4 +277,5 @@ module.exports = {
   validateMarkCode: validateSchema(schemas.markCodeSchema),
   validateMark: validateSchema(schemas.markSchema),
   validateUpdateMark: validateSchema(schemas.updateMarkSchema),
+  validateCreateUpdateMarks: validateSchema(schemas.createUpdateMarksSchema),
 };

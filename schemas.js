@@ -392,3 +392,21 @@ module.exports.updateMarkSchema = Joi.object({
   studentCode: Joi.string().required(),
   subjectCode: Joi.string().required(),
 });
+
+module.exports.createUpdateMarksSchema = Joi.object({
+  marks: Joi.array()
+    .items(
+      Joi.object({
+        markCode: Joi.string(),
+        questionPaperCode: Joi.string().required(),
+        marksPerQuestion: Joi.array().items(Joi.string()).min(1).required(),
+        markEarned: Joi.number().required(),
+        markTotal: Joi.number().required(),
+        examCode: Joi.string().required(),
+        studentCode: Joi.string().required(),
+        subjectCode: Joi.string().required(),
+      })
+    )
+    .min(1)
+    .required(),
+});

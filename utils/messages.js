@@ -272,6 +272,7 @@ const MESSAGE_DELETE_MARK_ERROR = "Couldn't delete the mark";
 const MESSAGE_MARK_TAKEN =
   "Mark name already taken. Please try a different one.";
 const MESSAGE_MARK_PER_QUESTIONS_INVALID = "Invalid marks per question";
+const MESSAGE_CREATE_UPDATE_MARKS_SUCCESS = "Marks saved successfully";
 
 module.exports = {
   MESSAGE_MISSING_REQUIRED_FIELDS,
@@ -473,4 +474,5 @@ module.exports = {
   MESSAGE_DELETE_MARK_ERROR,
   MESSAGE_MARK_TAKEN,
   MESSAGE_MARK_PER_QUESTIONS_INVALID,
+  MESSAGE_CREATE_UPDATE_MARKS_SUCCESS,
 };
