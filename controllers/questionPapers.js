@@ -296,7 +296,6 @@ module.exports = {
       limit = 10,
     } = req.query;
     const { sectionCode, subjectCode, examCode } = req.body;
-    console.log(sectionCode, subjectCode, examCode);
     // Step 2: Find the section by its code
     const section = await findSection({
       query: { sectionCode },

@@ -1,8 +1,25 @@
 const referenceFields = [
-  { model: "Role", field: "rolePermissions" },
-  { model: "User", field: "role" },
   { model: "Profile", field: "user" },
+  { model: "City", field: "state" },
+  { model: "City", field: "country" },
+  { model: "Mark", field: "questionPaper" },
+  { model: "Mark", field: "exam" },
+  { model: "Mark", field: "student" },
+  { model: "Mark", field: "subject" },
+  { model: "Profile", field: "gender" },
+  { model: "Profile", field: "city" },
+  { model: "Profile", field: "state" },
+  { model: "Profile", field: "country" },
+  { model: "Profile", field: "user" },
+  { model: "QuestionPaper", field: "section" },
+  { model: "QuestionPaper", field: "subject" },
+  { model: "QuestionPaper", field: "exam" },
+  { model: "QuestionPaper", field: "question" },
+  { model: "Role", field: "rolePermissions" },
+  { model: "Section", field: "class" },
   { model: "State", field: "country" },
+  { model: "Student", field: "section" },
+  { model: "User", field: "role" },
 ];
 
 module.exports = { referenceFields };

@@ -273,6 +273,8 @@ const MESSAGE_MARK_TAKEN =
   "Mark name already taken. Please try a different one.";
 const MESSAGE_MARK_PER_QUESTIONS_INVALID = "Invalid marks per question";
 const MESSAGE_CREATE_UPDATE_MARKS_SUCCESS = "Marks saved successfully";
+const MESSAGE_DUPLICATE_MARKS_NOT_ALLOWED =
+  "Not allowed to create a duplicate entry.";
 
 module.exports = {
   MESSAGE_MISSING_REQUIRED_FIELDS,
@@ -475,4 +477,5 @@ module.exports = {
   MESSAGE_MARK_TAKEN,
   MESSAGE_MARK_PER_QUESTIONS_INVALID,
   MESSAGE_CREATE_UPDATE_MARKS_SUCCESS,
+  MESSAGE_DUPLICATE_MARKS_NOT_ALLOWED,
 };

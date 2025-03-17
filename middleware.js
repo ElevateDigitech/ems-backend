@@ -26,10 +26,8 @@ const { getFileExtension } = require("./utils/helpers");
  */
 const validateSchema = (passedSchema) =>
   catchAsync(async (req, res, next) => {
-    // console.log(req.body);
     // Validate the request body using the provided schema
     const { error } = passedSchema.validate(req.body);
-    console.log(error);
     if (error) {
       // Extract error messages and throw a custom error response
       const msg = error.details.map((d) => d.message).join(", ");
@@ -49,8 +47,6 @@ const validateSchema = (passedSchema) =>
 const handleUpload = (upload) => (req, res, next) => {
   upload(req, res, (err) => {
     if (err) {
-      console.log(req.file);
-      console.log(req.files);
       const statusCode =
         err instanceof MulterError
           ? STATUS_CODE_BAD_REQUEST
@@ -80,7 +76,6 @@ const handleUpload = (upload) => (req, res, next) => {
 const validateProfileSchema = (passedSchema) =>
   catchAsync(async (req, res, next) => {
     // Construct file object from the uploaded file data
-    console.log(req.file);
     const file = {
       url: req?.file?.path ?? "",
       filename: req?.file?.filename ?? "",

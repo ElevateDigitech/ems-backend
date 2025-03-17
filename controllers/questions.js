@@ -122,7 +122,6 @@ module.exports = {
     const existingQuestion = await findQuestion({
       query: { level: formattedLevel, total: formattedTotal },
     });
-    console.log(existingQuestion);
     if (existingQuestion)
       return handleError(next, STATUS_CODE_CONFLICT, MESSAGE_QUESTION_EXIST);
 
