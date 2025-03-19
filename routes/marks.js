@@ -84,9 +84,17 @@ router.post(
   "/CreateUpdateMarks",
   isLoggedIn,
   checkPermission(allPermissions?.CREATE_MARK),
-  // checkPermission(allPermissions?.UPDATE_MARK),
+  checkPermission(allPermissions?.UPDATE_MARK),
   validateCreateUpdateMarks,
   catchAsync(marks.CreateUpdateMarks)
+);
+
+router.post(
+  "/GetTotalsByQuestionPaperCode",
+  isLoggedIn,
+  checkPermission(allPermissions?.VIEW_MARKS),
+  validateQuestionPaperCode,
+  catchAsync(marks.GetTotalsByQuestionPaperCode)
 );
 
 module.exports.markRoutes = router;

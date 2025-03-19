@@ -32,6 +32,7 @@ const {
   MESSAGE_MARK_PER_QUESTIONS_INVALID,
   MESSAGE_CREATE_UPDATE_MARKS_SUCCESS,
   MESSAGE_DUPLICATE_MARKS_NOT_ALLOWED,
+  MESSAGE_GET_MARKS_TOTALS_SUCCESS,
 } = require("../utils/messages");
 const {
   findMarks,
@@ -892,6 +893,59 @@ module.exports = {
           MESSAGE_CREATE_UPDATE_MARKS_SUCCESS,
           results,
           totalCount
+        )
+      );
+  },
+
+  /**
+   * Create (or) updates marks in the database.
+   *
+   * @param {Object} req - Express request object
+   * @param {Object} res - Express response object
+   * @param {Function} next - Express next middleware function
+   */
+  GetTotalsByQuestionPaperCode: async (req, res, next) => {
+    const questionPaper = await findQuestionPaper({
+      query: { questionPaperCode: req.body.questionPaperCode },
+    });
+    if (!questionPaper)
+      return handleError(
+        next,
+        STATUS_CODE_BAD_REQUEST,
+        MESSAGE_QUESTION_PAPER_NOT_FOUND
+      );
+
+    const { results } = await findMarks({
+      query: { questionPaper: questionPaper._id },
+      all: true,
+      populate: true,
+      projection: true,
+    });
+
+    const totals =
+      results?.[0]?.questionPaper?.questions?.map((q, qi) => {
+        const questionTotal = results?.length * q?.question?.total;
+        const marksEarned = results?.reduce(
+          (sum, m) => sum + m.marksPerQuestion[qi],
+          0
+        );
+        return {
+          questionNumber: q?.questionNumber,
+          topicOfFocus: q?.topicOfFocus,
+          questionLevel: q?.question?.level,
+          questionTotal: questionTotal,
+          marksEarned: marksEarned,
+          questionPercentage: `${(marksEarned / questionTotal) * 100}%`,
+        };
+      }) ?? [];
+
+    res
+      .status(STATUS_CODE_SUCCESS)
+      .send(
+        handleSuccess(
+          STATUS_CODE_SUCCESS,
+          MESSAGE_GET_MARKS_TOTALS_SUCCESS,
+          totals
         )
       );
   },

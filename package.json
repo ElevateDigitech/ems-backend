@@ -8,7 +8,9 @@
     "seed:permissions-roles-users": "node ./seeds/seedPermissionsRolesAndUsers.js",
     "seed:countries-states-cities": "node ./seeds/seedCountriesStatesAndCities.js",
     "seed:genders": "node ./seeds/seedGenders.js",
-    "seed:all": "npm run seed:permissions-roles-users && npm run seed:countries-states-cities && npm run seed:genders",
+    "seed:classes-sections": "node ./seeds/seedClassesSections.js",
+    "seed:questions": "node ./seeds/seedQuestions.js",
+    "seed:all": "npm run seed:permissions-roles-users && npm run seed:countries-states-cities && npm run seed:genders && npm run seed:classes-sections && npm run seed:questions",
     "dev": "nodemon app.js",
     "start": "node app.js"
   },

@@ -25,7 +25,7 @@ const parseGenders = (baseGenders) => {
   }));
 };
 
-const seedPermissions = async () => {
+const seedGenders = async () => {
   await Gender.deleteMany({});
 
   const parsedGenders = parseGenders(baseGenders);
@@ -33,6 +33,7 @@ const seedPermissions = async () => {
   await Gender.insertMany(parsedGenders);
 };
 
-seedPermissions().then(() => {
+seedGenders().then(() => {
+  console.log("Genders seeded");
   mongoose.connection.close();
 });

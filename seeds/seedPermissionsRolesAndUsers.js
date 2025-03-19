@@ -99,8 +99,11 @@ const seedUsers = async () => {
 };
 
 seedPermissions().then(() => {
+  console.log("Permissions seeded");
   seedRoles().then(() => {
+    console.log("Roles seeded");
     seedUsers().then(() => {
+      console.log("Users seeded");
       mongoose.connection.close();
     });
   });

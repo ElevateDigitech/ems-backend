@@ -277,6 +277,7 @@ const buildMarksPipeline = ({
               as: "q",
               in: {
                 questionNumber: "$$q.questionNumber",
+                topicOfFocus: "$$q.topicOfFocus",
                 question: {
                   $let: {
                     vars: {

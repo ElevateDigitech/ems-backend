@@ -211,8 +211,11 @@ const seedCities = async () => {
 };
 
 seedCountries().then(() => {
+  console.log("Countries seeded");
   seedStates().then(() => {
+    console.log("States seeded");
     seedCities().then(() => {
+      console.log("Cities seeded");
       mongoose.connection.close();
     });
   });
