@@ -317,19 +317,15 @@ module.exports = {
    * @param {Object} res - Express response object
    * @param {Function} next - Express next middleware function
    */
-  GetMarksByQuestionPaperCode: async (req, res, next) => {
-    // Step 1: Extract pagination parameters from the query
-    const {
-      keyword = "",
-      sortField = "_id",
-      sortValue = "desc",
-      page = 1,
-      limit = 10,
-    } = req.query;
+  GetMarksByQuestionPaperCodeAndStudentCodes: async (req, res, next) => {
+    // Step 1: Extract value
+    const { questionPaperCode, students } = req.body;
+
+    console.log(questionPaperCode, students);
 
     // Step 2: Find the question paper using the provided questionPaperCode
     const questionPaper = await findQuestionPaper({
-      query: { questionPaperCode: req.body.questionPaperCode },
+      query: { questionPaperCode },
     });
     if (!questionPaper)
       return handleError(
@@ -338,13 +334,28 @@ module.exports = {
         MESSAGE_QUESTION_PAPER_NOT_FOUND
       );
 
+    const studentIds = [];
+    for (const s of students || []) {
+      const student = await findStudent({
+        query: { studentCode: s },
+      });
+
+      if (!student) {
+        return handleError(
+          next,
+          STATUS_CODE_BAD_REQUEST,
+          MESSAGE_STUDENT_NOT_FOUND
+        );
+      } else {
+        studentIds.push(student?._id);
+      }
+    }
+
     const { results, totalCount } = await findMarks({
-      query: { questionPaper: questionPaper._id },
-      keyword,
-      sortField,
-      sortValue,
-      page,
-      limit,
+      query: { questionPaper: questionPaper._id, student: { $in: studentIds } },
+      sortField: "student.name",
+      sortValue: "asc",
+      all: true,
       populate: true,
       projection: true,
     });
@@ -935,7 +946,9 @@ module.exports = {
           questionLevel: q?.question?.level,
           questionTotal: questionTotal,
           marksEarned: marksEarned,
-          questionPercentage: `${(marksEarned / questionTotal) * 100}%`,
+          questionPercentage: `${parseFloat(
+            (marksEarned / questionTotal) * 100
+          ).toFixed(2)}%`.replace(".00%", "%"),
         };
       }) ?? [];
 

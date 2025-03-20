@@ -410,3 +410,8 @@ module.exports.createUpdateMarksSchema = Joi.object({
     .min(1)
     .required(),
 });
+
+module.exports.QuestionPaperCodeAndStudentCodes = Joi.object({
+  questionPaperCode: Joi.string().required(),
+  students: Joi.array().items(Joi.string()).min(1).required(),
+});

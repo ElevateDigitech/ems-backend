@@ -273,4 +273,7 @@ module.exports = {
   validateMark: validateSchema(schemas.markSchema),
   validateUpdateMark: validateSchema(schemas.updateMarkSchema),
   validateCreateUpdateMarks: validateSchema(schemas.createUpdateMarksSchema),
+  validateQuestionPaperCodeAndStudentCodes: validateSchema(
+    schemas.QuestionPaperCodeAndStudentCodes
+  ),
 };
