@@ -7,9 +7,10 @@ const fsPromises = require("fs").promises;
 const { STATUS_SUCCESS, STATUS_ERROR } = require("./status");
 const { referenceFields } = require("./referenceFields");
 const { findPermission } = require("../queries/permissions");
-const { findUser } = require("../queries/users");
 const { findRole } = require("../queries/roles");
 const { findQuestion } = require("../queries/questions");
+const { findStrand } = require("../queries/strands");
+const { findSubStrand } = require("../queries/subStrands");
 
 const hiddenFieldsDefault = { __v: 0, _id: 0, id: 0 };
 const hiddenFieldsUser = { __v: 0, _id: 0, salt: 0, hash: 0 };
@@ -40,6 +41,8 @@ const generateQuestionCode = () => `QUESTION-${uuidv4()}`;
 const generateQuestionPaperCode = () => `QUESTION-PAPER-${uuidv4()}`;
 const generateExamCode = () => `EXAM-${uuidv4()}`;
 const generateMarkCode = () => `MARK-${uuidv4()}`;
+const generateStrandCode = () => `STRAND-${uuidv4()}`;
+const generateSubStrandCode = () => `STRAND-${uuidv4()}`;
 
 const validateDob = (value) => {
   const dob = moment(new Date(value).setHours(0, 0, 0, 0)).valueOf();
@@ -133,13 +136,46 @@ const getInvalidQuestions = async (questions) => {
   );
 };
 
+const getInvalidStrands = async (questions) => {
+  return await Promise.all(
+    questions.map(async (q) => {
+      const question = await findStrand({
+        query: { strandCode: q?.strandCode },
+      });
+      return !question;
+    })
+  );
+};
+
+const getInvalidSubStrands = async (questions) => {
+  return await Promise.all(
+    questions.map(async (q) => {
+      const question = await findSubStrand({
+        query: { subStrandCode: q?.subStrandCode },
+      });
+      return !question;
+    })
+  );
+};
+
 const getQuestionsWithIds = async (questions) => {
   return await Promise.all(
     questions.map(async (q) => {
       const question = await findQuestion({
         query: { questionCode: q?.questionCode },
       });
-      return { ...q, question: question?._id };
+      const strand = await findStrand({
+        query: { strandCode: q?.strandCode },
+      });
+      const subStrand = await findSubStrand({
+        query: { subStrandCode: q?.subStrandCode },
+      });
+      return {
+        ...q,
+        question: question?._id,
+        strand: strand?._id,
+        subStrand: subStrand?._id,
+      };
     })
   );
 };
@@ -172,6 +208,8 @@ module.exports = {
   generateQuestionPaperCode,
   generateExamCode,
   generateMarkCode,
+  generateStrandCode,
+  generateSubStrandCode,
   validateDob,
   getInvalidPermissions,
   getPermissionIds,
@@ -183,6 +221,8 @@ module.exports = {
   validateRequiredFields,
   getFileExtension,
   getInvalidQuestions,
+  getInvalidStrands,
+  getInvalidSubStrands,
   getQuestionsWithIds,
   hasDuplicates,
 };

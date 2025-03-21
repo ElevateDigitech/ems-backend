@@ -66,6 +66,14 @@ const allPermissions = {
   CREATE_MARK: "CREATE MARK",
   UPDATE_MARK: "UPDATE MARK",
   DELETE_MARK: "DELETE MARK",
+  VIEW_STRANDS: "VIEW STRANDS",
+  CREATE_STRAND: "CREATE STRAND",
+  UPDATE_STRAND: "UPDATE STRAND",
+  DELETE_STRAND: "DELETE STRAND",
+  VIEW_SUB_STRANDS: "VIEW SUB STRANDS",
+  CREATE_SUB_STRAND: "CREATE SUB STRAND",
+  UPDATE_SUB_STRAND: "UPDATE SUB STRAND",
+  DELETE_SUB_STRAND: "DELETE SUB STRAND",
 };
 
 const basePermissions = [
@@ -336,6 +344,38 @@ const basePermissions = [
   {
     permissionName: allPermissions?.DELETE_MARK,
     permissionDescription: "can delete mark",
+  },
+  {
+    permissionName: allPermissions?.VIEW_STRANDS,
+    permissionDescription: "can view strands",
+  },
+  {
+    permissionName: allPermissions?.CREATE_STRAND,
+    permissionDescription: "can create strand",
+  },
+  {
+    permissionName: allPermissions?.UPDATE_STRAND,
+    permissionDescription: "can update strand",
+  },
+  {
+    permissionName: allPermissions?.DELETE_STRAND,
+    permissionDescription: "can delete strand",
+  },
+  {
+    permissionName: allPermissions?.VIEW_SUB_STRANDS,
+    permissionDescription: "can view sub strands",
+  },
+  {
+    permissionName: allPermissions?.CREATE_SUB_STRAND,
+    permissionDescription: "can create sub strand",
+  },
+  {
+    permissionName: allPermissions?.UPDATE_SUB_STRAND,
+    permissionDescription: "can update sub strand",
+  },
+  {
+    permissionName: allPermissions?.DELETE_SUB_STRAND,
+    permissionDescription: "can delete sub strand",
   },
 ];
 

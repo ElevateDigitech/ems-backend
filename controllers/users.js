@@ -52,6 +52,7 @@ const {
   deleteUserObj,
   updateUserObj,
 } = require("../queries/users");
+const User = require("../models/user");
 
 module.exports = {
   /**
@@ -129,8 +130,8 @@ module.exports = {
     // Retrieve the newly created user
     const createdUser = await findUser({
       query: { userCode: user.userCode },
-      options: true,
-      populated: true,
+      projection: true,
+      populate: true,
     });
 
     //: Retrieve the current user performing the registration
@@ -312,10 +313,8 @@ module.exports = {
     }
 
     // Find the existing user using either email or username
-    const existingUser = await findUser({
-      query: {
-        $or: [{ email: email?.trim()?.toLowerCase() }, { username }],
-      },
+    const existingUser = await User.findOne({
+      $or: [{ email: email?.trim()?.toLowerCase() }, { username }],
     });
 
     // Handle case where user does not exist
@@ -394,10 +393,8 @@ module.exports = {
     }
 
     // Check if the user exists in the database using email or username.
-    const existingUser = await findUser({
-      query: {
-        $or: [{ email: email?.trim()?.toLowerCase() }, { username }],
-      },
+    const existingUser = await User.findOne({
+      $or: [{ email: email?.trim()?.toLowerCase() }, { username }],
     });
 
     if (!existingUser) {

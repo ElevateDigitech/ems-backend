@@ -5,13 +5,14 @@
   "main": "app.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
+    "seed:delete-all-documents": "node ./seeds/deleteCollectionDocuments.js",
     "seed:permissions-roles-users": "node ./seeds/seedPermissionsRolesAndUsers.js",
     "seed:countries-states-cities": "node ./seeds/seedCountriesStatesAndCities.js",
     "seed:genders": "node ./seeds/seedGenders.js",
     "seed:classes-sections": "node ./seeds/seedClassesSections.js",
     "seed:questions": "node ./seeds/seedQuestions.js",
     "seed:students": "node ./seeds/seedStudents.js",
-    "seed:all": "npm run seed:permissions-roles-users && npm run seed:countries-states-cities && npm run seed:genders && npm run seed:classes-sections && npm run seed:questions && npm run seed:students",
+    "seed:all": "npm run seed:delete-all-documents && npm run seed:permissions-roles-users && npm run seed:countries-states-cities && npm run seed:genders && npm run seed:classes-sections && npm run seed:questions && npm run seed:students",
     "dev": "nodemon app.js",
     "start": "node app.js"
   },

@@ -99,7 +99,8 @@ const buildQuestionPaperPipeline = ({
             as: "q",
             in: {
               questionNumber: "$$q.questionNumber",
-              topicOfFocus: "$$q.topicOfFocus",
+              strand: "$$q.strand",
+              subStrand: "$$q.subStrand",
               question: {
                 $arrayElemAt: [
                   {
@@ -130,6 +131,7 @@ const buildQuestionPaperPipeline = ({
         subject: 1,
         exam: 1,
         examDate: { $toLong: "$examDate" },
+        submissionDate: { $toLong: "$submissionDate" },
         questions: 1,
         createdAt: { $toLong: "$createdAt" },
         updatedAt: { $toLong: "$updatedAt" },
@@ -244,7 +246,8 @@ const buildQuestionPapersPipeline = ({
             as: "q",
             in: {
               questionNumber: "$$q.questionNumber",
-              topicOfFocus: "$$q.topicOfFocus",
+              strand: "$$q.strand",
+              subStrand: "$$q.subStrand",
               question: {
                 $arrayElemAt: [
                   {
@@ -304,6 +307,7 @@ const buildQuestionPapersPipeline = ({
         subject: 1,
         exam: 1,
         examDate: { $toLong: "$examDate" },
+        submissionDate: { $toLong: "$submissionDate" },
         questions: 1,
         createdAt: { $toLong: "$createdAt" },
         updatedAt: { $toLong: "$updatedAt" },
@@ -411,7 +415,8 @@ const buildQuestionPaperCountPipeline = ({
             as: "q",
             in: {
               questionNumber: "$$q.questionNumber",
-              topicOfFocus: "$$q.topicOfFocus",
+              strand: "$$q.strand",
+              subStrand: "$$q.subStrand",
               question: {
                 $arrayElemAt: [
                   {

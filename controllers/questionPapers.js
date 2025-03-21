@@ -11,6 +11,8 @@ const {
   getInvalidQuestions,
   getQuestionsWithIds,
   hasDuplicates,
+  getInvalidStrands,
+  getInvalidSubStrands,
 } = require("../utils/helpers");
 const {
   STATUS_CODE_CONFLICT,
@@ -34,6 +36,8 @@ const {
   MESSAGE_QUESTION_PAPER_QUESTIONS_NOT_FOUND,
   MESSAGE_SECTION_NOT_FOUND,
   MESSAGE_QUESTION_PAPER_QUESTION_NUMBER_DUPLICATION,
+  MESSAGE_QUESTION_PAPER_SUB_STRANDS_NOT_FOUND,
+  MESSAGE_QUESTION_PAPER_STRANDS_NOT_FOUND,
 } = require("../utils/messages");
 const {
   findQuestionPapers,
@@ -367,8 +371,15 @@ module.exports = {
    * @param {Function} next - Express next middleware function
    */
   CreateQuestionPaper: async (req, res, next) => {
-    const { title, subjectCode, examCode, examDate, sectionCode, questions } =
-      req.body;
+    const {
+      title,
+      subjectCode,
+      examCode,
+      examDate,
+      submissionDate,
+      sectionCode,
+      questions,
+    } = req.body;
     const formattedTitle = formatQuestionPaperTitle(title); // Step 1: Format question paper title
 
     // Step 2: Check if the question paper already exists
@@ -426,21 +437,40 @@ module.exports = {
         MESSAGE_QUESTION_PAPER_QUESTIONS_NOT_FOUND
       );
 
+    // Step 5: Validate Strands
+    const invalidStrands = await getInvalidStrands(questions);
+    if (invalidStrands.some(Boolean))
+      return handleError(
+        next,
+        STATUS_CODE_BAD_REQUEST,
+        MESSAGE_QUESTION_PAPER_STRANDS_NOT_FOUND
+      );
+
+    // Step 6: Validate Sub Strands
+    const invalidSubStrands = await getInvalidSubStrands(questions);
+    if (invalidSubStrands.some(Boolean))
+      return handleError(
+        next,
+        STATUS_CODE_BAD_REQUEST,
+        MESSAGE_QUESTION_PAPER_SUB_STRANDS_NOT_FOUND
+      );
+
     const questionsWithIds = await getQuestionsWithIds(questions);
 
-    // Step 5: Create and save the questionPaper
+    // Step 7: Create and save the questionPaper
     const questionPaper = createQuestionPaperObj({
       title: formattedTitle,
       section: section._id,
       subject: subject._id,
       exam: exam._id,
       examDate,
+      submissionDate,
       questions: questionsWithIds,
     });
 
     await questionPaper.save();
 
-    // Step 6: Log the audit
+    // Step 8: Log the audit
     const createdQuestionPaper = await findQuestionPaper({
       query: { questionPaperCode: questionPaper.questionPaperCode },
       projection: true,
@@ -463,7 +493,7 @@ module.exports = {
       currentUser
     );
 
-    // Step 7: Return the created question paper
+    // Step 9: Return the created question paper
     res
       .status(STATUS_CODE_SUCCESS)
       .send(

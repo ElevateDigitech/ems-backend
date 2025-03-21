@@ -117,6 +117,7 @@ const createQuestionPaperObj = ({
   subject,
   exam,
   examDate,
+  submissionDate,
   questions,
 }) => {
   // Generate a unique question paper code
@@ -130,6 +131,7 @@ const createQuestionPaperObj = ({
     subject,
     exam,
     examDate,
+    submissionDate,
     questions,
   });
 };

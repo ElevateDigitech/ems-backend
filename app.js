@@ -33,6 +33,8 @@ const { questionRoutes } = require("./routes/questions");
 const { questionPaperRoutes } = require("./routes/questionPapers");
 const { examRoutes } = require("./routes/exams");
 const { markRoutes } = require("./routes/marks");
+const { strandRoutes } = require("./routes/strands");
+const { subStrandRoutes } = require("./routes/subStrands");
 
 const { STATUS_ERROR } = require("./utils/status");
 const {
@@ -168,6 +170,8 @@ app.use("/", questionRoutes);
 app.use("/", questionPaperRoutes);
 app.use("/", examRoutes);
 app.use("/", markRoutes);
+app.use("/", strandRoutes);
+app.use("/", subStrandRoutes);
 
 app.all("*", (req, res, next) => {
   return res

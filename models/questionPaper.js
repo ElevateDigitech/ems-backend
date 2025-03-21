@@ -42,6 +42,10 @@ const QuestionPaperSchema = new Schema(
       type: Date,
       required: true,
     },
+    submissionDate: {
+      type: Date,
+      required: true,
+    },
     questions: [
       {
         questionNumber: {
@@ -53,10 +57,15 @@ const QuestionPaperSchema = new Schema(
           ref: "Question",
           required: true,
         },
-        topicOfFocus: {
-          type: String,
+        strand: {
+          type: Schema.Types.ObjectId,
+          ref: "Strand",
           required: true,
-          trim: true,
+        },
+        subStrand: {
+          type: Schema.Types.ObjectId,
+          ref: "SubStrand",
+          required: true,
         },
       },
     ],

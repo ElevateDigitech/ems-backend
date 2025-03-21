@@ -241,6 +241,10 @@ const MESSAGE_QUESTION_PAPER_QUESTION_NUMBER_DUPLICATION =
   "Question Numbers should be unique";
 const MESSAGE_QUESTION_PAPER_QUESTIONS_NOT_FOUND =
   "One or more of the question listed are not valid";
+const MESSAGE_QUESTION_PAPER_STRANDS_NOT_FOUND =
+  "One or more of the strand listed are not valid";
+const MESSAGE_QUESTION_PAPER_SUB_STRANDS_NOT_FOUND =
+  "One or more of the sub strand listed are not valid";
 
 const MESSAGE_GET_EXAMS_SUCCESS = "Exams retrieved successfully";
 const MESSAGE_GET_EXAM_SUCCESS = "Exam retrieved successfully";
@@ -277,6 +281,37 @@ const MESSAGE_DUPLICATE_MARKS_NOT_ALLOWED =
   "Not allowed to create a duplicate entry.";
 const MESSAGE_GET_MARKS_TOTALS_SUCCESS =
   "Retrived questions wise marks successfully";
+
+const MESSAGE_GET_STRANDS_SUCCESS = "Strands retrieved successfully";
+const MESSAGE_GET_STRAND_SUCCESS = "Strand retrieved successfully";
+const MESSAGE_STRAND_NOT_FOUND = "The selected strand could not be found";
+const MESSAGE_STRAND_EXIST = "Strand already exist. Please try a different one";
+const MESSAGE_CREATE_STRANDS_SUCCESS = "Strand created successfully";
+const MESSAGE_UPDATE_STRANDS_SUCCESS = "Strand updated successfully";
+const MESSAGE_DELETE_STRANDS_SUCCESS = "Strand deleted successfully";
+const MESSAGE_DELETE_STRANDS_ERROR = "Couldn't delete the strand";
+const MESSAGE_STRAND_NOT_ALLOWED_DELETE_REFERENCE_EXIST =
+  "The selected strand is in use and not allowed to be deleted.";
+const MESSAGE_STRAND_TAKEN =
+  "Strand title already taken. Please try a different one.";
+
+const MESSAGE_GET_SUB_STRANDS_SUCCESS = "Sub strands retrieved successfully";
+const MESSAGE_GET_SUB_STRAND_SUCCESS = "Sub strand retrieved successfully";
+const MESSAGE_SUB_STRAND_NOT_FOUND =
+  "The selected sub strand could not be found";
+const MESSAGE_SUB_STRAND_EXIST =
+  "Sub strand already exist. Please try a different one";
+const MESSAGE_CREATE_SUB_STRANDS_SUCCESS =
+  "Sub sub strand created successfully";
+const MESSAGE_UPDATE_SUB_STRANDS_SUCCESS =
+  "Sub sub strand updated successfully";
+const MESSAGE_DELETE_SUB_STRANDS_SUCCESS =
+  "Sub sub strand deleted successfully";
+const MESSAGE_DELETE_SUB_STRANDS_ERROR = "Couldn't delete the sub strand";
+const MESSAGE_SUB_STRAND_NOT_ALLOWED_DELETE_REFERENCE_EXIST =
+  "The selected sub strand is in use and not allowed to be deleted.";
+const MESSAGE_SUB_STRAND_TAKEN =
+  "Sub strand title already taken. Please try a different one.";
 
 module.exports = {
   MESSAGE_MISSING_REQUIRED_FIELDS,
@@ -453,6 +488,8 @@ module.exports = {
   MESSAGE_QUESTION_PAPER_TAKEN,
   MESSAGE_QUESTION_PAPER_QUESTION_NUMBER_DUPLICATION,
   MESSAGE_QUESTION_PAPER_QUESTIONS_NOT_FOUND,
+  MESSAGE_QUESTION_PAPER_STRANDS_NOT_FOUND,
+  MESSAGE_QUESTION_PAPER_SUB_STRANDS_NOT_FOUND,
 
   MESSAGE_GET_EXAMS_SUCCESS,
   MESSAGE_GET_EXAM_SUCCESS,
@@ -481,4 +518,26 @@ module.exports = {
   MESSAGE_CREATE_UPDATE_MARKS_SUCCESS,
   MESSAGE_DUPLICATE_MARKS_NOT_ALLOWED,
   MESSAGE_GET_MARKS_TOTALS_SUCCESS,
+
+  MESSAGE_GET_STRANDS_SUCCESS,
+  MESSAGE_GET_STRAND_SUCCESS,
+  MESSAGE_STRAND_NOT_FOUND,
+  MESSAGE_STRAND_EXIST,
+  MESSAGE_CREATE_STRANDS_SUCCESS,
+  MESSAGE_UPDATE_STRANDS_SUCCESS,
+  MESSAGE_DELETE_STRANDS_SUCCESS,
+  MESSAGE_DELETE_STRANDS_ERROR,
+  MESSAGE_STRAND_NOT_ALLOWED_DELETE_REFERENCE_EXIST,
+  MESSAGE_STRAND_TAKEN,
+
+  MESSAGE_GET_SUB_STRANDS_SUCCESS,
+  MESSAGE_GET_SUB_STRAND_SUCCESS,
+  MESSAGE_SUB_STRAND_NOT_FOUND,
+  MESSAGE_SUB_STRAND_EXIST,
+  MESSAGE_CREATE_SUB_STRANDS_SUCCESS,
+  MESSAGE_UPDATE_SUB_STRANDS_SUCCESS,
+  MESSAGE_DELETE_SUB_STRANDS_SUCCESS,
+  MESSAGE_DELETE_SUB_STRANDS_ERROR,
+  MESSAGE_SUB_STRAND_NOT_ALLOWED_DELETE_REFERENCE_EXIST,
+  MESSAGE_SUB_STRAND_TAKEN,
 };

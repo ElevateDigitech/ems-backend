@@ -1,4 +1,4 @@
-const buildSectionPipeline = ({
+const buildSubStrandPipeline = ({
   query = {},
   projection = false,
   populate = false,
@@ -10,40 +10,40 @@ const buildSectionPipeline = ({
     pipeline.push({ $match: query });
   }
 
-  // 2. Limit the result to only 1 document
+  // 2. Limit the results to 1 document
   pipeline.push({ $limit: 1 });
 
-  // 2. Lookup (populate class)
+  // 3. Lookup (populate strand)
   if (populate) {
     pipeline.push({
       $lookup: {
-        from: "classes",
-        localField: "class",
+        from: "strands",
+        localField: "strand",
         foreignField: "_id",
-        as: "class",
+        as: "strand",
       },
     });
 
     pipeline.push({
       $unwind: {
-        path: "$class",
+        path: "$strand",
         preserveNullAndEmptyArrays: true,
       },
     });
   }
 
-  // 6. Projection (Include-Only Fields)
   if (projection) {
+    // 4. Projection (Include-Only Fields)
     const baseProjection = {
       _id: 0,
-      sectionCode: 1,
-      name: 1,
-      class: populate
+      subStrandCode: 1,
+      title: 1,
+      strand: populate
         ? {
-            classCode: "$class.classCode",
-            name: "$class.name",
-            createdAt: { $toLong: "$class.createdAt" },
-            updatedAt: { $toLong: "$class.updatedAt" },
+            strandCode: "$strand.strandCode",
+            title: "$strand.title",
+            createdAt: { $toLong: "$strand.createdAt" },
+            updatedAt: { $toLong: "$strand.updatedAt" },
           }
         : 1,
       createdAt: { $toLong: "$createdAt" },
@@ -56,7 +56,7 @@ const buildSectionPipeline = ({
   return pipeline;
 };
 
-const buildSectionsPipeline = ({
+const buildSubStrandsPipeline = ({
   keyword,
   query = {},
   sortField = "_id",
@@ -74,68 +74,66 @@ const buildSectionsPipeline = ({
     pipeline.push({ $match: query });
   }
 
-  // 2. Lookup (populate class)
+  // 2. Lookup (populate strand)
   if (populate) {
     pipeline.push({
       $lookup: {
-        from: "classes",
-        localField: "class",
+        from: "strands",
+        localField: "strand",
         foreignField: "_id",
-        as: "class",
+        as: "strand",
       },
     });
 
     pipeline.push({
       $unwind: {
-        path: "$class",
+        path: "$strand",
         preserveNullAndEmptyArrays: true,
       },
     });
   }
 
-  // 3. Keyword Search (LIKE Match on All Fields)
+  // 2. Keyword Search (LIKE Match on All Fields)
   if (keyword && keyword.trim().length > 0) {
-    const keywordRegex = new RegExp(keyword, "i");
+    const keywordRegex = new RegExp(keyword, "i"); // Case-insensitive regex for "LIKE"
 
-    const sectionSearchConditions = [{ name: { $regex: keywordRegex } }];
-
-    const classSearchConditions = populate
-      ? [{ "class.name": { $regex: keywordRegex } }]
-      : [];
+    // Dynamic search conditions for sub strand fields
+    const subStrandSearchConditions = [{ title: { $regex: keywordRegex } }];
+    const strandSearchConditions = [
+      { "strand.title": { $regex: keywordRegex } },
+    ];
 
     pipeline.push({
       $match: {
-        $or: [...sectionSearchConditions, ...classSearchConditions],
+        $or: [...subStrandSearchConditions, ...strandSearchConditions],
       },
     });
   }
 
-  // 4. Sorting
+  // 3. Sorting
   pipeline.push({
     $sort: { [sortField]: sortValue === "asc" ? 1 : -1 },
   });
 
-  // 5. Pagination (skip if "all" is true)
+  // 4. Pagination (skip if "all" is true)
   if (!all) {
     const skip = (parseInt(page) - 1) * parseInt(limit);
     pipeline.push({ $skip: skip });
     pipeline.push({ $limit: parseInt(limit) });
   }
 
-  // 6. Projection (Include-Only Fields)
   if (projection) {
+    // 5. Projection (Include-Only Fields)
     const baseProjection = {
       _id: 0,
-      sectionCode: 1,
-      name: 1,
-      createdAt: 1,
-      updatedAt: 1,
-      class: populate
+      subStrandCode: 1,
+      title: 1,
+      strand: populate
         ? {
-            classCode: "$class.classCode",
-            name: "$class.name",
-            createdAt: { $toLong: "$class.createdAt" },
-            updatedAt: { $toLong: "$class.updatedAt" },
+            strandCode: "$strand.strandCode",
+            title: "$strand.name",
+            createdAt: { $toLong: "$strand.createdAt" },
+            updatedAt: { $toLong: "$strand.updatedAt" },
           }
         : 1,
       createdAt: { $toLong: "$createdAt" },
@@ -148,49 +146,43 @@ const buildSectionsPipeline = ({
   return pipeline;
 };
 
-const buildSectionCountPipeline = ({
-  keyword,
-  query = {},
-  populate = false,
-}) => {
+const buildSubStrandCountPipeline = ({ keyword, query = {}, populate }) => {
   const pipeline = [];
 
   if (Object.keys(query).length > 0) {
     pipeline.push({ $match: query });
   }
 
-  // 2. Lookup (populate class)
   if (populate) {
     pipeline.push({
       $lookup: {
-        from: "classes",
-        localField: "class",
+        from: "strands",
+        localField: "strand",
         foreignField: "_id",
-        as: "class",
+        as: "strand",
       },
     });
 
     pipeline.push({
       $unwind: {
-        path: "$class",
+        path: "$strand",
         preserveNullAndEmptyArrays: true,
       },
     });
   }
 
-  // 3. Keyword Search (LIKE Match on All Fields)
   if (keyword && keyword.trim().length > 0) {
-    const keywordRegex = new RegExp(keyword, "i");
+    const keywordRegex = new RegExp(keyword, "i"); // Case-insensitive regex for "LIKE"
 
-    const sectionSearchConditions = [{ name: { $regex: keywordRegex } }];
-
-    const classSearchConditions = populate
-      ? [{ "class.name": { $regex: keywordRegex } }]
-      : [];
+    // Dynamic search conditions for sub strand fields
+    const subStrandSearchConditions = [{ title: { $regex: keywordRegex } }];
+    const strandSearchConditions = [
+      { "strand.title": { $regex: keywordRegex } },
+    ];
 
     pipeline.push({
       $match: {
-        $or: [...sectionSearchConditions, ...classSearchConditions],
+        $or: [...subStrandSearchConditions, ...strandSearchConditions],
       },
     });
   }
@@ -203,7 +195,7 @@ const buildSectionCountPipeline = ({
 };
 
 module.exports = {
-  buildSectionPipeline,
-  buildSectionsPipeline,
-  buildSectionCountPipeline,
+  buildSubStrandPipeline,
+  buildSubStrandsPipeline,
+  buildSubStrandCountPipeline,
 };

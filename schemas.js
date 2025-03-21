@@ -327,13 +327,15 @@ module.exports.questionPaperSchema = Joi.object({
   title: Joi.string().required(),
   examCode: Joi.string().required(),
   examDate: Joi.string().required().pattern(VALID_DATE),
+  submissionDate: Joi.string().required().pattern(VALID_DATE),
   subjectCode: Joi.string().required(),
   sectionCode: Joi.string().required(),
   questions: Joi.array()
     .items(
       Joi.object({
         questionNumber: Joi.number().required(),
-        topicOfFocus: Joi.string().required(),
+        strandCode: Joi.string().required(),
+        subStrandCode: Joi.string().required(),
         questionCode: Joi.string().required(),
       })
     )
@@ -346,13 +348,15 @@ module.exports.updateQuestionPaperSchema = Joi.object({
   title: Joi.string().required(),
   examCode: Joi.string().required(),
   examDate: Joi.string().required().pattern(VALID_DATE),
+  submissionDate: Joi.string().required().pattern(VALID_DATE),
   subjectCode: Joi.string().required(),
   sectionCode: Joi.string().required(),
   questions: Joi.array()
     .items(
       Joi.object({
         questionNumber: Joi.number().required(),
-        topicOfFocus: Joi.string().required(),
+        strandCode: Joi.string().required(),
+        subStrandCode: Joi.string().required(),
         questionCode: Joi.string().required(),
       })
     )
@@ -414,4 +418,38 @@ module.exports.createUpdateMarksSchema = Joi.object({
 module.exports.QuestionPaperCodeAndStudentCodes = Joi.object({
   questionPaperCode: Joi.string().required(),
   students: Joi.array().items(Joi.string()).min(1).required(),
+});
+
+/**
+ * Strand schemas.
+ */
+module.exports.strandCodeSchema = Joi.object({
+  strandCode: Joi.string().required(),
+});
+
+module.exports.strandSchema = Joi.object({
+  title: Joi.string().required(),
+});
+
+module.exports.updateStrandSchema = Joi.object({
+  strandCode: Joi.string().required(),
+  title: Joi.string().required(),
+});
+
+/**
+ * Sub Strand schemas.
+ */
+module.exports.subStrandCodeSchema = Joi.object({
+  subStrandCode: Joi.string().required(),
+});
+
+module.exports.subStrandSchema = Joi.object({
+  title: Joi.string().required(),
+  strandCode: Joi.string().required(),
+});
+
+module.exports.updateSubStrandSchema = Joi.object({
+  subStrandCode: Joi.string().required(),
+  title: Joi.string().required(),
+  strandCode: Joi.string().required(),
 });

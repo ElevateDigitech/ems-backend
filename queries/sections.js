@@ -13,7 +13,7 @@ const {
  * @param {Object} params - The parameters for querying a section.
  * @param {Object} params.query - The MongoDB query object to filter the section.
  * @param {Object} params.options - Fields to include or exclude from the result.
- * @param {boolean} params.populated - Determines if related data should be populated.
+ * @param {boolean} params.populate - Determines if related data should be populated.
  * @returns {Promise<Object|null>} - A promise that resolves to the section object or null if not found.
  */
 const findSection = async ({

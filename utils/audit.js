@@ -23,6 +23,8 @@ const auditCollections = {
   QUESTION_PAPERS: "QUESTION PAPERS",
   EXAMS: "EXAMS",
   MARKS: "MARKS",
+  STRANDS: "STRANDS",
+  SUB_STRANDS: "SUB STRANDS",
 };
 
 const auditChanges = {
@@ -74,6 +76,12 @@ const auditChanges = {
   CREATE_MARK: "A Mark added",
   UPDATE_MARK: "A Mark Updated",
   DELETE_MARK: "A Mark Deleted",
+  CREATE_STRAND: "A Strand added",
+  UPDATE_STRAND: "A Strand Updated",
+  DELETE_STRAND: "A Strand Deleted",
+  CREATE_SUB_STRAND: "A Sub Strand added",
+  UPDATE_SUB_STRAND: "A Sub Strand Updated",
+  DELETE_SUB_STRAND: "A Sub Strand Deleted",
 };
 
 module.exports = { auditActions, auditCollections, auditChanges };

@@ -276,4 +276,18 @@ module.exports = {
   validateQuestionPaperCodeAndStudentCodes: validateSchema(
     schemas.QuestionPaperCodeAndStudentCodes
   ),
+
+  /**
+   * Middleware for validating strand schemas.
+   */
+  validateStrandCode: validateSchema(schemas.strandCodeSchema),
+  validateStrand: validateSchema(schemas.strandSchema),
+  validateUpdateStrand: validateSchema(schemas.updateStrandSchema),
+
+  /**
+   * Middleware for validating sub strand schemas.
+   */
+  validateSubStrandCode: validateSchema(schemas.subStrandCodeSchema),
+  validateSubStrand: validateSchema(schemas.subStrandSchema),
+  validateUpdateSubStrand: validateSchema(schemas.updateSubStrandSchema),
 };
