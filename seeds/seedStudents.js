@@ -2,8 +2,8 @@ require("dotenv").config();
 const { default: mongoose } = require("mongoose");
 const Section = require("../models/section");
 const Student = require("../models/student");
-const { generateStudentCode } = require("../utils/helpers");
 const { baseStudents } = require("./baseStudents");
+const { generateStudentCode } = require("../queries/students");
 
 const DB_URL = process?.env?.DB_URL ?? "";
 mongoose.connect(DB_URL, {

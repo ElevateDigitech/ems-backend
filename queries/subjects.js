@@ -1,11 +1,12 @@
 const moment = require("moment-timezone");
+const { v4: uuidv4 } = require("uuid");
 const Subject = require("../models/subject");
-const { generateSubjectCode } = require("../utils/helpers");
 const {
   buildSubjectsPipeline,
   buildSubjectCountPipeline,
   buildSubjectPipeline,
 } = require("../pipelines/subjects");
+const generateSubjectCode = () => `SUBJECT-${uuidv4()}`;
 
 /**
  * Retrieves a single subject from the database.
@@ -141,6 +142,7 @@ const deleteSubjectObj = async (subjectCode) => {
 };
 
 module.exports = {
+  generateSubjectCode,
   findSubjects, // Export function to retrieve multiple subjects
   findSubject, // Export function to retrieve a single subject
   formatSubjectName, // Export function to format subject names

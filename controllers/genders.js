@@ -7,7 +7,7 @@ const {
 const {
   handleError,
   handleSuccess,
-  IsObjectIdReferenced,
+  isObjectIdReferenced,
 } = require("../utils/helpers");
 const {
   STATUS_CODE_SUCCESS,
@@ -197,7 +197,7 @@ module.exports = {
     const existingGender = await findGender({ query: { genderCode } }); // Step 2: Check existence
     if (!existingGender)
       return handleError(next, STATUS_CODE_CONFLICT, MESSAGE_GENDER_NOT_FOUND);
-    const { isReferenced } = await IsObjectIdReferenced(existingGender._id); // Step 3: Check references
+    const { isReferenced } = await isObjectIdReferenced(existingGender._id); // Step 3: Check references
     if (isReferenced)
       return handleError(
         next,

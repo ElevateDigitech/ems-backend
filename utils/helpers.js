@@ -1,6 +1,5 @@
 const path = require("path");
 const moment = require("moment");
-const { v4: uuidv4 } = require("uuid");
 const mongoose = require("mongoose");
 const ExpressResponse = require("./ExpressResponse");
 const fsPromises = require("fs").promises;
@@ -11,51 +10,30 @@ const { findRole } = require("../queries/roles");
 const { findQuestion } = require("../queries/questions");
 const { findStrand } = require("../queries/strands");
 const { findSubStrand } = require("../queries/subStrands");
-
-const hiddenFieldsDefault = { __v: 0, _id: 0, id: 0 };
-const hiddenFieldsUser = { __v: 0, _id: 0, salt: 0, hash: 0 };
-const removeIdsForSubSchemas = { _id: 0, id: 0 };
+const { findSection } = require("../queries/sections");
 
 const handleError = (next, status, message) =>
   next(new ExpressResponse(STATUS_ERROR, status, message));
 const handleSuccess = (status, message, data = null, total = null) =>
   new ExpressResponse(STATUS_SUCCESS, status, message, data, total);
 
-const trimAndTestRegex = (value, regex) =>
-  value?.trim() && regex?.test(value.trim());
-
-const generateAuditCode = () => `AUDIT-${uuidv4()}`;
-const generatePermissionCode = () => `PRIV-${uuidv4()}`;
-const generateRoleCode = () => `ROLE-${uuidv4()}`;
-const generateUserCode = () => `USER-${uuidv4()}`;
-const generateGenderCode = () => `GENDER-${uuidv4()}`;
-const generateCountryCode = () => `COUNTRY-${uuidv4()}`;
-const generateStateCode = () => `STATE-${uuidv4()}`;
-const generateCityCode = () => `CITY-${uuidv4()}`;
-const generateProfileCode = () => `PROFILE-${uuidv4()}`;
-const generateClassCode = () => `CLASS-${uuidv4()}`;
-const generateSectionCode = () => `SECTION-${uuidv4()}`;
-const generateSubjectCode = () => `SUBJECT-${uuidv4()}`;
-const generateStudentCode = () => `STUDENT-${uuidv4()}`;
-const generateQuestionCode = () => `QUESTION-${uuidv4()}`;
-const generateQuestionPaperCode = () => `QUESTION-PAPER-${uuidv4()}`;
-const generateExamCode = () => `EXAM-${uuidv4()}`;
-const generateMarkCode = () => `MARK-${uuidv4()}`;
-const generateStrandCode = () => `STRAND-${uuidv4()}`;
-const generateSubStrandCode = () => `STRAND-${uuidv4()}`;
+const trimAndTestRegex = (value, regex) => {
+  if (!value) return false;
+  const trimmed = value?.trim();
+  return trimmed && regex?.test(trimmed);
+};
 
 const validateDob = (value) => {
   const dob = moment(new Date(value).setHours(0, 0, 0, 0)).valueOf();
   const today = moment(new Date().setHours(0, 0, 0, 0)).valueOf();
-
   return dob <= today;
 };
 
 const getInvalidPermissions = async (permissions) => {
-  return await Promise.all(
-    permissions.map(async (rp) => {
+  return Promise.all(
+    permissions.map(async (permCode) => {
       const permission = await findPermission({
-        query: { permissionCode: rp },
+        query: { permissionCode: permCode },
       });
       return !permission;
     })
@@ -63,17 +41,17 @@ const getInvalidPermissions = async (permissions) => {
 };
 
 const getPermissionIds = async (permissions) => {
-  return await Promise.all(
-    permissions.map(async (rp) => {
+  return Promise.all(
+    permissions.map(async (permCode) => {
       const permission = await findPermission({
-        query: { permissionCode: rp },
+        query: { permissionCode: permCode },
       });
       return permission?._id;
     })
   );
 };
 
-const IsObjectIdReferenced = async (id) => {
+const isObjectIdReferenced = async (id) => {
   const objectId = new mongoose.Types.ObjectId(id);
   const existenceChecks = referenceFields?.map(async ({ model, field }) => {
     const Model = mongoose.model(model);
@@ -89,89 +67,89 @@ const IsObjectIdReferenced = async (id) => {
       by: referencedField.model.toLowerCase(),
     };
   }
-
   return { isReferenced: false };
 };
 
 const getInvalidRole = async (roleCode) => {
-  const permission = await findRole({ query: { roleCode } });
-  return !permission;
+  const role = await findRole({ query: { roleCode } });
+  return !role;
 };
 
 const getRoleId = async (roleCode) => {
-  const permission = await findRole({ query: { roleCode } });
-  return permission?._id;
+  const role = await findRole({ query: { roleCode } });
+  return role?._id;
 };
 
 const toCapitalize = (str) => {
-  const words = str?.split(" ") ?? [];
-  const updatedWords =
-    words?.map((w) => w?.[0]?.toUpperCase() + w?.substr(1)) ?? [];
-  return updatedWords?.join(" ") ?? "";
+  if (!str) return "";
+  return str
+    .split(" ")
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(" ");
 };
 
-const writeToFile = async (path, content) => {
+const writeToFile = async (filePath, content) => {
   try {
-    await fsPromises.writeFile(path, JSON.stringify(content, null, 2));
-    console.log(`File written successfully at ${path}`);
+    await fsPromises.writeFile(filePath, JSON.stringify(content, null, 2));
+    console.log(`File written successfully at ${filePath}`);
   } catch (err) {
     console.error("Error writing to file:", err);
   }
 };
 
 const validateRequiredFields = (fields) => {
-  return fields.every((field) => field?.trim()?.length);
+  return fields.every((field) => field && field.trim().length);
 };
 
 const getFileExtension = (filename) => path.extname(filename);
 
-const getInvalidQuestions = async (questions) => {
-  return await Promise.all(
-    questions.map(async (q) => {
+const getInvalidQuestions = async (items) => {
+  return Promise.all(
+    items.map(async (item) => {
       const question = await findQuestion({
-        query: { questionCode: q?.questionCode },
+        query: { questionCode: item?.questionCode },
       });
       return !question;
     })
   );
 };
 
-const getInvalidStrands = async (questions) => {
-  return await Promise.all(
-    questions.map(async (q) => {
-      const question = await findStrand({
-        query: { strandCode: q?.strandCode },
+const getInvalidStrands = async (items) => {
+  return Promise.all(
+    items.map(async (item) => {
+      const strand = await findStrand({
+        query: { strandCode: item?.strandCode },
       });
-      return !question;
+      return !strand;
     })
   );
 };
 
-const getInvalidSubStrands = async (questions) => {
-  return await Promise.all(
-    questions.map(async (q) => {
-      const question = await findSubStrand({
-        query: { subStrandCode: q?.subStrandCode },
+const getInvalidSubStrands = async (items) => {
+  return Promise.all(
+    items.map(async (item) => {
+      const subStrand = await findSubStrand({
+        query: { subStrandCode: item?.subStrandCode },
       });
-      return !question;
+      return !subStrand;
     })
   );
 };
 
-const getQuestionsWithIds = async (questions) => {
-  return await Promise.all(
-    questions.map(async (q) => {
+const getQuestionsWithIds = async (items) => {
+  return Promise.all(
+    items.map(async (item) => {
       const question = await findQuestion({
-        query: { questionCode: q?.questionCode },
+        query: { questionCode: item?.questionCode },
       });
       const strand = await findStrand({
-        query: { strandCode: q?.strandCode },
+        query: { strandCode: item?.strandCode },
       });
       const subStrand = await findSubStrand({
-        query: { subStrandCode: q?.subStrandCode },
+        query: { subStrandCode: item?.subStrandCode },
       });
       return {
-        ...q,
+        ...item,
         question: question?._id,
         strand: strand?._id,
         subStrand: subStrand?._id,
@@ -180,40 +158,38 @@ const getQuestionsWithIds = async (questions) => {
   );
 };
 
-const hasDuplicates = (arr) => {
-  return new Set(arr).size !== arr.length;
+const hasDuplicates = (arr) => new Set(arr).size !== arr.length;
+
+const getInvalidSections = async (items) => {
+  return Promise.all(
+    items.map(async (item) => {
+      const section = await findSection({
+        query: { sectionCode: item },
+      });
+      return !section;
+    })
+  );
+};
+
+const getSectionDetails = async (sections) => {
+  return Promise.all(
+    sections.map(async (secCode) => {
+      const section = await findSection({
+        query: { sectionCode: secCode },
+      });
+      return section;
+    })
+  );
 };
 
 module.exports = {
-  hiddenFieldsDefault,
-  hiddenFieldsUser,
-  removeIdsForSubSchemas,
   handleError,
   handleSuccess,
   trimAndTestRegex,
-  generateAuditCode,
-  generatePermissionCode,
-  generateRoleCode,
-  generateUserCode,
-  generateGenderCode,
-  generateCountryCode,
-  generateStateCode,
-  generateCityCode,
-  generateProfileCode,
-  generateClassCode,
-  generateSectionCode,
-  generateSubjectCode,
-  generateStudentCode,
-  generateQuestionCode,
-  generateQuestionPaperCode,
-  generateExamCode,
-  generateMarkCode,
-  generateStrandCode,
-  generateSubStrandCode,
   validateDob,
   getInvalidPermissions,
   getPermissionIds,
-  IsObjectIdReferenced,
+  isObjectIdReferenced,
   getInvalidRole,
   getRoleId,
   toCapitalize,
@@ -225,4 +201,6 @@ module.exports = {
   getInvalidSubStrands,
   getQuestionsWithIds,
   hasDuplicates,
+  getInvalidSections,
+  getSectionDetails,
 };

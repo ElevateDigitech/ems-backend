@@ -3,15 +3,11 @@ const { default: mongoose } = require("mongoose");
 const Permission = require("../models/permission");
 const Role = require("../models/role");
 const User = require("../models/user");
-const {
-  generatePermissionCode,
-  generateRoleCode,
-  generateUserCode,
-} = require("../utils/helpers");
 const { basePermissions } = require("./basePermissions");
 const { baseRoles } = require("./baseRoles");
-const { findPermissions } = require("../queries/permissions");
-const { findRoles } = require("../queries/roles");
+const { generatePermissionCode } = require("../queries/permissions");
+const { generateRoleCode } = require("../queries/roles");
+const { generateUserCode } = require("../queries/users");
 
 const DB_URL = process?.env?.DB_URL ?? "";
 mongoose.connect(DB_URL, {

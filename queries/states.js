@@ -1,15 +1,12 @@
 const moment = require("moment-timezone");
+const { v4: uuidv4 } = require("uuid");
 const State = require("../models/state");
-const {
-  toCapitalize,
-  generateStateCode,
-  hiddenFieldsDefault,
-} = require("../utils/helpers");
 const {
   buildStatesPipeline,
   buildStateCountPipeline,
   buildStatePipeline,
 } = require("../pipelines/states");
+const generateStateCode = () => `STATE-${uuidv4()}`;
 
 /**
  * Retrieves a single state from the database.
@@ -105,7 +102,12 @@ const findStates = async ({
  */
 const formatStateFields = ({ name, iso }) => {
   return {
-    formattedName: toCapitalize(name), // Step 1: Capitalize the state name
+    formattedName: !name
+      ? ""
+      : name
+          .split(" ")
+          .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+          .join(" "), // Step 1: Capitalize the state name
     formattedISO: iso.toUpperCase(), // Step 2: Convert ISO code to uppercase
   };
 };
@@ -164,6 +166,7 @@ const deleteStateObj = async (stateCode) => {
 };
 
 module.exports = {
+  generateStateCode,
   findStates, // Export function to retrieve multiple states
   findState, // Export function to retrieve a single state
   formatStateFields, // Export function to format state fields

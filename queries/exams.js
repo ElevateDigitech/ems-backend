@@ -1,11 +1,12 @@
+const { v4: uuidv4 } = require("uuid");
 const moment = require("moment-timezone");
 const Exam = require("../models/exam");
-const { generateExamCode } = require("../utils/helpers");
 const {
   buildExamsPipeline,
   buildExamCountPipeline,
   buildExamPipeline,
 } = require("../pipelines/exams");
+const generateExamCode = () => `EXAM-${uuidv4()}`;
 
 /**
  * Retrieves a single exam from the database.
@@ -145,6 +146,7 @@ const deleteExamObj = async (examCode) => {
 };
 
 module.exports = {
+  generateExamCode,
   findExams, // Export function to retrieve multiple exams
   findExam, // Export function to retrieve a single exam
   formatExamTitle, // Export function to format exam titles

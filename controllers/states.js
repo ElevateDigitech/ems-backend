@@ -5,7 +5,7 @@ const {
   auditChanges,
 } = require("../utils/audit");
 const {
-  IsObjectIdReferenced,
+  isObjectIdReferenced,
   handleError,
   handleSuccess,
 } = require("../utils/helpers");
@@ -330,7 +330,7 @@ module.exports = {
       return handleError(next, STATUS_CODE_CONFLICT, MESSAGE_STATE_NOT_FOUND);
 
     // Step 3: Check if the state is referenced elsewhere
-    const { isReferenced } = await IsObjectIdReferenced(existingState._id);
+    const { isReferenced } = await isObjectIdReferenced(existingState._id);
     if (isReferenced)
       return handleError(
         next,

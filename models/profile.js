@@ -1,6 +1,6 @@
 const mongoose = require("mongoose");
 const moment = require("moment");
-const { removeIdsForSubSchemas, validateDob } = require("../utils/helpers");
+const { validateDob } = require("../utils/helpers");
 
 const Schema = mongoose.Schema;
 const timeNow = () => moment().valueOf();
@@ -8,6 +8,7 @@ const defaultOptions = {
   toJSON: { virtuals: true },
   id: false,
 };
+const removeIdsForSubSchemas = { _id: 0, id: 0 };
 
 /** Image Schema */
 const ImageSchema = new Schema(

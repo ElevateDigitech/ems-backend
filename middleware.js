@@ -265,6 +265,9 @@ module.exports = {
     schemas.updateQuestionPaperSchema
   ),
   validateQueryQuestionPaper: validateSchema(schemas.questionPapersQuerySchema),
+  validateDuplicateQuestionPaper: validateSchema(
+    schemas.duplicateQuestionPaperSchema
+  ),
 
   /**
    * Middleware for validating mark schemas.

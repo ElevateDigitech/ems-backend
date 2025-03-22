@@ -1,10 +1,11 @@
+const { v4: uuidv4 } = require("uuid");
 const AuditLog = require("../models/auditLog");
 const {
   buildAuditLogsPipeline,
   buildAuditLogCountPipeline,
   buildAuditLogPipeline,
 } = require("../pipelines/auditLogs");
-const { generateAuditCode } = require("../utils/helpers");
+const generateAuditCode = () => `AUDIT-${uuidv4()}`;
 
 /**
  * Retrieves a single audit log from the database using an aggregation pipeline.
@@ -125,6 +126,7 @@ const logAudit = async (
 };
 
 module.exports = {
+  generateAuditCode,
   findAuditLog, // Export function to retrieve a single audit log
   findAuditLogs, // Export function to retrieve multiple audit logs
   logAudit, // Export function to log audit trails

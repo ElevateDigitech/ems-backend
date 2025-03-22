@@ -1,11 +1,12 @@
+const { v4: uuidv4 } = require("uuid");
 const moment = require("moment-timezone");
 const Mark = require("../models/mark");
-const { hiddenFieldsDefault, generateMarkCode } = require("../utils/helpers");
 const {
   buildMarksPipeline,
   buildMarkCountPipeline,
   buildMarkPipeline,
 } = require("../pipelines/marks");
+const generateMarkCode = () => `MARK-${uuidv4()}`;
 
 /**
  * Retrieves all marks from the database with support for pagination, sorting, keyword search, and population.
@@ -176,6 +177,7 @@ const deleteMarkObj = async (markCode) => {
 };
 
 module.exports = {
+  generateMarkCode,
   findMarks, // Export function to retrieve multiple marks
   findMark, // Export function to retrieve a single mark
   createMarkObj, // Export function to create a new mark

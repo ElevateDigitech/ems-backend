@@ -1,10 +1,11 @@
+const { v4: uuidv4 } = require("uuid");
 const User = require("../models/user");
 const {
   buildUsersPipeline,
   buildUserCountPipeline,
   buildUserPipeline,
 } = require("../pipelines/users");
-const { v4: uuidv4 } = require("uuid");
+const generateUserCode = () => `USER-${uuidv4()}`;
 
 /**
  * Retrieves a single user from the database using an aggregation pipeline.
@@ -96,24 +97,15 @@ const findUsers = async ({
  * @param {Object} params - The parameters to create the profile object.
  * @returns {Object} - The newly created profile object.
  */
-const createUserObj = async ({
-  email,
-  username,
-  userAllowDeletion,
-  roleId,
-  password,
-}) => {
+const createUserObj = ({ email, username, userAllowDeletion, roleId }) => {
   // Create new user object
   const user = new User({
-    userCode: `USER-${uuidv4()}`, // Generate unique user code
+    userCode: generateUserCode(), // Generate unique user code
     email: email.trim().toLowerCase(), // Normalize email
     username, // Set username
     userAllowDeletion, // Set deletion permission
     role: roleId, // Assign role ID
   });
-
-  // Register the user with the provided password
-  await User.register(user, password);
 
   return user;
 };
@@ -137,6 +129,7 @@ const deleteUserObj = async (userCode) => {
 };
 
 module.exports = {
+  generateUserCode,
   findUser,
   findUsers,
   createUserObj,

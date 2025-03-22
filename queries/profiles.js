@@ -1,12 +1,13 @@
+const { v4: uuidv4 } = require("uuid");
 const moment = require("moment-timezone");
 const Profile = require("../models/profile");
-const { generateProfileCode } = require("../utils/helpers");
 const { cloudinary } = require("../cloudinary");
 const {
   buildProfilesPipeline,
   buildProfileCountPipeline,
   buildProfilePipeline,
 } = require("../pipelines/profiles");
+const generateProfileCode = () => `PROFILE-${uuidv4()}`;
 
 /**
  * Retrieves a single profile from the database.
@@ -190,6 +191,7 @@ const deleteProfileObj = async (profileCode) => {
 };
 
 module.exports = {
+  generateProfileCode,
   findProfiles, // Export function to retrieve multiple profiles
   findProfile, // Export function to retrieve a single profile
   removeUploadedProfilePicture, // Export function to remove uploaded profile picture

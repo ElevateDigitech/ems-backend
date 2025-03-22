@@ -363,10 +363,16 @@ module.exports.updateQuestionPaperSchema = Joi.object({
     .min(1)
     .required(),
 });
+
 module.exports.questionPapersQuerySchema = Joi.object({
   sectionCode: Joi.string().required(),
   subjectCode: Joi.string().required(),
   examCode: Joi.string().required(),
+});
+
+module.exports.duplicateQuestionPaperSchema = Joi.object({
+  questionPaperCode: Joi.string().required(),
+  sectionCodes: Joi.array().items(Joi.string().required()).min(1).required(),
 });
 
 /**

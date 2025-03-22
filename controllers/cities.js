@@ -7,7 +7,7 @@ const {
 const {
   handleError,
   handleSuccess,
-  IsObjectIdReferenced,
+  isObjectIdReferenced,
 } = require("../utils/helpers");
 const {
   STATUS_CODE_CONFLICT,
@@ -374,7 +374,7 @@ module.exports = {
       return handleError(next, STATUS_CODE_CONFLICT, MESSAGE_CITY_NOT_FOUND);
 
     // Step 3: Check if the city is referenced elsewhere
-    const { isReferenced } = await IsObjectIdReferenced(city._id);
+    const { isReferenced } = await isObjectIdReferenced(city._id);
     if (isReferenced)
       return handleError(
         next,

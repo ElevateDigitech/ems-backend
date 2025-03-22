@@ -1,8 +1,8 @@
 require("dotenv").config();
 const { default: mongoose } = require("mongoose");
 const Question = require("../models/question");
-const { generateQuestionCode } = require("../utils/helpers");
 const { baseQuestions } = require("./baseQuestions");
+const { generateQuestionCode } = require("../queries/questions");
 
 const DB_URL = process?.env?.DB_URL ?? "";
 mongoose.connect(DB_URL, {

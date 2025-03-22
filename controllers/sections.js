@@ -13,7 +13,7 @@ const {
 const {
   handleError,
   handleSuccess,
-  IsObjectIdReferenced,
+  isObjectIdReferenced,
 } = require("../utils/helpers");
 const {
   MESSAGE_GET_STATE_SUCCESS,
@@ -316,7 +316,7 @@ module.exports = {
     if (!existingSection)
       return handleError(next, STATUS_CODE_CONFLICT, MESSAGE_SECTION_NOT_FOUND);
 
-    const { isReferenced } = await IsObjectIdReferenced(existingSection._id);
+    const { isReferenced } = await isObjectIdReferenced(existingSection._id);
     if (isReferenced)
       return handleError(
         next,

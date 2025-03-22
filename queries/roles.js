@@ -1,11 +1,12 @@
+const { v4: uuidv4 } = require("uuid");
+const moment = require("moment-timezone");
 const {
   buildRolePipeline,
   buildRolesPipeline,
   buildRoleCountPipeline,
 } = require("../pipelines/roles");
-const moment = require("moment-timezone");
 const Role = require("../models/role");
-const { v4: uuidv4 } = require("uuid");
+const generateRoleCode = () => `ROLE-${uuidv4()}`;
 
 const findRole = async ({
   query = {},
@@ -69,7 +70,7 @@ const createRoleObj = ({
   rolePermissions = [],
 }) => {
   const role = new Role({
-    roleCode: `ROLE-${uuidv4()}`,
+    roleCode: generateRoleCode(),
     roleName,
     roleDescription,
     roleAllowDeletion,
@@ -102,6 +103,7 @@ const deleteRoleObj = async (roleCode) => {
 };
 
 module.exports = {
+  generateRoleCode,
   findRole,
   findRoles,
   formatRoleFields,

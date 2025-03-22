@@ -1,11 +1,12 @@
 const moment = require("moment-timezone");
+const { v4: uuidv4 } = require("uuid");
 const Section = require("../models/section");
-const { toCapitalize, generateSectionCode } = require("../utils/helpers");
 const {
   buildSectionsPipeline,
   buildSectionCountPipeline,
   buildSectionPipeline,
 } = require("../pipelines/sections");
+const generateSectionCode = () => `SECTION-${uuidv4()}`;
 
 /**
  * Retrieves a single section from the database.
@@ -150,6 +151,7 @@ const deleteSectionObj = async (sectionCode) => {
 };
 
 module.exports = {
+  generateSectionCode,
   findSections, // Export function to retrieve multiple sections
   findSection, // Export function to retrieve a single section
   formatSectionName, // Export function to format section name

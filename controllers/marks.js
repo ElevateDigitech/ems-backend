@@ -7,7 +7,7 @@ const {
 const {
   handleError,
   handleSuccess,
-  IsObjectIdReferenced,
+  isObjectIdReferenced,
 } = require("../utils/helpers");
 const {
   STATUS_CODE_CONFLICT,
@@ -696,7 +696,7 @@ module.exports = {
       return handleError(next, STATUS_CODE_CONFLICT, MESSAGE_MARK_NOT_FOUND);
 
     // Step 2: Check if the mark is referenced elsewhere
-    const { isReferenced } = await IsObjectIdReferenced(mark._id);
+    const { isReferenced } = await isObjectIdReferenced(mark._id);
     if (isReferenced)
       return handleError(
         next,

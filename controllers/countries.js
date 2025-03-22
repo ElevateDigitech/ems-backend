@@ -7,7 +7,7 @@ const {
 const {
   handleError,
   handleSuccess,
-  IsObjectIdReferenced,
+  isObjectIdReferenced,
 } = require("../utils/helpers");
 const {
   STATUS_CODE_CONFLICT,
@@ -249,7 +249,7 @@ module.exports = {
     if (!existingCountry)
       return handleError(next, STATUS_CODE_CONFLICT, MESSAGE_COUNTRY_NOT_FOUND); // Step 3: Handle not found error
 
-    const { isReferenced } = await IsObjectIdReferenced(existingCountry._id); // Step 4: Check references
+    const { isReferenced } = await isObjectIdReferenced(existingCountry._id); // Step 4: Check references
     if (isReferenced)
       return handleError(
         next,

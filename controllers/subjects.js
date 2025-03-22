@@ -7,7 +7,7 @@ const {
 const {
   handleSuccess,
   handleError,
-  IsObjectIdReferenced,
+  isObjectIdReferenced,
 } = require("../utils/helpers");
 const {
   STATUS_CODE_CONFLICT,
@@ -252,7 +252,7 @@ module.exports = {
     }
 
     // Step 3: Verify if the subject is referenced elsewhere in the database
-    const { isReferenced } = await IsObjectIdReferenced(existingSubject._id);
+    const { isReferenced } = await isObjectIdReferenced(existingSubject._id);
     if (isReferenced) {
       return handleError(
         next,

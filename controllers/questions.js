@@ -7,7 +7,7 @@ const {
 const {
   handleError,
   handleSuccess,
-  IsObjectIdReferenced,
+  isObjectIdReferenced,
 } = require("../utils/helpers");
 const {
   STATUS_CODE_SUCCESS,
@@ -201,7 +201,7 @@ module.exports = {
       return handleError(next, STATUS_CODE_CONFLICT, MESSAGE_QUESTION_TAKEN);
 
     // Step 3: Check if the class is referenced elsewhere
-    const { isReferenced } = await IsObjectIdReferenced(existingQuestion._id);
+    const { isReferenced } = await isObjectIdReferenced(existingQuestion._id);
     if (isReferenced)
       return handleError(
         next,
@@ -274,7 +274,7 @@ module.exports = {
       );
 
     // Step 3: Check if the class is referenced elsewhere
-    const { isReferenced } = await IsObjectIdReferenced(existingQuestion._id);
+    const { isReferenced } = await isObjectIdReferenced(existingQuestion._id);
     if (isReferenced)
       return handleError(
         next,

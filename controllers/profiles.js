@@ -8,7 +8,7 @@ const {
 const {
   handleError,
   handleSuccess,
-  IsObjectIdReferenced,
+  isObjectIdReferenced,
 } = require("../utils/helpers");
 const {
   STATUS_CODE_SUCCESS,
@@ -572,7 +572,7 @@ module.exports = {
     const fileName = existingProfile?.profilePicture?.filename;
 
     // Check if the profile is referenced by any other objects in the system
-    const { isReferenced } = await IsObjectIdReferenced(existingProfile._id);
+    const { isReferenced } = await isObjectIdReferenced(existingProfile._id);
     if (isReferenced)
       // If the profile is referenced elsewhere, deletion is not allowed
       return handleError(

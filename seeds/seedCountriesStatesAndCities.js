@@ -3,13 +3,11 @@ const mongoose = require("mongoose");
 const Country = require("../models/country");
 const State = require("../models/state");
 const City = require("../models/city");
-const {
-  toCapitalize,
-  generateCountryCode,
-  generateStateCode,
-  generateCityCode,
-} = require("../utils/helpers");
+const { toCapitalize } = require("../utils/helpers");
 const { data } = require("./countriesStatesCities");
+const { generateCountryCode } = require("../queries/countries");
+const { generateStateCode } = require("../queries/states");
+const { generateCityCode } = require("../queries/cities");
 
 const DB_URL = process?.env?.DB_URL ?? "";
 mongoose.connect(DB_URL, {

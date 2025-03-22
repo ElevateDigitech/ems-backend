@@ -1,3 +1,4 @@
+const moment = require("moment-timezone");
 const { logAudit } = require("../queries/auditLogs");
 const {
   auditActions,
@@ -7,12 +8,14 @@ const {
 const {
   handleError,
   handleSuccess,
-  IsObjectIdReferenced,
+  isObjectIdReferenced,
   getInvalidQuestions,
   getQuestionsWithIds,
   hasDuplicates,
   getInvalidStrands,
   getInvalidSubStrands,
+  getInvalidSections,
+  getSectionDetails,
 } = require("../utils/helpers");
 const {
   STATUS_CODE_CONFLICT,
@@ -38,6 +41,8 @@ const {
   MESSAGE_QUESTION_PAPER_QUESTION_NUMBER_DUPLICATION,
   MESSAGE_QUESTION_PAPER_SUB_STRANDS_NOT_FOUND,
   MESSAGE_QUESTION_PAPER_STRANDS_NOT_FOUND,
+  MESSAGE_QUESTION_PAPER_SECTIONS_NOT_FOUND,
+  MESSAGE_DUPLICATE_QUESTION_PAPER_SUCCESS,
 } = require("../utils/messages");
 const {
   findQuestionPapers,
@@ -640,6 +645,126 @@ module.exports = {
   },
 
   /**
+   * Create Duplicates for an existing question paper in the database.
+   *
+   * @param {Object} req - Express request object
+   * @param {Object} res - Express response object
+   * @param {Function} next - Express next middleware function
+   */
+  CreateDuplicateQuestionPapers: async (req, res, next) => {
+    // Sttep 1: Extract the values
+    const { questionPaperCode, sectionCodes } = req.body;
+
+    // Step 2: Validate the question paper
+    const existinQuestionPaper = await findQuestionPaper({
+      query: { questionPaperCode },
+    });
+    if (!existinQuestionPaper)
+      return handleError(
+        next,
+        STATUS_CODE_CONFLICT,
+        MESSAGE_QUESTION_PAPER_NOT_FOUND
+      );
+
+    // Step 3: Validate sections
+    const invalidSections = await getInvalidSections(sectionCodes);
+    if (invalidSections.some(Boolean))
+      return handleError(
+        next,
+        STATUS_CODE_BAD_REQUEST,
+        MESSAGE_QUESTION_PAPER_SECTIONS_NOT_FOUND
+      );
+
+    // Step 4: Extract the section id's
+    const sectionDetails = await getSectionDetails(sectionCodes);
+
+    // Step 5: Extract the common fields
+    const commonQuestionPaperDetails = {
+      subject: existinQuestionPaper?.subject,
+      exam: existinQuestionPaper?.exam,
+      examDate: moment(existinQuestionPaper?.examDate).format("YYYY-MM-DD"),
+      submissionDate: moment(existinQuestionPaper?.submissionDate).format(
+        "YYYY-MM-DD"
+      ),
+      questions: existinQuestionPaper?.questions?.map((q) => {
+        let newQ = { ...q };
+        if (newQ._id) {
+          delete newQ._id;
+        }
+        return newQ;
+      }),
+    };
+
+    // Step 6: Array to hold created question paper codes
+    const questionPaperCodes = [];
+
+    // Step 7: loop section id's and create new question paper
+    for (const sectionDetail of sectionDetails || []) {
+      // Step 8: create new question paper object
+      const questionPaper = createQuestionPaperObj({
+        title: formatQuestionPaperTitle(
+          `Copy of ${existinQuestionPaper?.title} for ${sectionDetail.name}`
+        ),
+        section: sectionDetail._id,
+        ...commonQuestionPaperDetails,
+      });
+
+      // Step 9: save the created object
+      await questionPaper.save();
+
+      // Step 10: created question paper
+      const createdQuestionPaper = await findQuestionPaper({
+        query: { questionPaperCode: questionPaper.questionPaperCode },
+        projection: true,
+        populate: true,
+      });
+
+      // Step 11: created user
+      const currentUser = await findUser({
+        query: { userCode: req.user.userCode },
+        projection: true,
+        populate: true,
+      });
+
+      // Step 12: Log the audit
+      await logAudit(
+        auditActions.CREATE,
+        auditCollections.QUESTION_PAPERS,
+        createdQuestionPaper.questionPaperCode,
+        auditChanges.CREATE_QUESTION_PAPER,
+        null,
+        createdQuestionPaper,
+        currentUser
+      );
+
+      // Step 13: Capture question paper code
+      questionPaperCodes.push(questionPaper.questionPaperCode);
+    }
+
+    // Step 14: Capture created question paper details
+    const { results, totalCount } = await findQuestionPapers({
+      query: {
+        questionPaperCode: { $in: questionPaperCodes },
+      },
+      populate: true,
+      projection: true,
+      all: true,
+    });
+
+    // Step 15: Return the question papers
+    res
+      .status(STATUS_CODE_SUCCESS)
+      .send(
+        handleSuccess(
+          STATUS_CODE_SUCCESS,
+          MESSAGE_DUPLICATE_QUESTION_PAPER_SUCCESS,
+          results,
+          totalCount
+        )
+      );
+  },
+
+  /**
    * Deletes a question paper from the database.
    *
    * @param {Object} req - Express request object
@@ -661,7 +786,7 @@ module.exports = {
       );
 
     // Step 3: Check if the question paper is referenced elsewhere
-    const { isReferenced } = await IsObjectIdReferenced(questionPaper._id);
+    const { isReferenced } = await isObjectIdReferenced(questionPaper._id);
     if (isReferenced)
       return handleError(
         next,

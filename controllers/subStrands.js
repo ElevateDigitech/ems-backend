@@ -7,7 +7,7 @@ const {
 const {
   handleError,
   handleSuccess,
-  IsObjectIdReferenced,
+  isObjectIdReferenced,
 } = require("../utils/helpers");
 const {
   STATUS_CODE_SUCCESS,
@@ -326,7 +326,7 @@ module.exports = {
       );
 
     // Step 3: Check if the sub strand is referenced elsewhere
-    const { isReferenced } = await IsObjectIdReferenced(existingSubStrand._id);
+    const { isReferenced } = await isObjectIdReferenced(existingSubStrand._id);
     if (isReferenced)
       return handleError(
         next,

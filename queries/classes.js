@@ -1,11 +1,12 @@
+const { v4: uuidv4 } = require("uuid");
 const moment = require("moment-timezone");
 const Class = require("../models/class");
-const { generateClassCode } = require("../utils/helpers");
 const {
   buildClassesPipeline,
   buildClassCountPipeline,
   buildClassPipeline,
 } = require("../pipelines/classes");
+const generateClassCode = () => `CLASS-${uuidv4()}`;
 
 /**
  * Retrieves a single class from the database.
@@ -141,6 +142,7 @@ const deleteClassObj = async (classCode) => {
 };
 
 module.exports = {
+  generateClassCode,
   findClasses, // Export function to retrieve multiple classes
   findClass, // Export function to retrieve a single class
   formatClassName, // Export function to format class names

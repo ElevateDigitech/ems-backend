@@ -1,11 +1,12 @@
+const { v4: uuidv4 } = require("uuid");
 const moment = require("moment-timezone");
 const QuestionPaper = require("../models/questionPaper");
-const { generateQuestionPaperCode } = require("../utils/helpers");
 const {
   buildQuestionPaperPipeline,
   buildQuestionPapersPipeline,
   buildQuestionPaperCountPipeline,
 } = require("../pipelines/questionPapers");
+const generateQuestionPaperCode = () => `QUESTION-PAPER-${uuidv4()}`;
 
 /**
  * Retrieves a single question paper from the database.
@@ -182,6 +183,7 @@ const deleteQuestionPaperObj = async (questionPaperCode) => {
 };
 
 module.exports = {
+  generateQuestionPaperCode,
   findQuestionPapers,
   findQuestionPaper,
   formatQuestionPaperTitle,

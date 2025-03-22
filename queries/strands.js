@@ -1,11 +1,12 @@
 const moment = require("moment-timezone");
-const { generateStrandCode } = require("../utils/helpers");
+const { v4: uuidv4 } = require("uuid");
 const {
   buildStrandPipeline,
   buildStrandsPipeline,
   buildStrandCountPipeline,
 } = require("../pipelines/strands");
 const Strand = require("../models/strand");
+const generateStrandCode = () => `STRAND-${uuidv4()}`;
 
 /**
  * Retrieves a single strand from the database.
@@ -141,6 +142,7 @@ const deleteStrandObj = async (strandCode) => {
 };
 
 module.exports = {
+  generateStrandCode,
   findStrands, // Export function to retrieve multiple strands
   findStrand, // Export function to retrieve a single strand
   formatStrandTitle, // Export function to format strand title

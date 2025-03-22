@@ -1,11 +1,12 @@
+const { v4: uuidv4 } = require("uuid");
 const moment = require("moment-timezone");
 const Country = require("../models/country");
-const { generateCountryCode, toCapitalize } = require("../utils/helpers");
 const {
   buildCountriesPipeline,
   buildCountryCountPipeline,
   buildCountryPipeline,
 } = require("../pipelines/countries");
+const generateCountryCode = () => `COUNTRY-${uuidv4()}`;
 
 /**
  * Retrieves a single country from the database.
@@ -93,7 +94,12 @@ const findCountries = async ({
  */
 const formatCountryFields = ({ name, iso2, iso3 }) => {
   return {
-    formattedName: toCapitalize(name), // Step 1: Capitalize country name
+    formattedName: !name
+      ? ""
+      : name
+          .split(" ")
+          .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+          .join(" "), // Step 1: Capitalize country name
     formattedISO2: iso2.toUpperCase(), // Step 2: Convert ISO2 code to uppercase
     formattedISO3: iso3.toUpperCase(), // Step 3: Convert ISO3 code to uppercase
   };
@@ -156,6 +162,7 @@ const deleteCountryObj = async (countryCode) => {
 };
 
 module.exports = {
+  generateCountryCode,
   findCountries, // Export function to retrieve multiple countries
   findCountry, // Export function to retrieve a single country
   formatCountryFields, // Export function to format country fields

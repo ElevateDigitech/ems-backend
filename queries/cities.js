@@ -1,11 +1,12 @@
+const { v4: uuidv4 } = require("uuid");
 const moment = require("moment-timezone");
 const City = require("../models/city");
-const { toCapitalize, generateCityCode } = require("../utils/helpers");
 const {
   buildCitiesPipeline,
   buildCityCountPipeline,
   buildCityPipeline,
 } = require("../pipelines/cities");
+const generateCityCode = () => `CITY-${uuidv4()}`;
 
 /**
  * Retrieves a single city from the database using an aggregation pipeline.
@@ -91,7 +92,11 @@ const findCities = async ({
  * @returns {string} - Capitalized city name.
  */
 const formatCityName = (name) => {
-  return toCapitalize(name);
+  if (!name) return "";
+  return name
+    .split(" ")
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(" ");
 };
 
 /**
@@ -148,6 +153,7 @@ const deleteCityObj = async (cityCode) => {
 };
 
 module.exports = {
+  generateCityCode,
   findCity,
   findCities,
   formatCityName,

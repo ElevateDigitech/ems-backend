@@ -1,11 +1,12 @@
 const moment = require("moment-timezone");
-const { generateSubStrandCode } = require("../utils/helpers");
+const { v4: uuidv4 } = require("uuid");
 const SubStrand = require("../models/subStrand");
 const {
   buildSubStrandPipeline,
   buildSubStrandsPipeline,
   buildSubStrandCountPipeline,
 } = require("../pipelines/subStrands");
+const generateSubStrandCode = () => `SUB-STRAND-${uuidv4()}`;
 
 /**
  * Retrieves a single sub strand from the database.
@@ -151,6 +152,7 @@ const deleteSubStrandObj = async (subStrandCode) => {
 };
 
 module.exports = {
+  generateSubStrandCode,
   findSubStrands, // Export function to retrieve multiple strands
   findSubStrand, // Export function to retrieve a single strand
   formatSubStrandTitle, // Export function to format strand title

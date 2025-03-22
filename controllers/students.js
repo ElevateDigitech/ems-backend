@@ -7,7 +7,7 @@ const {
 const {
   handleError,
   handleSuccess,
-  IsObjectIdReferenced,
+  isObjectIdReferenced,
 } = require("../utils/helpers");
 const {
   STATUS_CODE_CONFLICT,
@@ -337,7 +337,7 @@ module.exports = {
       return handleError(next, STATUS_CODE_CONFLICT, MESSAGE_STUDENT_NOT_FOUND);
 
     // Step 3: Check if the student is referenced elsewhere
-    const { isReferenced } = await IsObjectIdReferenced(existingStudent._id);
+    const { isReferenced } = await isObjectIdReferenced(existingStudent._id);
     if (isReferenced)
       return handleError(
         next,

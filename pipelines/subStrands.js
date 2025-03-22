@@ -131,7 +131,7 @@ const buildSubStrandsPipeline = ({
       strand: populate
         ? {
             strandCode: "$strand.strandCode",
-            title: "$strand.name",
+            title: "$strand.title",
             createdAt: { $toLong: "$strand.createdAt" },
             updatedAt: { $toLong: "$strand.updatedAt" },
           }

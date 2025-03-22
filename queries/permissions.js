@@ -1,9 +1,11 @@
+const { v4: uuidv4 } = require("uuid");
 const Permission = require("../models/permission");
 const {
   buildPermissionsPipeline,
   buildPermissionCountPipeline,
   buildPermissionPipeline,
 } = require("../pipelines/permissions");
+const generatePermissionCode = () => `PRIV-${uuidv4()}`;
 
 /**
  * Retrieves a single permission from the database using an aggregation pipeline.
@@ -83,6 +85,7 @@ const findPermissions = async ({
 };
 
 module.exports = {
+  generatePermissionCode,
   findPermission, // Export function to retrieve a single permission
   findPermissions, // Export function to retrieve multiple permissions
 };

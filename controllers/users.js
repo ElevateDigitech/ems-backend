@@ -12,7 +12,7 @@ const {
   trimAndTestRegex,
   getInvalidRole,
   getRoleId,
-  IsObjectIdReferenced,
+  isObjectIdReferenced,
   validateRequiredFields,
 } = require("../utils/helpers");
 const {
@@ -120,13 +120,15 @@ module.exports = {
     // Retrieve role ID based on role code
     const roleId = await getRoleId(roleCode);
 
-    const user = await createUserObj({
+    const user = createUserObj({
       email,
       username,
       userAllowDeletion,
       roleId,
-      password,
     });
+
+    await User.register(user, password);
+
     // Retrieve the newly created user
     const createdUser = await findUser({
       query: { userCode: user.userCode },
@@ -674,7 +676,7 @@ module.exports = {
     }
 
     // Check if the user is referenced elsewhere in the system
-    const { isReferenced } = await IsObjectIdReferenced(existingUser._id);
+    const { isReferenced } = await isObjectIdReferenced(existingUser._id);
     if (isReferenced) {
       return handleError(
         next,

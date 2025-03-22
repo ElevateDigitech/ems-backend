@@ -73,6 +73,24 @@ const buildQuestionPaperPipeline = ({
     });
 
     pipeline.push({
+      $lookup: {
+        from: "strands",
+        localField: "questions.strand",
+        foreignField: "_id",
+        as: "strandDetails",
+      },
+    });
+
+    pipeline.push({
+      $lookup: {
+        from: "substrands",
+        localField: "questions.subStrand",
+        foreignField: "_id",
+        as: "subStrandDetails",
+      },
+    });
+
+    pipeline.push({
       $addFields: {
         exam: {
           examCode: "$exam.examCode",
@@ -99,19 +117,78 @@ const buildQuestionPaperPipeline = ({
             as: "q",
             in: {
               questionNumber: "$$q.questionNumber",
-              strand: "$$q.strand",
-              subStrand: "$$q.subStrand",
-              question: {
-                $arrayElemAt: [
-                  {
-                    $filter: {
-                      input: "$questionDetails",
-                      as: "qd",
-                      cond: { $eq: ["$$qd._id", "$$q.question"] },
+              strand: {
+                $let: {
+                  vars: {
+                    matchedStrand: {
+                      $arrayElemAt: [
+                        {
+                          $filter: {
+                            input: "$strandDetails",
+                            as: "sd",
+                            cond: { $eq: ["$$sd._id", "$$q.strand"] },
+                          },
+                        },
+                        0,
+                      ],
                     },
                   },
-                  0,
-                ],
+                  in: {
+                    strandCode: "$$matchedStrand.strandCode",
+                    title: "$$matchedStrand.title",
+                    createdAt: { $toLong: "$$matchedStrand.createdAt" },
+                    updatedAt: { $toLong: "$$matchedStrand.updatedAt" },
+                  },
+                },
+              },
+              subStrand: {
+                $let: {
+                  vars: {
+                    matchedSubStrand: {
+                      $arrayElemAt: [
+                        {
+                          $filter: {
+                            input: "$subStrandDetails",
+                            as: "ssd",
+                            cond: { $eq: ["$$ssd._id", "$$q.subStrand"] },
+                          },
+                        },
+                        0,
+                      ],
+                    },
+                  },
+                  in: {
+                    subStrandCode: "$$matchedSubStrand.subStrandCode",
+                    title: "$$matchedSubStrand.title",
+                    createdAt: { $toLong: "$$matchedSubStrand.createdAt" },
+                    updatedAt: { $toLong: "$$matchedSubStrand.updatedAt" },
+                  },
+                },
+              },
+              question: {
+                $let: {
+                  vars: {
+                    matchedQuestion: {
+                      $arrayElemAt: [
+                        {
+                          $filter: {
+                            input: "$questionDetails",
+                            as: "qd",
+                            cond: { $eq: ["$$qd._id", "$$q.question"] },
+                          },
+                        },
+                        0,
+                      ],
+                    },
+                  },
+                  in: {
+                    questionCode: "$$matchedQuestion.questionCode",
+                    level: "$$matchedQuestion.level",
+                    total: "$$matchedQuestion.total",
+                    createdAt: { $toLong: "$$matchedQuestion.createdAt" },
+                    updatedAt: { $toLong: "$$matchedQuestion.updatedAt" },
+                  },
+                },
               },
             },
           },
@@ -216,6 +293,15 @@ const buildQuestionPapersPipeline = ({
         localField: "questions.question",
         foreignField: "_id",
         as: "questionDetails",
+      },
+    });
+
+    pipeline.push({
+      $lookup: {
+        from: "strands",
+        localField: "questions.strand",
+        foreignField: "_id",
+        as: "stranDetails",
       },
     });
 

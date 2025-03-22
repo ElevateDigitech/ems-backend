@@ -1,11 +1,12 @@
 const moment = require("moment-timezone");
+const { v4: uuidv4 } = require("uuid");
 const Student = require("../models/student");
-const { toCapitalize, generateStudentCode } = require("../utils/helpers");
 const {
   buildStudentsPipeline,
   buildStudentCountPipeline,
   buildStudentPipeline,
 } = require("../pipelines/students");
+const generateStudentCode = () => `STUDENT-${uuidv4()}`;
 
 /**
  * Retrieves a single student from the database.
@@ -102,7 +103,12 @@ const findStudents = async ({
  */
 const formatStudentFields = ({ name, rollNumber }) => {
   return {
-    formattedName: toCapitalize(name), // Step 1: Capitalize the student name
+    formattedName: !name
+      ? ""
+      : name
+          .split(" ")
+          .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+          .join(" "), // Step 1: Capitalize the student name
     formattedRollNumber: rollNumber.toUpperCase(), // Step 2: Convert roll number to uppercase
   };
 };
@@ -161,6 +167,7 @@ const deleteStudentObj = async (studentCode) => {
 };
 
 module.exports = {
+  generateStudentCode,
   findStudents, // Export function to retrieve multiple students
   findStudent, // Export function to retrieve a single student
   formatStudentFields, // Export function to format student fields

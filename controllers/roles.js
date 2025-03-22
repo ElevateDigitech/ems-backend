@@ -9,7 +9,7 @@ const {
   handleSuccess,
   getPermissionIds,
   getInvalidPermissions,
-  IsObjectIdReferenced,
+  isObjectIdReferenced,
 } = require("../utils/helpers");
 const {
   STATUS_CODE_SUCCESS,
@@ -299,7 +299,7 @@ module.exports = {
         MESSAGE_ROLE_NOT_ALLOWED_DELETE
       ); // Step 2: Check if deletion is allowed
 
-    const { isReferenced } = await IsObjectIdReferenced(existingRole._id);
+    const { isReferenced } = await isObjectIdReferenced(existingRole._id);
     if (isReferenced)
       return handleError(
         next,

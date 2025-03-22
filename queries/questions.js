@@ -1,3 +1,4 @@
+const { v4: uuidv4 } = require("uuid");
 const moment = require("moment-timezone");
 const Question = require("../models/question");
 const {
@@ -5,7 +6,7 @@ const {
   buildQuestionsPipeline,
   buildQuestionCountPipeline,
 } = require("../pipelines/questions");
-const { v4: uuidv4 } = require("uuid");
+const generateQuestionCode = () => `QUESTION-${uuidv4()}`;
 
 /**
  * Retrieves a single class from the database.
@@ -97,7 +98,7 @@ const formatQuestionObj = ({ level, total }) => ({
 const createQuestionObj = ({ level, total }) => {
   // Step 1: Create a new Class object with the generated code and provided level
   return new Question({
-    questionCode: `QUESTION-${uuidv4()}`,
+    questionCode: generateQuestionCode(),
     level,
     total,
   });
@@ -136,6 +137,7 @@ const deleteQuestionObj = async (questionCode) => {
 };
 
 module.exports = {
+  generateQuestionCode,
   findQuestion, // Export function to retrieve a single class
   findQuestions, // Export function to retrieve multiple classes
   formatQuestionObj,

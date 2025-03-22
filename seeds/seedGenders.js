@@ -1,8 +1,8 @@
 require("dotenv").config();
 const { default: mongoose } = require("mongoose");
 const Gender = require("../models/gender");
-const { generateGenderCode } = require("../utils/helpers");
 const { baseGenders } = require("./basrGenders");
+const { generateGenderCode } = require("../queries/genders");
 
 const DB_URL = process?.env?.DB_URL ?? "";
 mongoose.connect(DB_URL, {

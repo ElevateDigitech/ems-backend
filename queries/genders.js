@@ -1,11 +1,12 @@
+const { v4: uuidv4 } = require("uuid");
 const moment = require("moment-timezone");
 const Gender = require("../models/gender");
-const { generateGenderCode } = require("../utils/helpers");
 const {
   buildGendersPipeline,
   buildGenderCountPipeline,
   buildGenderPipeline,
 } = require("../pipelines/genders");
+const generateGenderCode = () => `GENDER-${uuidv4()}`;
 
 /**
  * Retrieves a single gender from the database.
@@ -144,6 +145,7 @@ const deleteGenderObj = async (genderCode) => {
 };
 
 module.exports = {
+  generateGenderCode,
   findGender, // Export function to retrieve a single gender
   findGenders, // Export function to retrieve multiple genders
   formatGenderName, // Export function to format gender names
