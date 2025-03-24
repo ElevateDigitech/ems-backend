@@ -942,7 +942,8 @@ module.exports = {
         );
         return {
           questionNumber: q?.questionNumber,
-          topicOfFocus: q?.topicOfFocus,
+          questionStrand: q?.strand?.title,
+          questionSubStrand: q?.subStrand?.title,
           questionLevel: q?.question?.level,
           questionTotal: questionTotal,
           marksEarned: marksEarned,

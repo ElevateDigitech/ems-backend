@@ -35,6 +35,22 @@ const buildMarkPipeline = ({
       },
       {
         $lookup: {
+          from: "strands",
+          localField: "questionPaper.questions.strand",
+          foreignField: "_id",
+          as: "strandDetails",
+        },
+      },
+      {
+        $lookup: {
+          from: "substrands",
+          localField: "questionPaper.questions.subStrand",
+          foreignField: "_id",
+          as: "subStrandDetails",
+        },
+      },
+      {
+        $lookup: {
           from: "exams",
           localField: "questionPaper.exam",
           foreignField: "_id",
@@ -159,7 +175,54 @@ const buildMarkPipeline = ({
               as: "q",
               in: {
                 questionNumber: "$$q.questionNumber",
-                topicOfFocus: "$$q.topicOfFocus",
+                strand: {
+                  $let: {
+                    vars: {
+                      matchedStrand: {
+                        $arrayElemAt: [
+                          {
+                            $filter: {
+                              input: "$strandDetails",
+                              as: "sd",
+                              cond: { $eq: ["$$sd._id", "$$q.strand"] },
+                            },
+                          },
+                          0,
+                        ],
+                      },
+                    },
+                    in: {
+                      strandCode: "$$matchedStrand.strandCode",
+                      title: "$$matchedStrand.title",
+                      createdAt: { $toLong: "$$matchedStrand.createdAt" },
+                      updatedAt: { $toLong: "$$matchedStrand.updatedAt" },
+                    },
+                  },
+                },
+                subStrand: {
+                  $let: {
+                    vars: {
+                      matchedSubStrand: {
+                        $arrayElemAt: [
+                          {
+                            $filter: {
+                              input: "$subStrandDetails",
+                              as: "ssd",
+                              cond: { $eq: ["$$ssd._id", "$$q.subStrand"] },
+                            },
+                          },
+                          0,
+                        ],
+                      },
+                    },
+                    in: {
+                      subStrandCode: "$$matchedSubStrand.subStrandCode",
+                      title: "$$matchedSubStrand.title",
+                      createdAt: { $toLong: "$$matchedSubStrand.createdAt" },
+                      updatedAt: { $toLong: "$$matchedSubStrand.updatedAt" },
+                    },
+                  },
+                },
                 question: {
                   $let: {
                     vars: {
@@ -270,6 +333,22 @@ const buildMarksPipeline = ({
       },
       {
         $lookup: {
+          from: "strands",
+          localField: "questionPaper.questions.strand",
+          foreignField: "_id",
+          as: "strandDetails",
+        },
+      },
+      {
+        $lookup: {
+          from: "substrands",
+          localField: "questionPaper.questions.subStrand",
+          foreignField: "_id",
+          as: "subStrandDetails",
+        },
+      },
+      {
+        $lookup: {
           from: "exams",
           localField: "questionPaper.exam",
           foreignField: "_id",
@@ -394,7 +473,54 @@ const buildMarksPipeline = ({
               as: "q",
               in: {
                 questionNumber: "$$q.questionNumber",
-                topicOfFocus: "$$q.topicOfFocus",
+                strand: {
+                  $let: {
+                    vars: {
+                      matchedStrand: {
+                        $arrayElemAt: [
+                          {
+                            $filter: {
+                              input: "$strandDetails",
+                              as: "sd",
+                              cond: { $eq: ["$$sd._id", "$$q.strand"] },
+                            },
+                          },
+                          0,
+                        ],
+                      },
+                    },
+                    in: {
+                      strandCode: "$$matchedStrand.strandCode",
+                      title: "$$matchedStrand.title",
+                      createdAt: { $toLong: "$$matchedStrand.createdAt" },
+                      updatedAt: { $toLong: "$$matchedStrand.updatedAt" },
+                    },
+                  },
+                },
+                subStrand: {
+                  $let: {
+                    vars: {
+                      matchedSubStrand: {
+                        $arrayElemAt: [
+                          {
+                            $filter: {
+                              input: "$subStrandDetails",
+                              as: "ssd",
+                              cond: { $eq: ["$$ssd._id", "$$q.subStrand"] },
+                            },
+                          },
+                          0,
+                        ],
+                      },
+                    },
+                    in: {
+                      subStrandCode: "$$matchedSubStrand.subStrandCode",
+                      title: "$$matchedSubStrand.title",
+                      createdAt: { $toLong: "$$matchedSubStrand.createdAt" },
+                      updatedAt: { $toLong: "$$matchedSubStrand.updatedAt" },
+                    },
+                  },
+                },
                 question: {
                   $let: {
                     vars: {
@@ -528,6 +654,22 @@ const buildMarkCountPipeline = ({ keyword, query = {}, populate = false }) => {
       },
       {
         $lookup: {
+          from: "strands",
+          localField: "questionPaper.questions.strand",
+          foreignField: "_id",
+          as: "strandDetails",
+        },
+      },
+      {
+        $lookup: {
+          from: "substrands",
+          localField: "questionPaper.questions.subStrand",
+          foreignField: "_id",
+          as: "subStrandDetails",
+        },
+      },
+      {
+        $lookup: {
           from: "exams",
           localField: "questionPaper.exam",
           foreignField: "_id",
@@ -652,7 +794,54 @@ const buildMarkCountPipeline = ({ keyword, query = {}, populate = false }) => {
               as: "q",
               in: {
                 questionNumber: "$$q.questionNumber",
-                topicOfFocus: "$$q.topicOfFocus",
+                strand: {
+                  $let: {
+                    vars: {
+                      matchedStrand: {
+                        $arrayElemAt: [
+                          {
+                            $filter: {
+                              input: "$strandDetails",
+                              as: "sd",
+                              cond: { $eq: ["$$sd._id", "$$q.strand"] },
+                            },
+                          },
+                          0,
+                        ],
+                      },
+                    },
+                    in: {
+                      strandCode: "$$matchedStrand.strandCode",
+                      title: "$$matchedStrand.title",
+                      createdAt: { $toLong: "$$matchedStrand.createdAt" },
+                      updatedAt: { $toLong: "$$matchedStrand.updatedAt" },
+                    },
+                  },
+                },
+                subStrand: {
+                  $let: {
+                    vars: {
+                      matchedSubStrand: {
+                        $arrayElemAt: [
+                          {
+                            $filter: {
+                              input: "$subStrandDetails",
+                              as: "ssd",
+                              cond: { $eq: ["$$ssd._id", "$$q.subStrand"] },
+                            },
+                          },
+                          0,
+                        ],
+                      },
+                    },
+                    in: {
+                      subStrandCode: "$$matchedSubStrand.subStrandCode",
+                      title: "$$matchedSubStrand.title",
+                      createdAt: { $toLong: "$$matchedSubStrand.createdAt" },
+                      updatedAt: { $toLong: "$$matchedSubStrand.updatedAt" },
+                    },
+                  },
+                },
                 question: {
                   $let: {
                     vars: {
