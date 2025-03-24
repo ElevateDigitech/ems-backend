@@ -16,6 +16,7 @@ const {
   getInvalidSubStrands,
   getInvalidSections,
   getSectionDetails,
+  getPendingSubmissionQuestionPaperIds,
 } = require("../utils/helpers");
 const {
   STATUS_CODE_CONFLICT,
@@ -43,6 +44,7 @@ const {
   MESSAGE_QUESTION_PAPER_STRANDS_NOT_FOUND,
   MESSAGE_QUESTION_PAPER_SECTIONS_NOT_FOUND,
   MESSAGE_DUPLICATE_QUESTION_PAPER_SUCCESS,
+  MESSAGE_QUESTION_PAPER_NOT_ALLOWED_UPDATE_REFERENCE_EXIST,
 } = require("../utils/messages");
 const {
   findQuestionPapers,
@@ -51,6 +53,7 @@ const {
   createQuestionPaperObj,
   updateQuestionPaperObj,
   deleteQuestionPaperObj,
+  findPendingSubmissionQuestionPapers,
 } = require("../queries/questionPapers");
 const { findUser } = require("../queries/users");
 const { findSubject } = require("../queries/subjects");
@@ -369,6 +372,61 @@ module.exports = {
   },
 
   /**
+   * Retrieves question papers by the given query.
+   *
+   * @param {Object} req - Express request object
+   * @param {Object} res - Express response object
+   * @param {Function} next - Express next middleware function
+   */
+  GetPendingQuestionPapers: async (req, res, next) => {
+    const {
+      keyword = "",
+      sortField = "_id",
+      sortValue = "desc",
+      page = 1,
+      limit = 10,
+    } = req.query;
+    const today = moment().toDate();
+
+    const pendingSubmissionQuestionPapers = await findQuestionPapers({
+      query: { submissionDate: { $lte: today } },
+      all: true,
+    });
+
+    const pendingSubmissionQuestionPaperIds =
+      await getPendingSubmissionQuestionPaperIds(
+        pendingSubmissionQuestionPapers?.results
+      );
+
+    const { results, totalCount } = await findQuestionPapers({
+      query: {
+        _id: { $in: pendingSubmissionQuestionPaperIds?.filter(Boolean) },
+      },
+      keyword,
+      sortField,
+      sortValue,
+      page,
+      limit,
+      populate: true,
+      projection: true,
+    });
+
+    // Step 4: Return the question papers if found, else return an empty array
+    return res
+      .status(STATUS_CODE_SUCCESS)
+      .send(
+        handleSuccess(
+          STATUS_CODE_SUCCESS,
+          results?.length
+            ? MESSAGE_GET_QUESTION_PAPER_SUCCESS
+            : MESSAGE_QUESTION_PAPER_NOT_FOUND,
+          results?.length ? results : [],
+          results?.length ? totalCount : 0
+        )
+      );
+  },
+
+  /**
    * Creates a new question paper in the database.
    *
    * @param {Object} req - Express request object
@@ -540,7 +598,16 @@ module.exports = {
         MESSAGE_QUESTION_PAPER_NOT_FOUND
       );
 
-    // Step 3: Validate subject and exam
+    // Step 3: Question paper in use, not allowed to update
+    const { isReferenced } = await isObjectIdReferenced(questionPaper._id);
+    if (isReferenced)
+      return handleError(
+        next,
+        STATUS_CODE_CONFLICT,
+        MESSAGE_QUESTION_PAPER_NOT_ALLOWED_UPDATE_REFERENCE_EXIST
+      );
+
+    // Step 4: Validate subject and exam
     const subject = await findSubject({ query: { subjectCode } });
     if (!subject)
       return handleError(next, STATUS_CODE_CONFLICT, MESSAGE_SUBJECT_NOT_FOUND);
@@ -564,7 +631,7 @@ module.exports = {
         MESSAGE_QUESTION_PAPER_QUESTION_NUMBER_DUPLICATION
       );
 
-    // Step 4: Validate Questions
+    // Step 5: Validate Questions
     const invalidQuestion = await getInvalidQuestions(questions);
     if (invalidQuestion.some(Boolean))
       return handleError(
@@ -575,7 +642,7 @@ module.exports = {
 
     const questionsWithIds = await getQuestionsWithIds(questions);
 
-    // Step 5: Check for duplicate question paper title
+    // Step 6: Check for duplicate question paper title
     const duplicateQuestionPaper = await findQuestionPaper({
       query: {
         questionPaperCode: { $ne: questionPaperCode },
@@ -592,14 +659,14 @@ module.exports = {
         MESSAGE_QUESTION_PAPER_TAKEN
       );
 
-    // Step 6: Question paper details before update
+    // Step 7: Question paper details before update
     const previousData = await findQuestionPaper({
       query: { questionPaperCode },
       projection: true,
       populate: true,
     });
 
-    // Step 7: Update the question paper details
+    // Step 8: Update the question paper details
     await updateQuestionPaperObj({
       questionPaperCode,
       title: formattedTitle,
@@ -610,7 +677,7 @@ module.exports = {
       questions: questionsWithIds,
     });
 
-    // Step 8: Log the audit
+    // Step 9: Log the audit
     const updatedCity = await findQuestionPaper({
       query: { questionPaperCode },
       projection: true,
@@ -632,7 +699,7 @@ module.exports = {
       currentUser
     );
 
-    // Step 9: Return the updated question paper
+    // Step 10: Return the updated question paper
     res
       .status(STATUS_CODE_SUCCESS)
       .send(

@@ -5,6 +5,8 @@ const {
   buildQuestionPaperPipeline,
   buildQuestionPapersPipeline,
   buildQuestionPaperCountPipeline,
+  buildPendingSubmissionQuestionPapersPipeline,
+  buildPendingSubmissionQuestionPaperCountPipeline,
 } = require("../pipelines/questionPapers");
 const generateQuestionPaperCode = () => `QUESTION-PAPER-${uuidv4()}`;
 

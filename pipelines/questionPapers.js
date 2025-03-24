@@ -1,3 +1,5 @@
+const moment = require("moment-timezone");
+
 const buildQuestionPaperPipeline = ({
   query = {},
   projection = false,
@@ -301,7 +303,16 @@ const buildQuestionPapersPipeline = ({
         from: "strands",
         localField: "questions.strand",
         foreignField: "_id",
-        as: "stranDetails",
+        as: "strandDetails",
+      },
+    });
+
+    pipeline.push({
+      $lookup: {
+        from: "substrands",
+        localField: "questions.subStrand",
+        foreignField: "_id",
+        as: "subStrandDetails",
       },
     });
 
@@ -332,8 +343,54 @@ const buildQuestionPapersPipeline = ({
             as: "q",
             in: {
               questionNumber: "$$q.questionNumber",
-              strand: "$$q.strand",
-              subStrand: "$$q.subStrand",
+              strand: {
+                $let: {
+                  vars: {
+                    matchedStrand: {
+                      $arrayElemAt: [
+                        {
+                          $filter: {
+                            input: "$strandDetails",
+                            as: "sd",
+                            cond: { $eq: ["$$sd._id", "$$q.strand"] },
+                          },
+                        },
+                        0,
+                      ],
+                    },
+                  },
+                  in: {
+                    strandCode: "$$matchedStrand.strandCode",
+                    title: "$$matchedStrand.title",
+                    createdAt: { $toLong: "$$matchedStrand.createdAt" },
+                    updatedAt: { $toLong: "$$matchedStrand.updatedAt" },
+                  },
+                },
+              },
+              subStrand: {
+                $let: {
+                  vars: {
+                    matchedSubStrand: {
+                      $arrayElemAt: [
+                        {
+                          $filter: {
+                            input: "$subStrandDetails",
+                            as: "ssd",
+                            cond: { $eq: ["$$ssd._id", "$$q.subStrand"] },
+                          },
+                        },
+                        0,
+                      ],
+                    },
+                  },
+                  in: {
+                    subStrandCode: "$$matchedSubStrand.subStrandCode",
+                    title: "$$matchedSubStrand.title",
+                    createdAt: { $toLong: "$$matchedSubStrand.createdAt" },
+                    updatedAt: { $toLong: "$$matchedSubStrand.updatedAt" },
+                  },
+                },
+              },
               question: {
                 $arrayElemAt: [
                   {
@@ -475,6 +532,24 @@ const buildQuestionPaperCountPipeline = ({
     });
 
     pipeline.push({
+      $lookup: {
+        from: "strands",
+        localField: "questions.strand",
+        foreignField: "_id",
+        as: "strandDetails",
+      },
+    });
+
+    pipeline.push({
+      $lookup: {
+        from: "substrands",
+        localField: "questions.subStrand",
+        foreignField: "_id",
+        as: "subStrandDetails",
+      },
+    });
+
+    pipeline.push({
       $addFields: {
         exam: {
           examCode: "$exam.examCode",
@@ -501,8 +576,54 @@ const buildQuestionPaperCountPipeline = ({
             as: "q",
             in: {
               questionNumber: "$$q.questionNumber",
-              strand: "$$q.strand",
-              subStrand: "$$q.subStrand",
+              strand: {
+                $let: {
+                  vars: {
+                    matchedStrand: {
+                      $arrayElemAt: [
+                        {
+                          $filter: {
+                            input: "$strandDetails",
+                            as: "sd",
+                            cond: { $eq: ["$$sd._id", "$$q.strand"] },
+                          },
+                        },
+                        0,
+                      ],
+                    },
+                  },
+                  in: {
+                    strandCode: "$$matchedStrand.strandCode",
+                    title: "$$matchedStrand.title",
+                    createdAt: { $toLong: "$$matchedStrand.createdAt" },
+                    updatedAt: { $toLong: "$$matchedStrand.updatedAt" },
+                  },
+                },
+              },
+              subStrand: {
+                $let: {
+                  vars: {
+                    matchedSubStrand: {
+                      $arrayElemAt: [
+                        {
+                          $filter: {
+                            input: "$subStrandDetails",
+                            as: "ssd",
+                            cond: { $eq: ["$$ssd._id", "$$q.subStrand"] },
+                          },
+                        },
+                        0,
+                      ],
+                    },
+                  },
+                  in: {
+                    subStrandCode: "$$matchedSubStrand.subStrandCode",
+                    title: "$$matchedSubStrand.title",
+                    createdAt: { $toLong: "$$matchedSubStrand.createdAt" },
+                    updatedAt: { $toLong: "$$matchedSubStrand.updatedAt" },
+                  },
+                },
+              },
               question: {
                 $arrayElemAt: [
                   {

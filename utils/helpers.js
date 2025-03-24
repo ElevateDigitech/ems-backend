@@ -11,6 +11,7 @@ const { findQuestion } = require("../queries/questions");
 const { findStrand } = require("../queries/strands");
 const { findSubStrand } = require("../queries/subStrands");
 const { findSection } = require("../queries/sections");
+const { findMark } = require("../queries/marks");
 
 const handleError = (next, status, message) =>
   next(new ExpressResponse(STATUS_ERROR, status, message));
@@ -182,6 +183,17 @@ const getSectionDetails = async (sections) => {
   );
 };
 
+const getPendingSubmissionQuestionPaperIds = async (items) => {
+  return Promise.all(
+    items.map(async (item) => {
+      const mark = await findMark({
+        query: { questionPaper: item?._id },
+      });
+      return mark ? null : item?._id;
+    })
+  );
+};
+
 module.exports = {
   handleError,
   handleSuccess,
@@ -203,4 +215,5 @@ module.exports = {
   hasDuplicates,
   getInvalidSections,
   getSectionDetails,
+  getPendingSubmissionQuestionPaperIds,
 };

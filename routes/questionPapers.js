@@ -64,6 +64,13 @@ router.post(
   catchAsync(questionPapers.GetQuestionPapersByQuery)
 );
 
+router.get(
+  "/GetPendingQuestionPapers",
+  isLoggedIn,
+  checkPermission(allPermissions?.VIEW_QUESTION_PAPERS),
+  catchAsync(questionPapers.GetPendingQuestionPapers)
+);
+
 router.post(
   "/CreateQuestionPaper",
   isLoggedIn,
