@@ -3,7 +3,6 @@ const mongoose = require("mongoose");
 const Country = require("../models/country");
 const State = require("../models/state");
 const City = require("../models/city");
-const { toCapitalize } = require("../utils/helpers");
 const { data } = require("./countriesStatesCities");
 const { generateCountryCode } = require("../queries/countries");
 const { generateStateCode } = require("../queries/states");
@@ -44,7 +43,11 @@ const getAllValues = (countries) => {
               const cityCode = generateCityCode();
               return {
                 cityCode,
-                name: toCapitalize(city.name) || "",
+                name:
+                  city.name
+                    .split(" ")
+                    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+                    .join(" ") || "",
                 state: stateCode,
                 country: countryCode,
               };
@@ -55,7 +58,11 @@ const getAllValues = (countries) => {
 
             return {
               stateCode,
-              name: toCapitalize(stateName) || "",
+              name:
+                stateName
+                  .split(" ")
+                  .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+                  .join(" ") || "",
               iso: state_code.toUpperCase() || "",
               cities: mappedCities,
               country: countryCode,
@@ -74,7 +81,11 @@ const getAllValues = (countries) => {
         allStates.push(...mappedStates);
 
         return {
-          name: toCapitalize(name) || "",
+          name:
+            name
+              .split(" ")
+              .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+              .join(" ") || "",
           iso3: iso3.toUpperCase() || "",
           iso2: iso2.toUpperCase() || "",
           states: mappedStates,
@@ -163,7 +174,10 @@ const reduceStates = (states) =>
 
 const reduceCities = (cities) =>
   cities.reduce((acc, current) => {
-    const isDuplicate = acc.some((ci) => ci?.name === current?.name);
+    const isDuplicate = acc.some(
+      (ci) =>
+        ci?.name?.trim()?.toLowerCase() === current?.name?.trim()?.toLowerCase()
+    );
 
     if (!isDuplicate) acc.push(current);
 
@@ -204,7 +218,6 @@ const seedCities = async () => {
     insertedCountries
   );
   const reducedCities = reduceCities(parsedCities);
-
   await City.insertMany(reducedCities);
 };
 

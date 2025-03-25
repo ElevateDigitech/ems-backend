@@ -13,6 +13,7 @@
     "seed:questions": "node ./seeds/seedQuestions.js",
     "seed:students": "node ./seeds/seedStudents.js",
     "seed:all": "npm run seed:delete-all-documents && npm run seed:permissions-roles-users && npm run seed:countries-states-cities && npm run seed:genders && npm run seed:classes-sections && npm run seed:questions && npm run seed:students",
+    "seed:partial": "npm run seed:delete-all-documents && npm run seed:permissions-roles-users && npm run seed:genders && npm run seed:classes-sections && npm run seed:questions && npm run seed:students",
     "dev": "nodemon app.js",
     "start": "node app.js"
   },
